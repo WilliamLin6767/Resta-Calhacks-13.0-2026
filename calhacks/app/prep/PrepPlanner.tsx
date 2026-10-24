@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import OrderPlan from "@/components/OrderPlan";
+import AiThinking from "@/components/ui/AiThinking";
+import LiveValue from "@/components/ui/LiveValue";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { useAction } from "@/components/useAction";
 import { adjustForecast, clampFactor, prepNeeds, type Forecast, type RecipeRow, type StockRow } from "@/lib/prep/forecast";
 import type { Source } from "@/lib/prep/service";
@@ -56,12 +59,17 @@ export default function PrepPlanner({
           />
           <button
             disabled={ai.loading || !note.trim()}
-            onClick={() => ai.run("/api/prep/adjust", { date: forecast.date, note }, (data) => setAdjustment(data as unknown as Adjustment))}
+            onClick={() =>
+              ai.run("/api/prep/adjust", { date: forecast.date, note }, (data) => setAdjustment(data as unknown as Adjustment), {
+                success: `Forecast adjusted for ${forecast.weekday}`,
+              })
+            }
             className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {ai.loading ? "Thinking..." : "Adjust forecast"}
           </button>
         </div>
+        {ai.loading && <AiThinking label="Adjusting the forecast..." className="mt-2" />}
         {ai.error && <p className="mt-2 text-sm text-red-600">{ai.error}</p>}
         {adjustment && (
           <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm">
@@ -104,35 +112,36 @@ export default function PrepPlanner({
             />
           )}
         </div>
-        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-50 text-brand-700">
+        <div className={tableWrap}>
+          <table className={table}>
+            <thead className={thead}>
               <tr>
-                <th className="px-4 py-2 font-medium">Ingredient</th>
-                <th className="px-4 py-2 text-right font-medium">Prep</th>
-                <th className="px-4 py-2 text-right font-medium">Busy day</th>
-                <th className="px-4 py-2 text-right font-medium">On hand that morning</th>
-                <th className="px-4 py-2 font-medium">Stock</th>
+                <th className={th}>Ingredient</th>
+                <th className={thNum}>Prep</th>
+                <th className={thNum}>Busy day</th>
+                <th className={thNum}>On hand that morning</th>
+                <th className={th}>Stock</th>
               </tr>
             </thead>
             {categories.map((cat) => (
               <tbody key={cat}>
-                <tr className="border-t border-gray-200 bg-gray-50/60">
-                  <td colSpan={5} className="px-4 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{cat}</td>
+                <tr className="border-y border-gray-200 bg-gray-50/60">
+                  <td colSpan={5} className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{cat}</td>
                 </tr>
                 {needs.filter((n) => n.category === cat).map((n) => {
                   const src = sources[n.ingredient_id];
                   const late = src && src.earliest_delivery > forecast.date;
                   return (
-                    <tr key={n.ingredient_id} className="border-t border-gray-100">
-                      <td className="px-4 py-2">{n.name}</td>
-                      <td className="px-4 py-2 text-right font-medium tabular-nums">{fmt(n.needed)} {n.unit}</td>
-                      <td className="px-4 py-2 text-right tabular-nums text-gray-500">{fmt(n.needed_busy)}</td>
-                      <td className="px-4 py-2 text-right tabular-nums">
+                    <tr key={n.ingredient_id} className={tr}>
+                      <td className={td}>{n.name}</td>
+                      {/* Flashes when an AI adjustment changes it */}
+                      <td className={`${tdNum} font-medium`}><LiveValue value={`${fmt(n.needed)} ${n.unit}`} /></td>
+                      <td className={`${tdNum} text-gray-500`}><LiveValue value={fmt(n.needed_busy)} /></td>
+                      <td className={tdNum}>
                         {fmt(n.on_hand)}
                         {n.on_order > 0 && <span className="text-gray-500"> + {fmt(n.on_order)} on order</span>}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className={td}>
                         {n.tight ? (
                           <span className="text-amber-700">Tight: enough unless it&apos;s a busy day</span>
                         ) : n.short > 0 ? (
@@ -155,28 +164,28 @@ export default function PrepPlanner({
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Dishes expected</h2>
-        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-50 text-brand-700">
+        <div className={tableWrap}>
+          <table className={table}>
+            <thead className={thead}>
               <tr>
-                <th className="px-4 py-2 font-medium">Dish</th>
-                <th className="px-4 py-2 text-right font-medium">Expected</th>
-                <th className="px-4 py-2 text-right font-medium">Range</th>
-                <th className="px-4 py-2 text-right font-medium">Past {forecast.weekday}s, oldest first</th>
-                <th className="px-4 py-2 font-medium">Forecast</th>
+                <th className={th}>Dish</th>
+                <th className={thNum}>Expected</th>
+                <th className={thNum}>Range</th>
+                <th className={thNum}>Past {forecast.weekday}s, oldest first</th>
+                <th className={th}>Forecast</th>
               </tr>
             </thead>
             <tbody>
               {adjusted.dishes.map((d) => (
-                <tr key={d.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{d.name}</td>
-                  <td className="px-4 py-2 text-right font-medium tabular-nums">
-                    {d.expected}
+                <tr key={d.id} className={tr}>
+                  <td className={td}>{d.name}</td>
+                  <td className={`${tdNum} font-medium`}>
+                    <LiveValue value={String(d.expected)} />
                     {factors[d.id] && <span className="ml-1 text-xs text-gray-500">(AI)</span>}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500">{d.low}–{d.high}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500">{d.history.join(", ")}</td>
-                  <td className="px-4 py-2 text-gray-600">{CONFIDENCE[d.confidence]}</td>
+                  <td className={`${tdNum} text-gray-500`}>{d.low}–{d.high}</td>
+                  <td className={`${tdNum} text-gray-500`}>{d.history.join(", ")}</td>
+                  <td className={`${td} text-gray-600`}>{CONFIDENCE[d.confidence]}</td>
                 </tr>
               ))}
             </tbody>

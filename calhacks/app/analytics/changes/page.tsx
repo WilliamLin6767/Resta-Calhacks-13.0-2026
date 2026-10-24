@@ -6,6 +6,7 @@ import AskChips from "@/components/analytics/AskChips";
 import ChartCard from "@/components/analytics/ChartCard";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import { SkeletonChart } from "@/components/ui/Skeleton";
 import SectionMark from "@/components/SectionMark";
 import { parseDays } from "@/lib/analytics";
 import { ALERT_THRESHOLDS, buildAlerts } from "@/lib/insights";
@@ -30,7 +31,7 @@ export default function ChangesPage({ searchParams }: PageProps<"/analytics/chan
           <p className="mt-1 text-sm text-gray-600">The numbers that moved enough to need a look, compared with the period before.</p>
         </div>
       </header>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-gray-100" aria-label="Loading..." />}>
+      <Suspense fallback={<SkeletonChart height={384} />}>
         <ChangesContent searchParams={searchParams} />
       </Suspense>
     </div>

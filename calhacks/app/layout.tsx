@@ -4,6 +4,9 @@ import { Suspense } from "react";
 import AppShell from "@/components/AppShell";
 import AssistantPanel from "@/components/assistant/AssistantPanel";
 import AssistantProvider from "@/components/assistant/AssistantProvider";
+import CommandPalette from "@/components/CommandPalette";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ToastProvider } from "@/components/ui/Toaster";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import "./globals.css";
 
@@ -56,16 +59,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-gray-950 text-gray-800">
         {/* The AI assistant is on every page: the provider tracks the chat and the charts on screen */}
         <AssistantProvider>
-          <AppShell
-            restaurant={
-              <Suspense fallback="Loading...">
-                <RestaurantName />
-              </Suspense>
-            }
-          >
-            {children}
-          </AppShell>
-          <AssistantPanel />
+          {/* Toasts and the command palette (Ctrl/Cmd+K) work on every page */}
+          <ToastProvider>
+            <AppShell
+              restaurant={
+                <Suspense fallback={<Skeleton className="mt-1 h-3 w-24 bg-white/15" />}>
+                  <RestaurantName />
+                </Suspense>
+              }
+            >
+              {children}
+            </AppShell>
+            <AssistantPanel />
+            <CommandPalette />
+          </ToastProvider>
         </AssistantProvider>
       </body>
     </html>

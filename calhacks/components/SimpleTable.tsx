@@ -1,29 +1,28 @@
 import { isValidElement } from "react";
+import { table, tableWrap, td, th, thead, tr } from "@/components/ui/table";
 
 type Column = { key: string; label: string };
 
 type Props = {
   columns: Column[];
   rows: Record<string, unknown>[];
+  empty?: React.ReactNode; // shown instead of "No rows yet." (e.g. an <EmptyState>)
 };
 
 // A plain bordered table. Each column's `key` picks the value out of each row.
 // A value can be text, a number, or a React element such as a <Badge>.
-export default function SimpleTable({ columns, rows }: Props) {
+export default function SimpleTable({ columns, rows, empty }: Props) {
   if (rows.length === 0) {
-    return <p className="text-sm text-gray-500">No rows yet.</p>;
+    return empty ?? <p className="text-sm text-gray-500">No rows yet.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-brand-50">
+    <div className={tableWrap}>
+      <table className={table}>
+        <thead className={thead}>
           <tr>
             {columns.map((col) => (
-              <th
-                key={col.key}
-                className="border-b border-brand-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-brand-700"
-              >
+              <th key={col.key} className={th}>
                 {col.label}
               </th>
             ))}
@@ -31,11 +30,11 @@ export default function SimpleTable({ columns, rows }: Props) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-brand-50/60">
+            <tr key={i} className={tr}>
               {columns.map((col) => {
                 const value = row[col.key];
                 return (
-                  <td key={col.key} className="px-3 py-2 text-gray-800">
+                  <td key={col.key} className={td}>
                     {isValidElement(value) ? value : String(value ?? "")}
                   </td>
                 );

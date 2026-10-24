@@ -2,6 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import AiThinking from "@/components/ui/AiThinking";
+import Reveal from "@/components/ui/Reveal";
+import { table as tableClass, tableWrap, td, th, thead, tr } from "@/components/ui/table";
+import { useToast } from "@/components/ui/Toaster";
 
 type Ref = { id: number; name: string; unit: string };
 type Row = { key: number; ingredient_id: number; qty: string; confidence: number; seen: string; note: string; reason?: string };
@@ -28,6 +32,7 @@ function toRows(items: Proposal[]): Row[] {
 
 export default function Capture({ ingredients }: { ingredients: Ref[] }) {
   const router = useRouter();
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
   const [listening, setListening] = useState<Recognition | null>(null);
@@ -104,8 +109,11 @@ export default function Capture({ ingredients }: { ingredients: Ref[] }) {
       else setWaste([]);
       setDone(`${data.saved} ${kind === "counts" ? "counts saved" : "waste entries logged"}.`);
       router.refresh();
+      const what = `${data.saved} item${data.saved === 1 ? "" : "s"}`;
+      toast({ message: kind === "counts" ? `Counts saved for ${what}` : `Waste logged for ${what}`, tone: "success" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" });
     } finally {
       setBusy("");
     }
@@ -114,53 +122,56 @@ export default function Capture({ ingredients }: { ingredients: Ref[] }) {
   function table(rows: Row[], setRows: (r: Row[]) => void, kind: "counts" | "waste") {
     const update = (key: number, patch: Partial<Row>) => setRows(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="text-gray-600">
+      <div>
+        <div className={tableWrap}>
+        <table className={tableClass}>
+          <thead className={thead}>
             <tr>
-              <th className="py-1 pr-3 font-medium">Seen or heard</th>
-              <th className="py-1 pr-3 font-medium">Ingredient</th>
-              <th className="py-1 pr-3 font-medium">{kind === "counts" ? "On hand" : "Thrown out"}</th>
-              {kind === "waste" && <th className="py-1 pr-3 font-medium">Why</th>}
-              <th className="py-1 pr-3 font-medium">Sure?</th>
-              <th className="py-1" />
+              <th className={th}>Seen or heard</th>
+              <th className={th}>Ingredient</th>
+              <th className={th}>{kind === "counts" ? "On hand" : "Thrown out"}</th>
+              {kind === "waste" && <th className={th}>Why</th>}
+              <th className={th}>Sure?</th>
+              <th className={th} />
             </tr>
           </thead>
-          <tbody>
+          {/* Lines the AI read rise in one after another */}
+          <Reveal as="tbody" initial>
             {rows.map((r) => (
-              <tr key={r.key} className="border-t border-gray-100 align-top">
-                <td className="py-2 pr-3 text-gray-600">
+              <tr key={r.key} className={`${tr} align-top`}>
+                <td className={`${td} text-gray-600`}>
                   {r.seen}
                   {r.note && <span className="block text-xs text-gray-400">{r.note}</span>}
                 </td>
-                <td className="py-2 pr-3">
+                <td className={td}>
                   <select value={r.ingredient_id} onChange={(e) => update(r.key, { ingredient_id: Number(e.target.value) })} aria-label="Ingredient"
                     className={`rounded-md border px-2 py-1 ${r.ingredient_id ? "border-gray-300" : "border-red-300"}`}>
                     <option value={0}>Not on the list</option>
                     {ingredients.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                   </select>
                 </td>
-                <td className="py-2 pr-3 whitespace-nowrap">
+                <td className={`${td} whitespace-nowrap`}>
                   <input value={r.qty} onChange={(e) => update(r.key, { qty: e.target.value })} inputMode="decimal" aria-label="Quantity"
                     className="w-20 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /> <span className="text-gray-500">{byId.get(r.ingredient_id)?.unit}</span>
                 </td>
                 {kind === "waste" && (
-                  <td className="py-2 pr-3">
+                  <td className={td}>
                     <select value={r.reason} onChange={(e) => update(r.key, { reason: e.target.value })} aria-label="Reason" className="rounded-md border border-gray-300 px-2 py-1">
                       {REASONS.map((x) => <option key={x}>{x}</option>)}
                     </select>
                   </td>
                 )}
-                <td className={`py-2 pr-3 ${r.confidence >= 0.85 ? "text-green-700" : r.confidence >= 0.5 ? "text-amber-700" : "text-red-700"}`}>
+                <td className={`${td} ${r.confidence >= 0.85 ? "text-green-700" : r.confidence >= 0.5 ? "text-amber-700" : "text-red-700"}`}>
                   {r.confidence >= 0.85 ? "Yes" : r.confidence >= 0.5 ? "Estimate: check it" : "Not sure: check it"}
                 </td>
-                <td className="py-2">
+                <td className={td}>
                   <button onClick={() => setRows(rows.filter((x) => x.key !== r.key))} className="text-xs text-gray-500 underline">Remove</button>
                 </td>
               </tr>
             ))}
-          </tbody>
+          </Reveal>
         </table>
+        </div>
         <div className="mt-2 flex flex-wrap gap-2">
           <button onClick={() => setRows([...rows, { key: nextKey++, ingredient_id: 0, qty: "", confidence: 1, seen: "added by hand", note: "", reason: kind === "waste" ? "spoiled" : undefined }])} className={secondary}>
             Add a line
@@ -193,7 +204,7 @@ export default function Capture({ ingredients }: { ingredients: Ref[] }) {
         <button disabled={!!busy && !listening} onClick={toggleMic} className={secondary}>{listening ? "Stop" : "Speak"}</button>
         <button disabled={!!busy || !text.trim()} onClick={readNote} className={primary}>Read note</button>
       </div>
-      {busy && <p className="mt-3 text-sm text-gray-500">{busy}</p>}
+      {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {done && <p className="mt-3 text-sm text-green-700">{done}</p>}
       {notes && <p className="mt-3 text-sm text-gray-600">AI note on the photo: {notes}</p>}

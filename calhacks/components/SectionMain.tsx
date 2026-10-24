@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { SearchButton } from "@/components/CommandPalette";
 import { sectionFor } from "@/lib/nav";
 
 // The rounded white page panel (on phones, a sheet above AppShell's bottom bar). It carries the current section's theme, so brand-* classes on
@@ -10,8 +11,9 @@ export default function SectionMain({ children }: { children: React.ReactNode })
   return (
     <main
       data-section={section?.theme}
-      className="section-main min-w-0 flex-1 rounded-t-[24px] bg-white px-4 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:my-4 md:mr-4 md:ml-12 md:rounded-[30px] md:px-10 md:py-10"
+      className="section-main relative min-w-0 flex-1 rounded-t-[24px] bg-white px-4 py-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:my-4 md:mr-4 md:ml-12 md:rounded-[30px] md:px-10 md:py-10"
     >
+      <SearchButton />
       <div className="mx-auto max-w-6xl">{children}</div>
     </main>
   );

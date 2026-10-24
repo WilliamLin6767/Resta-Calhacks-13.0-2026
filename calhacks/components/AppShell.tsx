@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { OPEN_PALETTE } from "@/components/CommandPalette";
 import NavWheel from "@/components/NavWheel";
 import SectionMain from "@/components/SectionMain";
 import Sidebar from "@/components/Sidebar";
@@ -46,6 +47,18 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
           <p className="text-sm font-semibold">Back of House</p>
           <p className="truncate text-xs text-white/60">{restaurant}</p>
         </div>
+        {/* Phones have no Ctrl+K: this opens the command palette */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE))}
+          aria-label="Search"
+          className="ml-auto flex h-11 w-11 items-center justify-center rounded-md border border-white/15"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+        </button>
       </header>
 
       {open && (

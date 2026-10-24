@@ -33,6 +33,12 @@
   --color-brand-500: #4a6a96;
   --color-brand-600: #3b5680;
   --color-brand-700: #2e4466;
+
+  /* Motion: one curve and three durations for everything that moves (see components/ui/README.md). */
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 150ms; /* small feedback: hover, press, a stamp */
+  --duration-enter: 240ms; /* things arriving: a page, a toast, a new row */
+  --duration-exit: 200ms; /* things leaving */
 }
 
 /* Each section's palette: deep, muted tones. Static so every variable is emitted, since the
@@ -207,22 +213,29 @@
   background: linear-gradient(to bottom, var(--color-brand-50), #fff 320px);
 }
 
-/* Hover lift: buttons, and links that look like buttons (.lift) or cards (.lift-block), grow a
-   little under the mouse and dip when pressed. Skipped for people who ask for less motion.
-   Not in a layer, so its transition (which keeps color fades) wins over Tailwind's. */
+/* One focus ring for everything you can tab to, in the page's color. Rounded things keep their
+   own radius, since the outline follows border-radius. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+/* Button hover, in one place. Links that look like buttons (.lift) or cards (.lift-block) grow a
+   little under the mouse; plain buttons only change color (no growing), and every one of them
+   dips when pressed. Skipped for people who ask for less motion. Not in a layer, so its
+   transition (which keeps color fades) wins over Tailwind's. */
 @media (prefers-reduced-motion: no-preference) {
   button,
   .lift,
   .lift-block {
     transition:
-      scale 150ms ease,
-      background-color 150ms ease,
-      color 150ms ease,
-      border-color 150ms ease,
-      box-shadow 150ms ease,
-      opacity 150ms ease;
+      scale var(--duration-fast) ease,
+      background-color var(--duration-fast) ease,
+      color var(--duration-fast) ease,
+      border-color var(--duration-fast) ease,
+      box-shadow var(--duration-fast) ease,
+      opacity var(--duration-fast) ease;
   }
-  button:not(:disabled):hover,
   .lift:hover {
     scale: 1.04;
   }
@@ -279,7 +292,7 @@
   /* A new page rises in, its first few blocks one after another (app/template.tsx).
      "backwards" only: once done, nothing is left transformed. */
   .page-enter > * > :nth-child(-n + 6):not(.fixed) {
-    animation: page-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+    animation: page-in var(--duration-enter) var(--ease-out-soft) backwards;
   }
   .page-enter > * > *:nth-child(2) { animation-delay: 40ms; }
   .page-enter > * > *:nth-child(3) { animation-delay: 80ms; }
@@ -314,8 +327,190 @@
   .nav-progress {
     animation: nav-progress 900ms ease-in-out infinite;
   }
+
+  /* Loading placeholders (components/ui/Skeleton.tsx): a slow light passing left to right. */
+  .skeleton {
+    background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.7) 50%, transparent 100%);
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: skeleton-shimmer 1.4s linear infinite;
+  }
+
+  /* Toasts (components/ui/Toaster.tsx) rise in, and fade out. */
+  .toast-in {
+    animation: toast-in var(--duration-enter) var(--ease-out-soft) backwards;
+  }
+  .toast-out {
+    animation: toast-out var(--duration-exit) ease forwards;
+  }
+
+  /* A number that just changed (components/ui/LiveValue.tsx): a soft highlight that fades. */
+  .value-changed {
+    animation: value-flash 600ms ease-out;
+  }
+
+  /* Kitchen tickets (components/attention/AttentionList.tsx): the "Done" stamp lands, then the
+     ticket slides away and folds up. */
+  .ticket-stamp {
+    animation: ticket-stamp var(--duration-fast) var(--ease-out-soft) backwards;
+  }
+  .ticket-out {
+    animation: ticket-out var(--duration-exit) ease-in forwards;
+  }
+
+  /* A live supplier call (components/calls/CallRequests.tsx) and recording on the mic button
+     (components/voice/MicButton.tsx): a soft ring spreading out. */
+  .live-pulse {
+    animation: live-pulse 1.6s ease-out infinite;
+  }
+
+  /* The AI is working (components/ui/AiThinking.tsx): a light sweeps across the words. */
+  .ai-thinking {
+    background-image: linear-gradient(90deg, var(--color-gray-500) 40%, var(--color-gray-300) 50%, var(--color-gray-500) 60%);
+    background-size: 300% 100%;
+    background-clip: text;
+    color: transparent;
+    animation: ai-shimmer 1.8s linear infinite;
+  }
+
+  /* Three dots bouncing in turn (components/ui/TypingDots.tsx). */
+  .typing-dot {
+    animation: typing-dot 1s ease-in-out infinite;
+  }
+
+  /* New items in a list (components/ui/Reveal.tsx) and new chat bubbles rise in. */
+  .reveal-in {
+    animation: reveal-in var(--duration-enter) var(--ease-out-soft) backwards;
+  }
+
+  /* The command palette (components/CommandPalette.tsx) opens with a small fade and grow. */
+  .palette-in {
+    animation: palette-in var(--duration-enter) var(--ease-out-soft) backwards;
+  }
+
+  /* An invoice's problems the first time it's opened (app/invoices/[id]/ScannedLines.tsx): one
+     ring in each problem's own color (--flash), fading out. */
+  .flash-once > * {
+    animation: flag-flash 600ms ease-out;
+  }
+
+  /* A slow line passing down an invoice photo while the AI reads it (app/invoices/ScanInvoice.tsx). */
+  .scan-line {
+    animation: scan-line 2.4s ease-in-out infinite alternate;
+  }
 }
 
+/* With reduced motion nothing moves: a changed number keeps a plain highlight for 600ms, and a
+   ticket's stamp just appears (AttentionList hides the ticket itself). */
+@media (prefers-reduced-motion: reduce) {
+  .value-changed {
+    animation: value-flash-still 600ms steps(1, end);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes value-flash {
+  from {
+    background-color: var(--color-brand-100);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes value-flash-still {
+  from {
+    background-color: var(--color-brand-100);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes ticket-stamp {
+  from {
+    opacity: 0;
+    scale: 1.3;
+  }
+}
+@keyframes ticket-out {
+  to {
+    opacity: 0;
+    translate: 24px 0;
+    height: 0;
+    margin-block: 0;
+    padding-block: 0;
+  }
+}
+@keyframes live-pulse {
+  from {
+    opacity: 0.6;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+@keyframes ai-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 -4px;
+  }
+}
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+@keyframes palette-in {
+  from {
+    opacity: 0;
+    scale: 0.98;
+  }
+}
+@keyframes flag-flash {
+  from {
+    box-shadow: 0 0 0 4px var(--flash, var(--color-brand-100));
+  }
+}
+@keyframes scan-line {
+  from {
+    top: 0%;
+  }
+  to {
+    top: 100%;
+  }
+}
 @keyframes page-in {
   from {
     opacity: 0;
@@ -334,6 +529,14 @@
   }
   to {
     translate: 300% 0;
+  }
+}
+
+/* Skeleton blocks are plain gray until the shimmer above adds a light on top. In the components
+   layer, so a utility like bg-brand-100 can still tint one. */
+@layer components {
+  .skeleton {
+    background-color: var(--color-gray-100);
   }
 }
 

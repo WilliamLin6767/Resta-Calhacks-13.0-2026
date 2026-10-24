@@ -16,7 +16,7 @@ export function FlagButtons({ flagId, kind, disputeNote }: { flagId: number; kin
       {kind === "cheaper_elsewhere" && (
         <button
           disabled={loading}
-          onClick={() => run(`/api/invoice-flags/${flagId}/order`, {}, () => router.push("/invoices#orders"))}
+          onClick={() => run(`/api/invoice-flags/${flagId}/order`, {}, () => router.push("/invoices#orders"), { success: "Order drafted with the cheaper supplier" })}
           className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           Draft an order there
@@ -37,7 +37,7 @@ export function FlagButtons({ flagId, kind, disputeNote }: { flagId: number; kin
           Copy dispute note
         </button>
       )}
-      <button disabled={loading} onClick={() => run(`/api/invoice-flags/${flagId}/resolve`)} className={buttonClass}>
+      <button disabled={loading} onClick={() => run(`/api/invoice-flags/${flagId}/resolve`, undefined, undefined, { success: "Problem marked done" })} className={buttonClass}>
         Done
       </button>
       {done && <span className="text-xs text-green-700">{done}</span>}
@@ -84,7 +84,9 @@ export function LineFix({
       <button
         disabled={loading || (!pick && !name.trim())}
         onClick={() =>
-          run(`/api/invoice-lines/${lineId}/confirm`, pick ? { ingredient_id: Number(pick) } : { new_ingredient_name: name, new_ingredient_unit: unit })
+          run(`/api/invoice-lines/${lineId}/confirm`, pick ? { ingredient_id: Number(pick) } : { new_ingredient_name: name, new_ingredient_unit: unit }, undefined, {
+            success: pick ? `Line matched to ${ingredients.find((i) => String(i.id) === pick)?.name ?? "the ingredient"}` : `Added ${name.trim()} as a new ingredient`,
+          })
         }
         className={buttonClass}
       >
@@ -102,7 +104,7 @@ export function RecheckButton({ invoiceId }: { invoiceId: number }) {
     <div>
       <button
         disabled={loading}
-        onClick={() => run(`/api/invoices/${invoiceId}/check`)}
+        onClick={() => run(`/api/invoices/${invoiceId}/check`, undefined, undefined, { success: "Invoice checked again" })}
         className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Checking..." : "Check this invoice"}

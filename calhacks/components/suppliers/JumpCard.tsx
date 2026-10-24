@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import EmptyState from "@/components/ui/EmptyState";
+import Reveal from "@/components/ui/Reveal";
 import { telHref } from "@/lib/market/leads";
 
 type Lead = {
@@ -55,7 +57,7 @@ export default function JumpCard({
   const other = current && primary && current.phone !== primary.phone ? current : null;
 
   return (
-    <article className="rounded-xl border border-brand-100 bg-white p-4">
+    <article className="rounded-2xl border border-brand-100 bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-medium">{ingredient}</h3>
         <p className="text-sm text-gray-600">+{changePct}% since {since}</p>
@@ -115,9 +117,10 @@ export default function JumpCard({
 
 function LeadList({ calls, leadsMissing, ingredient }: { calls: Lead[]; leadsMissing: boolean; ingredient: string }) {
   if (leadsMissing) return null;
-  if (calls.length === 0) return <p className="mt-3 text-sm text-gray-500">No food supplier with a phone was found for {ingredient}.</p>;
+  if (calls.length === 0) return <EmptyState title={`No food supplier with a phone was found for ${ingredient}.`} />;
   return (
-    <ul className="mt-3 space-y-3 text-sm">
+    // Suppliers a new search finds rise in one after another
+    <Reveal as="ul" className="mt-3 space-y-3 text-sm">
       {calls.map((lead) => (
         <li key={`${lead.company_name}-${lead.phone}`} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <span className="font-medium">{lead.company_name}</span>
@@ -126,6 +129,6 @@ function LeadList({ calls, leadsMissing, ingredient }: { calls: Lead[]; leadsMis
           <CallLink label={`Call ${lead.phone}`} phone={lead.phone} />
         </li>
       ))}
-    </ul>
+    </Reveal>
   );
 }

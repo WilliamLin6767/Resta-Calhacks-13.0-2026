@@ -6,6 +6,8 @@ import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
 import JumpCard from "@/components/suppliers/JumpCard";
 import MarketDetail from "@/components/suppliers/MarketDetail";
@@ -55,6 +57,7 @@ async function SuppliersTable() {
 
   return (
     <SimpleTable
+      empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
       columns={[
         { key: "name", label: "Supplier" },
         { key: "category", label: "Category" },
@@ -103,9 +106,21 @@ function phoneFor(name: string | null, phones: Map<string, string>): string | nu
 
 function PriceJumps() {
   return (
-    <Suspense fallback={<p className="text-sm text-gray-500">Loading price jumps...</p>}>
+    <Suspense fallback={<PriceJumpsSkeleton />}>
       <PriceJumpsContent />
     </Suspense>
+  );
+}
+
+// A heading and a couple of price-jump cards, while they load.
+function PriceJumpsSkeleton() {
+  return (
+    <div role="status" className="mb-10 space-y-4">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-6 w-56" />
+      <Skeleton className="h-36 rounded-2xl" />
+      <Skeleton className="h-36 rounded-2xl" />
+    </div>
   );
 }
 
@@ -169,6 +184,7 @@ async function PriceJumpsContent() {
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Supplier price changes</h3>
         <SimpleTable
+          empty={<EmptyState title="No supplier price changes in this period." />}
           columns={[
             { key: "ingredient", label: "Ingredient" },
             { key: "supplier", label: "Supplier" },
@@ -184,10 +200,10 @@ async function PriceJumpsContent() {
             ingredient: change.ingredient,
             supplier: change.supplier,
             since: change.since,
-            previous_price: formatMoney(change.previous_price),
-            current_price: formatMoney(change.current_price),
-            change: `${change.change_pct > 0 ? "+" : ""}${change.change_pct}%`,
-            impact: change.est_period_impact == null ? "-" : formatMoney(change.est_period_impact),
+            previous_price: <span className="tabular-nums">{formatMoney(change.previous_price)}</span>,
+            current_price: <span className="tabular-nums">{formatMoney(change.current_price)}</span>,
+            change: <span className="tabular-nums">{`${change.change_pct > 0 ? "+" : ""}${change.change_pct}%`}</span>,
+            impact: change.est_period_impact == null ? "-" : <span className="tabular-nums">{formatMoney(change.est_period_impact)}</span>,
             cheapest: change.cheapest_supplier ?? "-",
             dishes: change.dishes.join(", "),
           }))}
@@ -208,7 +224,9 @@ async function PriceJumpsContent() {
       </MarketDetail>
 
       {jumps.length === 0 ? (
-        <p className="order-3 text-sm text-gray-500 md:order-none">No supplier price increases in the last 30 days.</p>
+        <div className="order-3 md:order-none">
+          <EmptyState title="No supplier price increases in the last 30 days." icon="truck" />
+        </div>
       ) : (
         <div className="order-3 space-y-4 md:order-none">
           {jumps.map((jump) => {
@@ -252,13 +270,13 @@ export default function SuppliersPage() {
       {/* Every call request, for any record: the one place to approve them all. Nothing dials until "Approve and call". */}
       <section className="mb-10 space-y-4">
         <CallRequests title="Supplier calls" action={<CheckForCalls />} />
-        <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
+        <Suspense fallback={<Skeleton className="h-[150px] rounded-2xl" />}>
           <RequestCallForm />
         </Suspense>
       </section>
       <PriceJumps />
       <h2 className="mb-3 text-lg font-semibold">Contacts on file</h2>
-      <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
+      <Suspense fallback={<SkeletonTable rows={4} cols={7} />}>
         <SuppliersTable />
       </Suspense>
       <p className="mt-4 text-sm text-gray-500">

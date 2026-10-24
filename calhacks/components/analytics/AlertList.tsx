@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EmptyState from "@/components/ui/EmptyState";
 import { SECTION_MODULE, getModule } from "@/lib/analyticsSections";
 import type { Alert } from "@/lib/insights";
 
@@ -23,7 +24,7 @@ export default function AlertList({
   showLinks?: boolean;
   empty?: string;
 }) {
-  if (alerts.length === 0) return <p className="text-sm text-gray-500">{empty}</p>;
+  if (alerts.length === 0) return <EmptyState title={empty} />;
   return (
     <ul className="space-y-2">
       {alerts.map((a) => {

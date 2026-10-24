@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MENU_CLASSES, type MenuRow } from "@/lib/analytics";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 
 type SortKey = "name" | "class" | "units" | "price" | "unit_margin" | "food_cost_pct" | "gross_profit";
@@ -37,12 +38,12 @@ export default function MenuTable({ menu }: { menu: MenuRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-brand-50 text-brand-700">
+    <div className={tableWrap}>
+      <table className={table}>
+        <thead className={thead}>
           <tr>
             {COLUMNS.map((col) => (
-              <th key={col.key} className="border-b border-gray-200 px-3 py-2 font-semibold">
+              <th key={col.key} className={isNumber(col.key) ? thNum : th}>
                 <button onClick={() => sortBy(col.key)} className="hover:underline">
                   {col.label}
                   {sortKey === col.key && (ascending ? " ▲" : " ▼")}
@@ -53,9 +54,9 @@ export default function MenuTable({ menu }: { menu: MenuRow[] }) {
         </thead>
         <tbody>
           {sorted.map((dish) => (
-            <tr key={dish.name} className="border-b border-gray-100 last:border-0">
+            <tr key={dish.name} className={tr}>
               {COLUMNS.map((col) => (
-                <td key={col.key} className="px-3 py-2">
+                <td key={col.key} className={isNumber(col.key) ? tdNum : td}>
                   {col.key === "class" ? (
                     <ClassLabel id={dish.class} />
                   ) : col.money ? (
@@ -71,6 +72,11 @@ export default function MenuTable({ menu }: { menu: MenuRow[] }) {
       </table>
     </div>
   );
+}
+
+// Every column but the dish name and class is a number.
+function isNumber(key: SortKey) {
+  return key !== "name" && key !== "class";
 }
 
 function ClassLabel({ id }: { id: MenuRow["class"] }) {

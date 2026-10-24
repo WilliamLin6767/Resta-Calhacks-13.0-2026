@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { HealthBadge } from "@/components/analytics/AiSummary";
 import ErrorMessage from "@/components/ErrorMessage";
+import AiThinking from "@/components/ui/AiThinking";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { loadMoney, type Money } from "@/lib/bank/cashPlan";
 import type { Forecast } from "@/lib/bank/forecast";
 import { moneyPlan } from "@/lib/bank/moneyPlan";
@@ -38,7 +41,7 @@ function ForecastChart({ f }: { f: Forecast }) {
 
 function Plan({ money }: { money: Money }) {
   return (
-    <Suspense fallback={<p className="text-sm text-gray-400">✦ Writing your money plan...</p>}>
+    <Suspense fallback={<AiThinking label="Writing your money plan..." />}>
       <PlanText money={money} />
     </Suspense>
   );
@@ -93,7 +96,7 @@ function Savings({ money }: { money: Money }) {
       {ready && move.kind === "none" && <p className="mt-1 text-sm text-gray-600">Nothing spare to move: keep this cash in the account for bills and orders.</p>}
       {ready && (bank.savings ?? 0) > 0 && (
         <p className="mt-3 text-sm text-gray-600">
-          In savings (simulated): <span className="font-semibold tabular-nums text-gray-900">{formatMoney(bank.savings)}</span> · <UndoMove />
+          In savings (simulated): <span className="font-semibold tabular-nums text-gray-900"><LiveValue value={formatMoney(bank.savings)} /></span> · <UndoMove />
         </p>
       )}
     </div>
@@ -190,7 +193,8 @@ async function CashPlanBody() {
 // The 14-day cash forecast, savings suggestion, food budget and AI money plan
 export default function CashPlan() {
   return (
-    <Suspense fallback={<p className="mb-8 text-sm text-gray-400">Working out the cash plan...</p>}>
+    // Roughly the cash plan's height, so the page below doesn't jump when it arrives
+    <Suspense fallback={<Skeleton className="mb-8 h-[560px] rounded-2xl" />}>
       <CashPlanBody />
     </Suspense>
   );

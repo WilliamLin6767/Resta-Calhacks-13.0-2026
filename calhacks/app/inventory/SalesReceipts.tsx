@@ -2,6 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import AiThinking from "@/components/ui/AiThinking";
+import Reveal from "@/components/ui/Reveal";
+import { table, tableWrap, td, th, thead, tr } from "@/components/ui/table";
+import { useToast } from "@/components/ui/Toaster";
 
 type Menu = { id: number; name: string; price: number };
 type Line = { key: number; printed: string; menu_item_id: number; qty: string; unit_price: string; confidence: number };
@@ -25,6 +29,7 @@ function todayLocal() {
 // Scan a customer receipt, check what was read, add it to sales, and see what it used from stock
 export default function SalesReceipts() {
   const router = useRouter();
+  const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [menu, setMenu] = useState<Menu[]>([]);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -56,6 +61,7 @@ export default function SalesReceipts() {
       })));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" });
     } finally {
       setBusy("");
       if (fileRef.current) fileRef.current.value = "";
@@ -83,8 +89,10 @@ export default function SalesReceipts() {
       setReceipt(null);
       setLines([]);
       router.refresh();
+      toast({ message: `Receipt added to sales${data.alerts?.length ? `; ${data.alerts.length} now running low` : ""}`, tone: "success" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" });
     } finally {
       setBusy("");
     }
@@ -105,7 +113,7 @@ export default function SalesReceipts() {
         <button disabled={!!busy} onClick={trySample} className={secondary}>Try the sample receipt</button>
         <a href="/samples/pho-berkeley-receipt.png" target="_blank" className="self-center text-sm text-gray-600 underline">See the sample</a>
       </div>
-      {busy && <p className="mt-3 text-sm text-gray-500">{busy}</p>}
+      {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
 
       {receipt && (
@@ -119,22 +127,23 @@ export default function SalesReceipts() {
               <option value="takeout">Takeout</option>
             </select>
           </div>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-gray-600">
+          <div className={`mt-3 ${tableWrap}`}>
+            <table className={table}>
+              <thead className={thead}>
                 <tr>
-                  <th className="py-1 pr-3 font-medium">As printed</th>
-                  <th className="py-1 pr-3 font-medium">Dish</th>
-                  <th className="py-1 pr-3 font-medium">Qty</th>
-                  <th className="py-1 pr-3 font-medium">Price each</th>
-                  <th className="py-1 font-medium" />
+                  <th className={th}>As printed</th>
+                  <th className={th}>Dish</th>
+                  <th className={th}>Qty</th>
+                  <th className={th}>Price each</th>
+                  <th className={th} />
                 </tr>
               </thead>
-              <tbody>
+              {/* The lines the AI read rise in one after another */}
+              <Reveal as="tbody" initial>
                 {lines.map((l) => (
-                  <tr key={l.key} className="border-t border-gray-100">
-                    <td className="py-2 pr-3 font-mono text-xs text-gray-600">{l.printed}</td>
-                    <td className="py-2 pr-3">
+                  <tr key={l.key} className={tr}>
+                    <td className={`${td} font-mono text-xs text-gray-600`}>{l.printed}</td>
+                    <td className={td}>
                       <select value={l.menu_item_id} onChange={(e) => update(l.key, { menu_item_id: Number(e.target.value) })} aria-label="Dish"
                         className={`rounded-md border px-2 py-1 ${l.menu_item_id ? "border-gray-300" : "border-red-300"}`}>
                         <option value={0}>Pick a dish</option>
@@ -142,12 +151,12 @@ export default function SalesReceipts() {
                       </select>
                       {l.menu_item_id > 0 && l.confidence < 0.85 && <span className="ml-2 text-xs text-amber-700">check this</span>}
                     </td>
-                    <td className="py-2 pr-3"><input value={l.qty} onChange={(e) => update(l.key, { qty: e.target.value })} inputMode="numeric" aria-label="Quantity" className="w-14 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
-                    <td className="py-2 pr-3"><input value={l.unit_price} onChange={(e) => update(l.key, { unit_price: e.target.value })} inputMode="decimal" aria-label="Price each" className="w-20 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
-                    <td className="py-2"><button onClick={() => setLines(lines.filter((x) => x.key !== l.key))} className="text-xs text-gray-500 underline">Remove</button></td>
+                    <td className={td}><input value={l.qty} onChange={(e) => update(l.key, { qty: e.target.value })} inputMode="numeric" aria-label="Quantity" className="w-14 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
+                    <td className={td}><input value={l.unit_price} onChange={(e) => update(l.key, { unit_price: e.target.value })} inputMode="decimal" aria-label="Price each" className="w-20 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
+                    <td className={td}><button onClick={() => setLines(lines.filter((x) => x.key !== l.key))} className="text-xs text-gray-500 underline">Remove</button></td>
                   </tr>
                 ))}
-              </tbody>
+              </Reveal>
             </table>
           </div>
           <p className="mt-2 text-sm text-gray-600 tabular-nums">Tax ${receipt.tax.toFixed(2)} · Tip ${receipt.tip.toFixed(2)} · Total ${receipt.total.toFixed(2)}</p>

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import { SkeletonLines } from "@/components/ui/Skeleton";
 import { loadBar } from "@/lib/attention/service";
 import { TAB_LABELS, TABS } from "@/lib/attention/types";
 import { getSupabase } from "@/lib/supabase";
@@ -39,7 +40,7 @@ export default function AllAttention() {
   return (
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
       <h2 className="mb-3 font-semibold">Needs you today</h2>
-      <Suspense fallback={<p className="text-sm text-gray-400">Checking every tab...</p>}>
+      <Suspense fallback={<SkeletonLines lines={4} />}>
         <All />
       </Suspense>
     </section>

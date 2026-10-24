@@ -53,15 +53,20 @@ export default function MicButton({ disabled, onClip, onError, onArm }: { disabl
   return (
     <button
       type="button"
-      aria-label="Hold to talk"
+      aria-label={recording ? "Recording. Release to send" : "Hold to talk"}
+      aria-pressed={recording}
       disabled={disabled}
       onPointerDown={start}
       onPointerUp={stop}
       onPointerCancel={stop}
       onContextMenu={(event) => event.preventDefault()}
-      className="flex h-11 w-16 shrink-0 touch-none items-center justify-center rounded-full bg-brand-600 text-sm font-medium text-white select-none disabled:opacity-50"
+      className={`relative flex h-11 w-16 shrink-0 touch-none items-center justify-center rounded-full text-sm font-medium text-white select-none disabled:opacity-50 ${
+        recording ? "bg-red-600 ring-2 ring-red-300" : "bg-brand-600"
+      }`}
     >
-      {recording ? "..." : "Hold"}
+      {/* While recording: a ring spreading out (motion-safe); with reduced motion the solid ring above shows it */}
+      {recording && <span className="live-pulse absolute inset-0 rounded-full bg-red-500" aria-hidden="true" />}
+      <span className="relative">{recording ? "Rec" : "Hold"}</span>
     </button>
   );
 }

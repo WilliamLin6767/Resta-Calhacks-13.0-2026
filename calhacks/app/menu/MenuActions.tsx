@@ -23,7 +23,9 @@ export function ApprovePrice({ menuItemId, suggested, reason }: { menuItemId: nu
       </label>
       <button
         disabled={loading || !(Number(price) > 0)}
-        onClick={() => run(`/api/menu-items/${menuItemId}/price`, { price: Number(price), reason })}
+        onClick={() =>
+          run(`/api/menu-items/${menuItemId}/price`, { price: Number(price), reason }, undefined, { success: `Price set to $${Number(price).toFixed(2)}` })
+        }
         className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Saving..." : "Approve"}
@@ -40,7 +42,7 @@ export function ApplyDeliveryPrices({ count }: { count: number }) {
     <div>
       <button
         disabled={loading}
-        onClick={() => run("/api/menu/delivery-prices")}
+        onClick={() => run("/api/menu/delivery-prices", undefined, undefined, { success: `${count} app ${count === 1 ? "price" : "prices"} set` })}
         className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Saving..." : `Set ${count} app ${count === 1 ? "price" : "prices"}`}
@@ -56,7 +58,7 @@ export function MarkUpdated({ changeId, system, label, done }: { changeId: numbe
   if (done) return <span className="text-xs text-green-700">✓ {label}</span>;
   return (
     <span className="inline-flex items-center gap-1">
-      <button disabled={loading} onClick={() => run(`/api/price-changes/${changeId}/updated`, { system })} className={buttonClass}>
+      <button disabled={loading} onClick={() => run(`/api/price-changes/${changeId}/updated`, { system }, undefined, { success: `Marked as updated in ${label}` })} className={buttonClass}>
         {loading ? "..." : `Updated in ${label}`}
       </button>
       {error && <span className="text-xs text-red-600">{error}</span>}

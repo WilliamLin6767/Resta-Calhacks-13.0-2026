@@ -4,6 +4,10 @@ import { CallBadge } from "@/components/calls/CallControls";
 import CallRequests from "@/components/calls/CallRequests";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { loadInventory, type StockEvent } from "@/lib/inventory/service";
@@ -56,15 +60,15 @@ async function Inventory() {
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className={`text-2xl font-semibold ${low.length ? "text-amber-700" : ""}`}>{low.length}</p>
+          <p className={`text-2xl font-semibold tabular-nums ${low.length ? "text-amber-700" : ""}`}><LiveValue value={String(low.length)} /></p>
           <p className="text-sm text-gray-600">Items low or out</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{formatMoney(wasteWeek)}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={formatMoney(wasteWeek)} /></p>
           <p className="text-sm text-gray-600">Thrown out this week (at cost)</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className={`text-2xl font-semibold ${missing > 0 ? "text-red-600" : ""}`}>{formatMoney(missing)}</p>
+          <p className={`text-2xl font-semibold tabular-nums ${missing > 0 ? "text-red-600" : ""}`}><LiveValue value={formatMoney(missing)} /></p>
           <p className="text-sm text-gray-600">Counted less than expected (recent counts)</p>
         </div>
       </div>
@@ -81,35 +85,36 @@ async function Inventory() {
           </div>
           {low.length > 0 && <OrderPlan request={{ kind: "low" }} label={`Plan orders for ${low.length} low ${low.length === 1 ? "item" : "items"}`} />}
         </div>
-        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-50 text-brand-700">
+        <div className={tableWrap}>
+          <table className={table}>
+            <thead className={thead}>
               <tr>
-                <th className="px-4 py-2 font-medium">Ingredient</th>
-                <th className="px-4 py-2 text-right font-medium">On hand now</th>
-                <th className="px-4 py-2 text-right font-medium">Uses a day</th>
-                <th className="px-4 py-2 text-right font-medium">Lasts</th>
-                <th className="px-4 py-2 text-right font-medium">Reorder at / par</th>
-                <th className="px-4 py-2 font-medium">Last counted</th>
-                <th className="px-4 py-2 font-medium">Status</th>
+                <th className={th}>Ingredient</th>
+                <th className={thNum}>On hand now</th>
+                <th className={thNum}>Uses a day</th>
+                <th className={thNum}>Lasts</th>
+                <th className={thNum}>Reorder at / par</th>
+                <th className={th}>Last counted</th>
+                <th className={th}>Status</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map((l) => (
-                <tr key={l.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">
+                <tr key={l.id} className={tr}>
+                  <td className={td}>
                     {l.name}
                     <CallBadge count={counts?.byContext[`ingredient:${l.id}`]} />
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
-                    {fmt(l.estimated)} {l.unit}
+                  <td className={tdNum}>
+                    {/* Flashes when a count, waste entry or receipt changes it */}
+                    <LiveValue value={`${fmt(l.estimated)} ${l.unit}`} />
                     {l.used_since > 0 && <span className="block text-xs text-gray-400">counted {fmt(l.current_qty)}, sales used {fmt(l.used_since)}</span>}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500">{fmt(l.daily_use)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{l.days_left === null ? "-" : `${fmt(l.days_left)} days`}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500">{fmt(Number(l.reorder_point ?? 0))} / {fmt(Number(l.par_level ?? 0))}</td>
-                  <td className="px-4 py-2 text-gray-500">{l.last_counted ?? "never"}</td>
-                  <td className="px-4 py-2">
+                  <td className={`${tdNum} text-gray-500`}>{fmt(l.daily_use)}</td>
+                  <td className={tdNum}>{l.days_left === null ? "-" : `${fmt(l.days_left)} days`}</td>
+                  <td className={`${tdNum} text-gray-500`}>{fmt(Number(l.reorder_point ?? 0))} / {fmt(Number(l.par_level ?? 0))}</td>
+                  <td className={`${td} text-gray-500`}>{l.last_counted ?? "never"}</td>
+                  <td className={td}>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS[l.status].className}`}>{STATUS[l.status].label}</span>
                   </td>
                 </tr>
@@ -127,7 +132,7 @@ async function Inventory() {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Recent changes</h2>
         {events.length === 0 ? (
-          <p className="text-sm text-gray-500">No deliveries, counts or waste logged yet.</p>
+          <EmptyState title="No deliveries, counts or waste logged yet." hint="Scan an invoice, count a shelf or log waste above." icon="box" />
         ) : (
           <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
             {events.map((e) => (
@@ -147,12 +152,27 @@ async function Inventory() {
   );
 }
 
+// The three numbers and the stock table, while they load.
+function InventorySkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading</span>
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <SkeletonTable rows={8} cols={7} />
+    </div>
+  );
+}
+
 export default function InventoryPage() {
   return (
     <div>
       <PageHeader title="Inventory" description="What's on hand, how long it lasts, and what went missing. Deliveries come in from scanned invoices." />
       <AttentionBar tab="inventory" />
-      <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+      <Suspense fallback={<InventorySkeleton />}>
         <Inventory />
       </Suspense>
     </div>

@@ -4,6 +4,10 @@ import AttentionBar from "@/components/attention/AttentionBar";
 import { CallBadge } from "@/components/calls/CallControls";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
@@ -62,45 +66,48 @@ async function InvoicesTable() {
     <>
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold text-red-600">{formatMoney(totalWrong)}</p>
+          <p className="text-2xl font-semibold tabular-nums text-red-600"><LiveValue value={formatMoney(totalWrong)} /></p>
           <p className="text-sm text-gray-600">Billed wrong (to dispute)</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold text-green-700">{formatMoney(totalSave)}</p>
+          <p className="text-2xl font-semibold tabular-nums text-green-700"><LiveValue value={formatMoney(totalSave)} /></p>
           <p className="text-sm text-gray-600">Could save with other suppliers</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{rows.filter((r) => r.problems > 0).length}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={String(rows.filter((r) => r.problems > 0).length)} /></p>
           <p className="text-sm text-gray-600">Invoices with problems</p>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-50 text-brand-700">
+      {rows.length === 0 ? (
+        <EmptyState title="No invoices yet." hint="Scan one above, or try the sample invoice." icon="receipt" />
+      ) : (
+      <div className={tableWrap}>
+        <table className={table}>
+          <thead className={thead}>
             <tr>
-              <th className="px-4 py-2 font-medium">Invoice #</th>
-              <th className="px-4 py-2 font-medium">Supplier</th>
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 text-right font-medium">Total</th>
-              <th className="px-4 py-2 font-medium">Status</th>
-              <th className="px-4 py-2 font-medium">Problems</th>
+              <th className={th}>Invoice #</th>
+              <th className={th}>Supplier</th>
+              <th className={th}>Date</th>
+              <th className={thNum}>Total</th>
+              <th className={th}>Status</th>
+              <th className={th}>Problems</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
-                <td className="px-4 py-2">
+              <tr key={r.id} className={tr}>
+                <td className={td}>
                   <Link href={`/invoices/${r.id}`} className="font-medium underline decoration-gray-300 hover:decoration-gray-900">
                     {r.invoice_number ?? `#${r.id}`}
                   </Link>
                   <CallBadge count={counts?.byContext[`invoice:${r.id}`]} />
                 </td>
-                <td className="px-4 py-2">{String(r.supplier ?? "")}</td>
-                <td className="px-4 py-2">{r.invoice_date}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{formatMoney(r.total)}</td>
-                <td className="px-4 py-2">{r.status}</td>
-                <td className="px-4 py-2">
+                <td className={td}>{String(r.supplier ?? "")}</td>
+                <td className={td}>{r.invoice_date}</td>
+                <td className={tdNum}>{formatMoney(r.total)}</td>
+                <td className={td}>{r.status}</td>
+                <td className={td}>
                   {r.problems > 0 ? (
                     <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
                       {r.problems} to check{r.billedWrong > 0 ? ` · ${formatMoney(r.billedWrong)} billed wrong` : ""}
@@ -114,7 +121,23 @@ async function InvoicesTable() {
           </tbody>
         </table>
       </div>
+      )}
     </>
+  );
+}
+
+// The three numbers and the invoice table, while they load.
+function InvoicesSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading</span>
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <SkeletonTable rows={6} cols={6} />
+    </div>
   );
 }
 
@@ -129,12 +152,12 @@ export default function InvoicesPage() {
         <ScanInvoice />
       </div>
       <div className="order-2 md:order-none">
-        <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+        <Suspense fallback={<Skeleton className="mb-8 h-40 rounded-2xl" />}>
           <PurchaseOrders />
         </Suspense>
       </div>
       <div className="order-5 md:order-none">
-        <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+        <Suspense fallback={<InvoicesSkeleton />}>
           <InvoicesTable />
         </Suspense>
       </div>

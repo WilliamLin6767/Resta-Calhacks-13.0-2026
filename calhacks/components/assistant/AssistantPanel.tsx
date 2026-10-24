@@ -2,6 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import AiThinking from "@/components/ui/AiThinking";
+import { useToast } from "@/components/ui/Toaster";
 import { useAssistant } from "./AssistantProvider";
 import CompareChart from "./CompareChart";
 
@@ -14,6 +16,7 @@ export default function AssistantPanel() {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pathname = usePathname();
+  const toast = useToast();
 
   // Keep the newest message in view, and focus the box when the panel opens.
   useEffect(() => {
@@ -22,6 +25,23 @@ export default function AssistantPanel() {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // Problems show as a toast too, so they're seen even with the panel closed. An answer that
+  // arrives after the panel was closed gets a toast with a way back to it.
+  useEffect(() => {
+    if (error) toast({ message: error, tone: "error" });
+  }, [error, toast]);
+  const lastId = messages.at(-1)?.id;
+  const lastRole = messages.at(-1)?.role;
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+  useEffect(() => {
+    if (lastRole === "assistant" && !openRef.current) {
+      toast({ message: "The assistant answered.", tone: "info", action: { label: "Open", onClick: () => setOpen(true) } });
+    }
+  }, [lastId, lastRole, toast, setOpen]);
 
   // Escape closes the panel.
   useEffect(() => {
@@ -44,7 +64,7 @@ export default function AssistantPanel() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-40 hidden rounded-full bg-brand-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 md:inline-flex"
+        className="fixed right-5 bottom-5 z-40 hidden rounded-full bg-brand-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-brand-700 md:inline-flex"
       >
         ✦ Ask AI
       </button>
@@ -140,7 +160,7 @@ export default function AssistantPanel() {
           ),
         )}
 
-        {loading && <p className="text-sm text-gray-500">Thinking...</p>}
+        {loading && <AiThinking label="Thinking..." />}
         {error && <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       </div>
 

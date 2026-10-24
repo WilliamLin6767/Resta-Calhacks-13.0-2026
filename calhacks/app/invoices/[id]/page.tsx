@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
 import { latestDispute } from "@/lib/purchasing/disputeService";
@@ -10,6 +14,7 @@ import { formatUnitCost } from "@/lib/purchasing/units";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import DisputePanel from "./DisputePanel";
 import { FlagButtons, LineFix, RecheckButton } from "./InvoiceActions";
+import ScannedLines, { FirstViewFlash } from "./ScannedLines";
 
 // This page depends on the URL (/invoices/12), and the shared Sidebar reads the URL outside
 // <Suspense>, so let this route wait for the URL instead of requiring an instant static shell.
@@ -17,9 +22,10 @@ import { FlagButtons, LineFix, RecheckButton } from "./InvoiceActions";
 export const instant = false;
 
 const SEVERITY = {
-  high: { label: "Problem", className: "border-red-200 bg-red-50 text-red-800" },
-  medium: { label: "Watch", className: "border-amber-200 bg-amber-50 text-amber-900" },
-  info: { label: "Note", className: "border-blue-200 bg-blue-50 text-blue-900" },
+  // --flash: the color of the one-time highlight a problem gets the first time the invoice is seen
+  high: { label: "Problem", className: "border-red-200 bg-red-50 text-red-800 [--flash:var(--color-red-200)]" },
+  medium: { label: "Watch", className: "border-amber-200 bg-amber-50 text-amber-900 [--flash:var(--color-amber-200)]" },
+  info: { label: "Note", className: "border-blue-200 bg-blue-50 text-blue-900 [--flash:var(--color-blue-200)]" },
 } as const;
 
 const MATCH_LABEL: Record<string, string> = {
@@ -54,8 +60,8 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
           <Link href="/invoices" className="text-sm text-gray-500 hover:underline">← Invoices</Link>
           <h1 className="text-[34px] leading-tight font-semibold tracking-[0.02em] text-gray-900">{supplier}</h1>
           <p className="text-gray-600">
-            Invoice {inv.invoice_number ?? `#${inv.id}`} · {inv.invoice_date} · Total {formatMoney(inv.total)}
-            {billedWrong > 0 && <span className="ml-2 font-medium text-red-600">{formatMoney(billedWrong)} billed wrong</span>}
+            Invoice {inv.invoice_number ?? `#${inv.id}`} · {inv.invoice_date} · Total <LiveValue value={formatMoney(inv.total)} className="tabular-nums" />
+            {billedWrong > 0 && <span className="ml-2 font-medium text-red-600"><LiveValue value={formatMoney(billedWrong)} className="tabular-nums" /> billed wrong</span>}
           </p>
         </div>
         <RecheckButton invoiceId={inv.id} />
@@ -67,11 +73,11 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
       {/* Calls about this invoice, e.g. disputing a billing error by phone. Hidden when there are none. */}
       <CallRequests contextType="invoice" contextId={inv.id} title="Calls about this invoice" hideWhenEmpty />
 
-      <section className="space-y-2">
+      <FirstViewFlash invoiceId={inv.id} className="space-y-2">
         {flags.length === 0 ? (
-          <p className="rounded-2xl border border-brand-100 bg-white p-4 text-sm text-gray-600">
-            No open problems. Use &quot;Check this invoice&quot; to run the checks again.
-          </p>
+          <div className="rounded-2xl border border-brand-100 bg-white">
+            <EmptyState title="No open problems." hint='Use "Check this invoice" to run the checks again.' icon="receipt" />
+          </div>
         ) : (
           flags.map((f) => {
             const s = SEVERITY[f.severity as keyof typeof SEVERITY];
@@ -90,27 +96,28 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
             );
           })
         )}
-      </section>
+      </FirstViewFlash>
 
-      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-50 text-brand-700">
+      <div className={tableWrap}>
+        <table className={table}>
+          <thead className={thead}>
             <tr>
-              <th className="px-4 py-2 font-medium">As printed → ingredient</th>
-              <th className="px-4 py-2 text-right font-medium">Ordered / delivered</th>
-              <th className="px-4 py-2 text-right font-medium">Price</th>
-              <th className="px-4 py-2 text-right font-medium">Line total</th>
-              <th className="px-4 py-2 text-right font-medium">Unit cost</th>
+              <th className={th}>As printed → ingredient</th>
+              <th className={thNum}>Ordered / delivered</th>
+              <th className={thNum}>Price</th>
+              <th className={thNum}>Line total</th>
+              <th className={thNum}>Unit cost</th>
             </tr>
           </thead>
-          <tbody>
+          {/* Straight after a scan, the lines the AI read rise in one by one */}
+          <ScannedLines invoiceId={inv.id}>
             {lines.map((l) => {
               const printed = l.printed_total ?? l.line_total;
               const unit = l.ingredients?.unit ?? "";
               const unitCost = l.pack_qty ? Number(l.unit_price) / Number(l.pack_qty) : null;
               return (
-                <tr key={l.id} className="border-t border-gray-100 align-top">
-                  <td className="px-4 py-2">
+                <tr key={l.id} className={`${tr} align-top`}>
+                  <td className={td}>
                     <div className="font-mono text-xs text-gray-600">{l.description}</div>
                     <div>
                       → {l.ingredients?.name ?? <span className="text-amber-700">not matched</span>}
@@ -124,16 +131,16 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
                       <LineFix lineId={l.id} ingredients={ingRes.data ?? []} suggestedName={l.match_source === "ai_new" ? l.ingredients?.name ?? "" : ""} />
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">
+                  <td className={tdNum}>
                     {l.qty_ordered != null && Number(l.qty_ordered) !== Number(l.qty) ? `${l.qty_ordered} / ` : ""}{l.qty}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatMoney(l.unit_price)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatMoney(printed)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{unitCost != null && unit ? formatUnitCost(unitCost, unit) : "—"}</td>
+                  <td className={tdNum}>{formatMoney(l.unit_price)}</td>
+                  <td className={tdNum}>{formatMoney(printed)}</td>
+                  <td className={tdNum}>{unitCost != null && unit ? formatUnitCost(unitCost, unit) : "—"}</td>
                 </tr>
               );
             })}
-          </tbody>
+          </ScannedLines>
         </table>
       </div>
       {inv.notes && <p className="text-sm text-gray-600">Notes on the invoice: {inv.notes}</p>}
@@ -141,10 +148,26 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
   );
 }
 
+// The header, a problem or two and the lines, while they load.
+function InvoiceSkeleton() {
+  return (
+    <div role="status" className="space-y-6">
+      <span className="sr-only">Loading</span>
+      <div>
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="mt-2 h-10 w-72" />
+        <Skeleton className="mt-2 h-5 w-96 max-w-full" />
+      </div>
+      <Skeleton className="h-12 rounded-lg" />
+      <SkeletonTable rows={6} cols={5} />
+    </div>
+  );
+}
+
 // The URL's [id] is read inside <Suspense>, as Cache Components requires.
 export default function InvoicePage({ params }: PageProps<"/invoices/[id]">) {
   return (
-    <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+    <Suspense fallback={<InvoiceSkeleton />}>
       <Invoice params={params} />
     </Suspense>
   );
