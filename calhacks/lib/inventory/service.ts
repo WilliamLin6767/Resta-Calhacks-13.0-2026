@@ -3,9 +3,10 @@
 //   saveCounts        - the owner confirmed counts (from a photo, a voice note or by hand)
 //   logWaste          - stock thrown out, valued at cost
 //   addInvoiceToStock - a scanned invoice is the delivery: its lines go into stock once
-//   reorderLow        - draft orders to bring low items back to par
+//   lowStockNeeds     - what's low and how much brings it back to par, for the order plan
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { draftOrders, loadSources } from "@/lib/purchasing/sources";
+import type { Need } from "@/lib/purchasing/plan";
+import { loadSources } from "@/lib/purchasing/sources";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { countDays, countGap, reorderQty, stockLines, todayRows, usageByDay, type Ingredient, type LastCount, type RecipeRow, type SalesRow, type StockLine } from "./stock";
 import type { IngredientRef } from "./ai";
@@ -150,13 +151,14 @@ export async function addInvoiceToStock(db: Db, invoiceId: number) {
   }
 }
 
-export async function reorderLow(db: Db) {
-  const { lines, sources } = await loadInventory(db);
+// Everything low, with how much brings it back to par, for the order plan (lib/purchasing/planService.ts)
+export async function lowStockNeeds(db: Db): Promise<{ needs: Need[]; label: string }> {
+  const { lines } = await loadInventory(db);
   const low: StockLine[] = lines.filter((l) => l.status !== "ok" && reorderQty(l) > 0);
-  return draftOrders(
-    db,
-    sources,
-    low.map((l) => ({ ingredient_id: l.id, qty: reorderQty(l), note: `${l.name}: about ${l.estimated} ${l.unit} left, par is ${l.par_level} ${l.unit}` })),
-    "Low stock.",
-  );
+  return {
+    label: "Low stock.",
+    needs: low.map((l) => ({
+      ingredient_id: l.id, name: l.name, unit: l.unit, qty: reorderQty(l), note: `about ${l.estimated} ${l.unit} left, par is ${l.par_level} ${l.unit}`,
+    })),
+  };
 }

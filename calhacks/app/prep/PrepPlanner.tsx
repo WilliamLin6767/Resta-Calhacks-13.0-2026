@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import OrderPlan from "@/components/OrderPlan";
 import { useAction } from "@/components/useAction";
 import { adjustForecast, clampFactor, prepNeeds, type Forecast, type RecipeRow, type StockRow } from "@/lib/prep/forecast";
 import type { Source } from "@/lib/prep/service";
@@ -25,11 +25,9 @@ function fmt(n: number) {
 export default function PrepPlanner({
   forecast, recipes, stock, sources,
 }: { forecast: Forecast; recipes: RecipeRow[]; stock: StockRow[]; sources: Record<number, Source> }) {
-  const router = useRouter();
   const [note, setNote] = useState("");
   const [adjustment, setAdjustment] = useState<Adjustment | null>(null);
   const ai = useAction();
-  const order = useAction();
 
   const factors: Record<number, number> = {};
   for (const a of adjustment?.adjustments ?? []) factors[a.menu_item_id] = clampFactor(a.factor);
@@ -98,16 +96,12 @@ export default function PrepPlanner({
             </p>
           </div>
           {short.length > 0 && (
-            <div className="text-right">
-              <button
-                disabled={order.loading}
-                onClick={() => order.run("/api/prep/order", { date: forecast.date, factors }, () => router.push("/invoices#orders"))}
-                className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
-              >
-                {order.loading ? "Drafting..." : `Draft orders for ${short.length} short ${short.length === 1 ? "item" : "items"}`}
-              </button>
-              {order.error && <p className="mt-1 text-sm text-red-600">{order.error}</p>}
-            </div>
+            // key: a new AI adjustment starts a fresh plan
+            <OrderPlan
+              key={JSON.stringify(factors)}
+              request={{ kind: "prep", date: forecast.date, factors }}
+              label={`Plan orders for ${short.length} short ${short.length === 1 ? "item" : "items"}`}
+            />
           )}
         </div>
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
