@@ -5,37 +5,19 @@ import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
+import PreviewSection from "@/components/ui/Preview";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 import { DELIVERY_MARKUP, TARGET_FOOD_COST } from "@/lib/pricing/pricing";
-import { loadPricing, SYSTEMS, type PriceChange, type System } from "@/lib/pricing/service";
+import { loadPricing } from "@/lib/pricing/service";
 import { getSupabase } from "@/lib/supabase";
-import { ApplyDeliveryPrices, ApprovePrice, MarkUpdated } from "./MenuActions";
+import { ApplyDeliveryPrices } from "./MenuActions";
+import { ChangeRow, copyFirst, formatWholeMoney, pending, SuggestionCard } from "./parts";
 import LiveRefresh from "@/components/live/LiveRefresh";
 
-// 1234.5 -> "$1,235", for estimates where cents are noise
-function formatWholeMoney(value: number) {
-  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
-
-const CLASS_LABELS: Record<string, string> = {
-  star: "Star: popular and profitable",
-  plowhorse: "Plowhorse: popular, lower margin",
-  puzzle: "Puzzle: profitable, sells little",
-  dog: "Dog: sells little, lower margin",
-};
-
-// Systems a change still has to be copied to. A change to the in-house price only also shows on
-// the apps when the dish has no separate app price.
-function pending(c: PriceChange): System[] {
-  const appsChanged = c.new_delivery_price !== c.old_delivery_price || (c.new_delivery_price === null && c.new_price !== c.old_price);
-  return (Object.keys(SYSTEMS) as System[]).filter((s) => {
-    if (s === "pos" && c.new_price === c.old_price) return false;
-    if (s !== "pos" && !appsChanged) return false;
-    return !c[`${s}_updated`];
-  });
-}
+// How many of each list the tab shows; the rest are on /menu/suggestions and /menu/changes.
+const PREVIEW = 3;
 
 async function Pricing() {
   let data;
@@ -48,6 +30,7 @@ async function Pricing() {
   const raises = suggestions.filter((s) => s.action === "raise");
   const reviews = suggestions.filter((s) => s.action === "review");
   const toCopy = changes.filter((c) => pending(c).length > 0);
+  const suggested = [...raises, ...reviews];
 
   return (
     <>
@@ -68,53 +51,23 @@ async function Pricing() {
         </div>
       </div>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-lg font-semibold">Suggested prices</h2>
-        {raises.length + reviews.length === 0 ? (
+      <PreviewSection
+        title="Suggested prices"
+        description={<>Ingredient costs today vs. {since}. Target food cost: {Math.round(TARGET_FOOD_COST * 100)}% of the price.</>}
+        href="/menu/suggestions"
+        total={suggested.length}
+        shown={Math.min(PREVIEW, suggested.length)}
+      >
+        {suggested.length === 0 ? (
           <div className="rounded-2xl border border-brand-100 bg-white">
             <EmptyState title="Every dish is priced fine right now." icon="tag" />
           </div>
         ) : (
-          <Fold
-            summary={
-              <>
-                {raises.length > 0 && (
-                  <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{raises.length} {raises.length === 1 ? "dish" : "dishes"} to reprice</span>
-                )}
-                {reviews.length > 0 && <span className="text-gray-600">{reviews.length} to look at first</span>}
-              </>
-            }
-          >
-            <p className="mb-3 px-1 text-sm text-gray-600">
-              Ingredient costs today vs. {since}. Target food cost: {Math.round(TARGET_FOOD_COST * 100)}% of the price.
-            </p>
-            <div className="grid gap-3">
-              {[...raises, ...reviews].map((s) => (
-                <div key={s.dish.id} className="rounded-2xl border border-brand-100 bg-white p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-medium">
-                      {s.dish.name}
-                      {s.dish.class && <span className="ml-2 text-xs font-normal text-gray-500">{CLASS_LABELS[s.dish.class]}</span>}
-                    </p>
-                    <p className="tabular-nums">
-                      <span className="text-gray-500">{formatMoney(s.dish.price)}</span> → <span className="text-lg font-semibold">{formatMoney(s.new_price)}</span>
-                    </p>
-                  </div>
-                  <ul className="mt-2 list-disc pl-5 text-sm text-gray-700">
-                    {s.reasons.map((r) => <li key={r}>{r}</li>)}
-                  </ul>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-gray-500">
-                      {s.action === "review" ? "Your call: this one needs a look first." : `About ${formatWholeMoney(s.extra_profit)} more a month if the same number sell.`}
-                    </p>
-                    <ApprovePrice menuItemId={s.dish.id} suggested={s.new_price ?? s.dish.price} reason={s.reasons[0] ?? ""} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Fold>
+          <div className="grid gap-3">
+            {suggested.slice(0, PREVIEW).map((s) => <SuggestionCard key={s.dish.id} s={s} />)}
+          </div>
         )}
-      </section>
+      </PreviewSection>
 
       {delivery.prices.length > 0 && (
         <section className="mb-8">
@@ -163,41 +116,17 @@ async function Pricing() {
       )}
 
       {changes.length > 0 && (
-        <section className="mb-8">
-          <h2 className="mb-3 text-lg font-semibold">Copy price changes to your other systems</h2>
-          <Fold
-            summary={
-              toCopy.length > 0 ? (
-                <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{toCopy.length} not in the POS or apps yet</span>
-              ) : (
-                <span className="text-gray-600">All {changes.length} copied over</span>
-              )
-            }
-          >
-            <p className="mb-3 px-1 text-sm text-gray-600">This app can&apos;t change the POS or delivery apps by itself yet. Tick each one once it&apos;s done.</p>
-            <div className="grid gap-2">
-              {changes.map((c) => (
-                <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
-                  <p>
-                    <span className="font-medium">{c.menu_items?.name}</span>{" "}
-                    {c.new_price !== c.old_price && <span className="tabular-nums">{formatMoney(c.old_price)} → {formatMoney(c.new_price)}</span>}
-                    {c.new_delivery_price !== c.old_delivery_price && (
-                      <span className="tabular-nums"> apps: {formatMoney(c.old_delivery_price ?? c.old_price)} → {formatMoney(c.new_delivery_price)}</span>
-                    )}
-                    <span className="ml-2 text-xs text-gray-400">{new Date(c.changed_at).toLocaleDateString("en-US")}</span>
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {(Object.keys(SYSTEMS) as System[]).map((s) =>
-                      pending(c).includes(s) || c[`${s}_updated`] ? (
-                        <MarkUpdated key={s} changeId={c.id} system={s} label={SYSTEMS[s]} done={c[`${s}_updated`]} />
-                      ) : null,
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Fold>
-        </section>
+        <PreviewSection
+          title="Copy price changes to your other systems"
+          description="This app can't change the POS or delivery apps by itself yet. Tick each one once it's done."
+          href="/menu/changes"
+          total={changes.length}
+          shown={Math.min(PREVIEW, changes.length)}
+        >
+          <div className="grid gap-2">
+            {copyFirst(changes).slice(0, PREVIEW).map((c) => <ChangeRow key={c.id} c={c} />)}
+          </div>
+        </PreviewSection>
       )}
 
       <h2 className="mb-3 text-lg font-semibold">Every dish</h2>

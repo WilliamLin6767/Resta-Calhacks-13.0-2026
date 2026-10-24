@@ -10,6 +10,7 @@ import { followCalls } from "@/components/live/followedCalls";
 import { LIVE_RESTAURANT_ID, useLiveOn, useLiveQuery } from "@/components/live/useLiveQuery";
 import EmptyState from "@/components/ui/EmptyState";
 import Fold from "@/components/ui/Fold";
+import PreviewSection from "@/components/ui/Preview";
 import { SkeletonLines } from "@/components/ui/Skeleton";
 import { api } from "@/convex/_generated/api";
 import { formatPhone } from "@/lib/calls/phone";
@@ -466,6 +467,8 @@ export default function CallRequests({
   title = "Supplier calls",
   hideWhenEmpty = false,
   action,
+  view = "fold",
+  moreHref = "/suppliers/calls",
 }: {
   contextType?: ContextType;
   contextId?: number;
@@ -473,6 +476,10 @@ export default function CallRequests({
   title?: string;
   hideWhenEmpty?: boolean;
   action?: React.ReactNode; // shown next to the heading, e.g. the "Check for calls" button
+  // fold: one summary line, click to open (invoice and order pages). preview: the top few calls
+  // and a link to `moreHref` with them all (the tabs). full: everything (that page).
+  view?: "fold" | "preview" | "full";
+  moreHref?: string;
 }) {
   const router = useRouter();
   const [calls, setCalls] = useState<CallView[] | null>(null);
@@ -575,15 +582,58 @@ export default function CallRequests({
   const justDone = open.length - waiting - live;
   const finishedToDo = finished.filter((c) => finishedPriority(c) < 2).length;
 
+  const loading = (
+    <>
+      {error && <p className="text-sm text-red-700">{error}</p>}
+      {calls === null && !error && <SkeletonLines lines={3} className="rounded-2xl border border-brand-100 bg-white p-4" />}
+      {calls !== null && all.length === 0 && <EmptyState title="No calls here." icon="truck" />}
+    </>
+  );
+  const rejectedNote = rejected > 0 && <p className="text-xs text-gray-500">{rejected} rejected request{rejected === 1 ? "" : "s"} hidden.</p>;
+
+  if (view === "preview") {
+    // Waiting for the owner first, then under way, then finished ones that still need something.
+    const top = [...open, ...finished];
+    return (
+      <PreviewSection title={title} href={moreHref} total={top.length} shown={Math.min(PREVIEW, top.length)} action={action}>
+        {loading}
+        <ul className="grid gap-3">
+          {top.slice(0, PREVIEW).map((c) => (
+            <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={changed} compact={isFinished(c)} />
+          ))}
+        </ul>
+      </PreviewSection>
+    );
+  }
+
+  if (view === "full") {
+    return (
+      <section className="space-y-3" aria-label={title}>
+        {action && <div className="flex justify-end">{action}</div>}
+        {loading}
+        {open.length > 0 && (
+          <>
+            <h2 className="text-lg font-semibold">Waiting for your OK or under way ({open.length})</h2>
+            <ul className="grid gap-3">
+              {open.map((c) => (
+                <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={changed} />
+              ))}
+            </ul>
+          </>
+        )}
+        {rejectedNote}
+        {finished.length > 0 && <FinishedCalls calls={finished} onChanged={changed} folded={false} />}
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-2" aria-label={title}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="text-lg font-semibold">{title}</h2>
         {action}
       </div>
-      {error && <p className="text-sm text-red-700">{error}</p>}
-      {calls === null && !error && <SkeletonLines lines={3} className="rounded-2xl border border-brand-100 bg-white p-4" />}
-      {calls !== null && all.length === 0 && <EmptyState title="No calls here." icon="truck" />}
+      {loading}
       {calls !== null && all.length > 0 && (
         <Fold
           summary={
@@ -617,7 +667,7 @@ export default function CallRequests({
                 <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={changed} />
               ))}
             </ul>
-            {rejected > 0 && <p className="text-xs text-gray-500">{rejected} rejected request{rejected === 1 ? "" : "s"} hidden.</p>}
+            {rejectedNote}
             {finished.length > 0 && <FinishedCalls calls={finished} onChanged={changed} />}
           </div>
         </Fold>
@@ -627,13 +677,40 @@ export default function CallRequests({
 }
 
 const FINISHED_SHOWN = 5;
+const PREVIEW = 3;
 
-// The "finished" folder, folded: calls that still need something on top, older and settled ones
-// further down, each one short until opened.
-function FinishedCalls({ calls, onChanged }: { calls: CallView[]; onChanged: () => void }) {
-  const [showAll, setShowAll] = useState(false);
+// Finished calls: ones that still need something on top, older and settled ones further down,
+// each one short until opened. Folded inside the folded panel; open (and all of them) on the calls page.
+function FinishedCalls({ calls, onChanged, folded = true }: { calls: CallView[]; onChanged: () => void; folded?: boolean }) {
+  const [showAll, setShowAll] = useState(!folded);
   const shown = showAll ? calls : calls.slice(0, FINISHED_SHOWN);
   const toDo = calls.filter((c) => finishedPriority(c) < 2).length;
+  const list = (
+    <>
+      <p className="px-1 text-xs text-gray-500">Most important first: calls with something left to do, then the newest.</p>
+      <ul className="mt-2 grid gap-3">
+        {shown.map((c) => (
+          <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={onChanged} compact />
+        ))}
+      </ul>
+      {calls.length > FINISHED_SHOWN && folded && (
+        <button className={`${button} mt-3`} onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Show fewer" : `Show ${calls.length - FINISHED_SHOWN} older`}
+        </button>
+      )}
+    </>
+  );
+  if (!folded) {
+    return (
+      <div className="pt-4">
+        <h2 className="text-lg font-semibold">
+          Finished calls ({calls.length})
+          {toDo > 0 && <span className="ml-2 text-sm font-normal text-gray-600">{toDo} need{toDo === 1 ? "s" : ""} something from you</span>}
+        </h2>
+        {list}
+      </div>
+    );
+  }
   return (
     <Fold
       summary={
@@ -645,17 +722,7 @@ function FinishedCalls({ calls, onChanged }: { calls: CallView[]; onChanged: () 
         </>
       }
     >
-      <p className="px-1 text-xs text-gray-500">Most important first: calls with something left to do, then the newest.</p>
-      <ul className="mt-2 grid gap-3">
-        {shown.map((c) => (
-          <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={onChanged} compact />
-        ))}
-      </ul>
-      {calls.length > FINISHED_SHOWN && (
-        <button className={`${button} mt-3`} onClick={() => setShowAll(!showAll)}>
-          {showAll ? "Show fewer" : `Show ${calls.length - FINISHED_SHOWN} older`}
-        </button>
-      )}
+      {list}
     </Fold>
   );
 }

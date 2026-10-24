@@ -318,6 +318,12 @@ export type OpenOrder = {
   delivery_date: string; message: string; contact: { label: string; href: string | null };
 };
 
+// Waiting for the owner's OK first, then approved but not sent, then on the way; newest first within each.
+const ORDER_RANK: Record<string, number> = { draft: 0, approved: 1, sent: 2 };
+export function sortOrders(orders: OpenOrder[]): OpenOrder[] {
+  return [...orders].sort((a, b) => (ORDER_RANK[a.status] ?? 3) - (ORDER_RANK[b.status] ?? 3));
+}
+
 export async function loadOrders(db: Db): Promise<OpenOrder[]> {
   const [orders, restaurant] = await Promise.all([
     db.from("purchase_orders")

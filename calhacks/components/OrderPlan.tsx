@@ -51,7 +51,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
     setError("");
     try {
       await post("/api/orders/plan/draft");
-      router.push("/invoices#orders");
+      router.push("/invoices/orders");
       toast({ message: "Orders drafted. Approve them under Purchase orders.", tone: "success" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

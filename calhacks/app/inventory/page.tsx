@@ -5,41 +5,29 @@ import CallRequests from "@/components/calls/CallRequests";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
-import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
+import PreviewSection from "@/components/ui/Preview";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
-import { loadInventory, type StockEvent } from "@/lib/inventory/service";
+import { loadInventory } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
 import OrderPlan from "@/components/OrderPlan";
 import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
 import SalesReceipts from "./SalesReceipts";
+import StockEvents, { fmt } from "./StockEvents";
 import LiveRefresh from "@/components/live/LiveRefresh";
+
+// How many recent changes the tab shows; the rest are on /inventory/changes.
+const PREVIEW = 3;
 
 const STATUS = {
   out: { label: "Out", className: "bg-red-50 text-red-700" },
   low: { label: "Low", className: "bg-amber-50 text-amber-800" },
   ok: { label: "OK", className: "text-gray-500" },
 };
-
-function fmt(n: number) {
-  return Number.isInteger(n) ? String(n) : n.toFixed(1);
-}
-
-function eventText(e: StockEvent) {
-  const name = e.ingredients?.name ?? "item";
-  const unit = e.ingredients?.unit ?? "";
-  if (e.kind === "delivery") return `${name}: +${fmt(Number(e.change))} ${unit} delivered (${e.reason ?? "invoice"})`;
-  if (e.kind === "waste") return `${name}: ${fmt(-Number(e.change))} ${unit} thrown out, ${e.reason}`;
-  const expected = Number(e.qty_after) - Number(e.change);
-  const gap = countGap(expected, Number(e.qty_after));
-  return `${name}: counted ${fmt(Number(e.qty_after))} ${unit}${
-    gap.notable ? `, ${fmt(Math.abs(gap.change))} ${unit} ${gap.change < 0 ? "less" : "more"} than expected` : ", as expected"
-  }`;
-}
 
 async function Inventory() {
   let data;
@@ -127,31 +115,15 @@ async function Inventory() {
       </section>
 
       {/* No ingredient detail page yet, so ingredient calls (orders, price questions) show here. */}
-      <div className="mb-8">
-        <CallRequests contextType="ingredient" title="Supplier calls about stock" hideWhenEmpty />
-      </div>
+      <CallRequests contextType="ingredient" title="Supplier calls about stock" hideWhenEmpty view="preview" moreHref="/inventory/calls" />
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Recent changes</h2>
+      <PreviewSection title="Recent changes" href="/inventory/changes" total={events.length} shown={Math.min(PREVIEW, events.length)}>
         {events.length === 0 ? (
           <EmptyState title="No deliveries, counts or waste logged yet." hint="Scan an invoice, count a shelf or log waste above." icon="box" />
         ) : (
-          <Fold summary={<span className="text-gray-700">{events.length} recent {events.length === 1 ? "delivery, count or waste entry" : "deliveries, counts and waste entries"}</span>}>
-            <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
-              {events.map((e) => (
-                <li key={e.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
-                  <span>{eventText(e)}</span>
-                  <span className="text-xs text-gray-400">
-                    {e.kind === "waste" && unitCost.get(e.ingredient_id) ? `${formatMoney(-Number(e.change) * Number(e.unit_cost ?? 0))} · ` : ""}
-                    {e.source ? `${e.source} · ` : ""}
-                    {new Date(e.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" })}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Fold>
+          <StockEvents events={events.slice(0, PREVIEW)} unitCost={unitCost} />
         )}
-      </section>
+      </PreviewSection>
     </>
   );
 }

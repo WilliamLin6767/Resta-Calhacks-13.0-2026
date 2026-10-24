@@ -6,16 +6,20 @@ import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import LiveValue from "@/components/ui/LiveValue";
+import PreviewSection from "@/components/ui/Preview";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
-import { loadOrders } from "@/lib/purchasing/service";
+import { loadOrders, sortOrders } from "@/lib/purchasing/service";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import { PurchaseOrderCard } from "./OrderActions";
 import ScanInvoice from "./ScanInvoice";
 import LiveRefresh from "@/components/live/LiveRefresh";
+
+// How many orders the tab shows; the rest are on /invoices/orders.
+const PREVIEW = 3;
 
 async function PurchaseOrders() {
   let orders;
@@ -25,13 +29,13 @@ async function PurchaseOrders() {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
   if (!orders.length) return null;
+  const top = sortOrders(orders).slice(0, PREVIEW);
   return (
-    <section id="orders" className="mb-8">
-      <h2 className="mb-3 text-lg font-semibold">Purchase orders</h2>
+    <PreviewSection id="orders" title="Purchase orders" href="/invoices/orders" total={orders.length} shown={top.length}>
       <div className="grid gap-3">
-        {orders.map((order) => <PurchaseOrderCard key={order.id} order={order} />)}
+        {top.map((order) => <PurchaseOrderCard key={order.id} order={order} />)}
       </div>
-    </section>
+    </PreviewSection>
   );
 }
 
