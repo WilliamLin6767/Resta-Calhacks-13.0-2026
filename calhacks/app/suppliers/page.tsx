@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import MarketButton from "@/components/analytics/MarketButton";
+import { CallBadge, CheckForCalls, RequestCall } from "@/components/calls/CallControls";
+import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
@@ -9,6 +11,8 @@ import JumpCard from "@/components/suppliers/JumpCard";
 import MarketDetail from "@/components/suppliers/MarketDetail";
 import MarketSeriesChart from "@/components/suppliers/MarketSeriesChart";
 import type { Digest } from "@/lib/analytics";
+import { formatPhone, normalizePhone } from "@/lib/calls/phone";
+import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { telHref } from "@/lib/market/leads";
 import { chartSeries, explainMarket, ingredientFamily, type IngredientFamily } from "@/lib/market/judge";
@@ -39,11 +43,14 @@ type LeadRow = {
 
 async function SuppliersTable() {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("name, category, contact_name, phone, preferred_channel, lead_time_days, delivery_days")
-    .eq("restaurant_id", RESTAURANT_ID)
-    .order("name");
+  const [{ data, error }, counts] = await Promise.all([
+    supabase
+      .from("suppliers")
+      .select("id, name, category, contact_name, phone, preferred_channel, lead_time_days, delivery_days")
+      .eq("restaurant_id", RESTAURANT_ID)
+      .order("name"),
+    pendingCounts(supabase).catch(() => null),
+  ]);
   if (error) return <ErrorMessage message={error.message} />;
 
   return (
@@ -57,18 +64,35 @@ async function SuppliersTable() {
         { key: "lead_time_days", label: "Lead time (days)" },
         { key: "delivery_days", label: "Delivers" },
       ]}
-      rows={(data ?? []).map((row) => ({
-        ...row,
-        phone: row.phone ? (
-          <a href={telHref(String(row.phone))} className="font-medium text-gray-900 underline">
-            {row.phone}
-          </a>
-        ) : (
-          ""
-        ),
-      }))}
+      rows={(data ?? []).map((row) => {
+        const phone = normalizePhone(row.phone);
+        return {
+          ...row,
+          name: (
+            <>
+              {row.name}
+              <CallBadge count={counts?.bySupplier[row.id]} />
+            </>
+          ),
+          phone: phone ? (
+            <a href={telHref(phone)} className="font-medium text-gray-900 underline">
+              {formatPhone(phone)}
+            </a>
+          ) : (
+            <span className="text-gray-400">none on file</span>
+          ),
+        };
+      })}
     />
   );
+}
+
+// The owner's own call request: pick a supplier, say what to ask.
+async function RequestCallForm() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.from("suppliers").select("id, name, phone").eq("restaurant_id", RESTAURANT_ID).order("name");
+  if (error) return <ErrorMessage message={error.message} />;
+  return <RequestCall suppliers={(data ?? []).map((s) => ({ id: s.id, name: s.name, has_phone: normalizePhone(s.phone) !== null }))} />;
 }
 
 function phoneFor(name: string | null, phones: Map<string, string>): string | null {
@@ -225,6 +249,13 @@ export default function SuppliersPage() {
   return (
     <div>
       <PageHeader title="Suppliers" description="See who you buy from, whether a price jump is the wider market, and who to call." />
+      {/* Every call request, for any record: the one place to approve them all. Nothing dials until "Approve and call". */}
+      <section className="mb-10 space-y-4">
+        <CallRequests title="Supplier calls" action={<CheckForCalls />} />
+        <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
+          <RequestCallForm />
+        </Suspense>
+      </section>
       <PriceJumps />
       <h2 className="mb-3 text-lg font-semibold">Contacts on file</h2>
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>

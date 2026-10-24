@@ -63,8 +63,8 @@ export default function KpiExplorer({
               aria-expanded={isOpen}
               aria-controls={panelId}
               onClick={() => setOpenKey(isOpen ? null : card.key)}
-              className={`group flex h-full flex-col rounded-lg border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
-                isOpen ? "border-gray-900 bg-gray-50" : "border-gray-200 bg-white hover:border-gray-400"
+              className={`lift-block group flex h-full flex-col rounded-lg border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
+                isOpen ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-400"
               }`}
             >
               <span className="flex items-start justify-between gap-2 text-xs font-medium text-gray-500">
@@ -144,13 +144,13 @@ export default function KpiExplorer({
                   setOpen(true);
                   send(`Explain my ${selected.label.toLowerCase()}: it's ${selected.value} this period. What's driving it, and what changed vs last period?`);
                 }}
-                className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700"
+                className="rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
               >
                 ✦ Ask AI about this
               </button>
               <Link
                 href={`/analytics/${selected.module.id}?days=${days}`}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-500"
+                className="lift rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-500"
               >
                 Open {selected.module.title} →
               </Link>

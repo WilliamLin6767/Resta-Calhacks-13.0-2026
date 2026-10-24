@@ -6,6 +6,7 @@
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { parseDays } from "@/lib/analytics";
+import { announceCallsChanged } from "@/components/calls/CallRequests";
 import type { AssistantChart, AssistantResponse, AssistantView, ExplainTarget } from "@/lib/assistant";
 
 export type ChatMessage = {
@@ -180,6 +181,8 @@ export default function AssistantProvider({ children }: { children: React.ReactN
         if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
         const { answer, charts: answerCharts } = body as AssistantResponse;
         setMessages((prev) => [...prev, { id: nextId.current++, role: "assistant", content: answer, charts: answerCharts }]);
+        // The answer may have proposed a supplier call (propose_call): let calls panels and badges reload.
+        announceCallsChanged();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
       } finally {

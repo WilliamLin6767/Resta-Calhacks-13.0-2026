@@ -11,7 +11,7 @@ type Lead = {
   matched_product: string | null;
 };
 
-const callClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-white sm:w-auto";
+const callClass = "lift inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 sm:w-auto";
 
 function CallLink({ label, phone }: { label: string; phone: string }) {
   return (
@@ -55,7 +55,7 @@ export default function JumpCard({
   const other = current && primary && current.phone !== primary.phone ? current : null;
 
   return (
-    <article className="rounded-xl border border-gray-200 bg-white p-4">
+    <article className="rounded-xl border border-brand-100 bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-medium">{ingredient}</h3>
         <p className="text-sm text-gray-600">+{changePct}% since {since}</p>

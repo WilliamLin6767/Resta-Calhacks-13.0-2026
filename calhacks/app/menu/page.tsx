@@ -46,17 +46,17 @@ async function Pricing() {
   return (
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{raises.length}</p>
           <p className="text-sm text-gray-600">Dishes to reprice</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold text-green-700">
             {formatWholeMoney(raises.reduce((s, r) => s + r.extra_profit, 0) + delivery.extra_profit)}
           </p>
           <p className="text-sm text-gray-600">More profit a month if you approve all (if sales hold)</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{toCopy.length}</p>
           <p className="text-sm text-gray-600">Price changes not in the POS or apps yet</p>
         </div>
@@ -69,7 +69,7 @@ async function Pricing() {
       {raises.length + reviews.length === 0 && <p className="mb-8 text-sm text-gray-500">Every dish is priced fine right now.</p>}
       <div className="mb-8 grid gap-3">
         {[...raises, ...reviews].map((s) => (
-          <div key={s.dish.id} className="rounded-lg border border-gray-200 bg-white p-4">
+          <div key={s.dish.id} className="rounded-2xl border border-brand-100 bg-white p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="font-medium">
                 {s.dish.name}
@@ -93,7 +93,7 @@ async function Pricing() {
       </div>
 
       {delivery.prices.length > 0 && (
-        <div className="mb-8 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mb-8 rounded-2xl border border-brand-100 bg-white p-4">
           <h2 className="text-lg font-semibold">Delivery app prices</h2>
           <p className="mt-1 text-sm text-gray-700">
             DoorDash and Uber Eats keep {delivery.fee_pct}% of every order, and they are {delivery.share_pct}% of your sales. These dishes cost the
@@ -134,7 +134,7 @@ async function Pricing() {
           <p className="mb-3 text-sm text-gray-600">This app can&apos;t change the POS or delivery apps by itself yet. Tick each one once it&apos;s done.</p>
           <div className="grid gap-2">
             {changes.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+              <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
                 <p>
                   <span className="font-medium">{c.menu_items?.name}</span>{" "}
                   {c.new_price !== c.old_price && <span className="tabular-nums">{formatMoney(c.old_price)} → {formatMoney(c.new_price)}</span>}
@@ -157,9 +157,9 @@ async function Pricing() {
       )}
 
       <h2 className="mb-3 text-lg font-semibold">Every dish</h2>
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+          <thead className="bg-brand-50 text-brand-700">
             <tr>
               <th className="px-4 py-2 font-medium">Dish</th>
               <th className="px-4 py-2 text-right font-medium">Price</th>

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import CallRequests from "@/components/calls/CallRequests";
 import { useAction } from "@/components/useAction";
 import { formatMoney } from "@/lib/format";
 import type { OpenOrder } from "@/lib/purchasing/service";
 
 const buttonClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50 sm:w-auto";
-const primaryClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 sm:w-auto";
+const primaryClass = "lift inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto";
 
 const STATUS_LABEL: Record<string, string> = { draft: "Waiting for your approval", approved: "Approved, not sent yet", sent: "Sent, waiting for delivery" };
 
@@ -98,7 +99,7 @@ export function PurchaseOrderCard({ order }: { order: OpenOrder }) {
   const [open, setOpen] = useState(false);
   const buttons = { orderId: order.id, status: order.status, message: order.message, contact: order.contact };
   return (
-    <div className={`rounded-lg border bg-white p-4 ${order.status === "draft" ? "border-amber-300" : "border-gray-200"}`}>
+    <div className={`rounded-2xl border bg-white p-4 ${order.status === "draft" ? "border-amber-300" : "border-brand-100"}`}>
       <div className="hidden md:block">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="font-medium">
@@ -132,6 +133,11 @@ export function PurchaseOrderCard({ order }: { order: OpenOrder }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Calls placing or checking this order. Hidden when there are none. */}
+      <div className="mt-3">
+        <CallRequests contextType="purchase_order" contextId={order.id} title="Calls about this order" hideWhenEmpty />
       </div>
     </div>
   );

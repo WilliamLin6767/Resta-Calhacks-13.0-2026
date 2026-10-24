@@ -11,7 +11,7 @@ type Impact = {
   status_before: string; status_after: string; days_left: number | null;
 };
 
-const primary = "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const primary = "rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 const secondary = "rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 const STATUS: Record<string, string> = { out: "bg-red-50 text-red-700", low: "bg-amber-50 text-amber-800", ok: "text-gray-500" };
 
@@ -94,7 +94,7 @@ export default function SalesReceipts() {
   const ready = lines.length > 0 && lines.every((l) => l.menu_item_id && Number.isInteger(Number(l.qty)) && Number(l.qty) > 0);
 
   return (
-    <section className="mb-8 rounded-lg border border-gray-200 bg-white p-4">
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4">
       <h2 className="text-lg font-semibold">Customer receipts</h2>
       <p className="mb-3 text-sm text-gray-600">
         Scan a receipt and its dishes come off stock right away, using each dish&apos;s recipe. The AI reads it; you check the dishes before it&apos;s added.

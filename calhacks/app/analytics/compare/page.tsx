@@ -52,8 +52,8 @@ function Chip({ active, href: to, children }: { active: boolean; href: string; c
     <Link
       href={to}
       aria-current={active ? "true" : undefined}
-      className={`rounded-full border px-3 py-1 text-sm ${
-        active ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
+      className={`lift rounded-full border px-3 py-1 text-sm ${
+        active ? "border-brand-600 bg-brand-600 text-white" : "border-gray-200 bg-white text-gray-700 hover:border-gray-400"
       }`}
     >
       {children}

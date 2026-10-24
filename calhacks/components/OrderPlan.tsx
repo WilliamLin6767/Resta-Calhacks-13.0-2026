@@ -5,7 +5,7 @@ import { useState } from "react";
 import type { Plan } from "@/lib/purchasing/plan";
 import type { PlanExplanation } from "@/lib/purchasing/planAi";
 
-const primary = "inline-flex min-h-11 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const primary = "inline-flex min-h-11 items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 const secondary = "inline-flex min-h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 
 function money(n: number) {
@@ -64,7 +64,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
   const { plan: p, explanation: ex } = data;
   const notes = new Map((ex?.suppliers ?? []).map((s) => [s.supplier_id, s.note]));
   return (
-    <div className="mt-3 w-full rounded-lg border border-gray-200 bg-white p-4 text-left">
+    <div className="mt-3 w-full rounded-2xl border border-brand-100 bg-white p-4 text-left">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-semibold">Order plan</h3>
         <p className="text-sm tabular-nums">
