@@ -8,6 +8,7 @@ import {
   checkQuestion,
   explainChartMessage,
   explainCompareMessage,
+  screenContextText,
   type AssistantRequest,
 } from "@/lib/assistant";
 import type { CompareResult } from "@/lib/compare";
@@ -99,5 +100,57 @@ describe("explain messages", () => {
     expect(text).toContain(JSON.stringify(result));
     expect(text).toContain(DONT_SHOW);
     expect(chartFromResult(result).title).toBe("Revenue by day of the week, average per open day (last 30 days)");
+  });
+});
+
+describe("view (what's on screen)", () => {
+  const base = question("what am I looking at?");
+
+  it("accepts a valid view", () => {
+    const view = { focus: { chart: "menu" }, visible: [{ chart: "menu" }, { compare: { metric: "revenue", breakdown: "hour" } }] };
+    expect(AssistantRequestSchema.safeParse({ ...base, view }).success).toBe(true);
+    expect(AssistantRequestSchema.safeParse({ ...base, view: { visible: [] } }).success).toBe(true);
+  });
+  it("rejects an unknown chart id", () => {
+    expect(AssistantRequestSchema.safeParse({ ...base, view: { focus: { chart: "weather" }, visible: [] } }).success).toBe(false);
+    expect(AssistantRequestSchema.safeParse({ ...base, view: { visible: [{ chart: "weather" }] } }).success).toBe(false);
+  });
+  it("rejects more than 8 visible charts", () => {
+    const nine = Array.from({ length: 9 }, () => ({ chart: "kpis" }));
+    expect(AssistantRequestSchema.safeParse({ ...base, view: { visible: nine } }).success).toBe(false);
+  });
+});
+
+describe("screenContextText", () => {
+  it("names the focused chart and includes only its data", () => {
+    const text = screenContextText({ focus: { chart: "menu" }, visible: [{ chart: "menu" }, { chart: "kpis" }] }, d30);
+    expect(text).toContain('They are looking at "Menu engineering"');
+    expect(text).toContain("On screen: Menu engineering, Key numbers.");
+    expect(text).toContain(d30.menu[0].name);
+    expect(text).toContain(JSON.stringify(chartContext("menu", d30).data));
+    // Not the data of other visible charts.
+    expect(text).not.toContain(JSON.stringify(chartContext("kpis", d30).data));
+  });
+  it("uses a compare chart's title, and its data when it loaded", () => {
+    const focus = { compare: { metric: "revenue", breakdown: "weekday" } } as const;
+    const result: CompareResult = {
+      metric: "revenue",
+      breakdown: "weekday",
+      aggregation: "per_open_day",
+      period: d30.period,
+      has_previous: true,
+      rows: [{ key: 1, label: "Monday", value: 2088.6, prev_value: 2130.05 }],
+    };
+    const title = "Revenue by day of the week, average per open day (last 30 days)";
+    expect(screenContextText({ focus, visible: [focus] }, d30)).toContain(`"${title}"`);
+    expect(screenContextText({ focus, visible: [focus] }, d30)).not.toContain("Its data");
+    expect(screenContextText({ focus, visible: [focus] }, d30, result)).toContain(JSON.stringify(result));
+  });
+  it("lists the charts without a focus, and is empty without a view", () => {
+    const text = screenContextText({ visible: [{ chart: "hour" }] }, d30);
+    expect(text).toContain("On screen: Average orders by hour.");
+    expect(text).not.toContain("They are looking at");
+    expect(screenContextText({ visible: [] }, d30)).toContain("no charts");
+    expect(screenContextText(undefined, d30)).toBe("");
   });
 });

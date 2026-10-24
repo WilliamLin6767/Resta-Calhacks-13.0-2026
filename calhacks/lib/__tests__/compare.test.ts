@@ -12,6 +12,19 @@ import {
   rowLabel,
   type CompareResult,
 } from "@/lib/compare";
+import type { Digest } from "@/lib/analytics";
+import digest30Json from "./fixtures/digest-30.json";
+import foodCostByCategoryJson from "./fixtures/compare-food_cost_pct-category.json";
+import netByChannelJson from "./fixtures/compare-net_revenue-channel.json";
+import revenueByDayJson from "./fixtures/compare-revenue-day.json";
+import revenueByWeekdayJson from "./fixtures/compare-revenue-weekday.json";
+
+// Real output of analytics_compare(1, ..., 30) and analytics_digest(1, 30), saved the same day.
+const d30 = digest30Json as unknown as Digest;
+const byWeekday = revenueByWeekdayJson as unknown as CompareResult;
+const byChannel = netByChannelJson as unknown as CompareResult;
+const byDay = revenueByDayJson as unknown as CompareResult;
+const foodByCategory = foodCostByCategoryJson as unknown as CompareResult;
 
 const period = { days: 30, start: "2026-09-23", end: "2026-10-22", previous_start: "2026-08-24", previous_end: "2026-09-22" };
 
@@ -130,5 +143,49 @@ describe("compareSummary", () => {
   });
   it("handles an empty result", () => {
     expect(compareSummary(result({ rows: [] }))).toContain("no data for this period");
+  });
+});
+
+describe("compare fixtures agree with the digest", () => {
+  it("weekday averages match by_weekday", () => {
+    expect(byWeekday.aggregation).toBe("per_open_day");
+    for (const w of d30.by_weekday) {
+      const row = byWeekday.rows.find((r) => r.label === w.weekday);
+      expect(row?.value).toBe(w.avg_revenue);
+    }
+    // Sorted by ISO weekday, Monday first.
+    const keys = byWeekday.rows.map((r) => Number(r.key));
+    expect(keys).toEqual([...keys].sort((a, b) => a - b));
+  });
+
+  it("channel net revenue matches the digest's channels", () => {
+    expect(byChannel.rows.length).toBe(d30.channels.length);
+    for (const c of d30.channels) {
+      expect(byChannel.rows.find((r) => r.key === c.channel)?.value).toBe(c.net_revenue);
+    }
+    // Ranked: highest first.
+    const values = byChannel.rows.map((r) => r.value ?? 0);
+    expect(values).toEqual([...values].sort((a, b) => b - a));
+  });
+
+  it("daily revenue adds up to the period's revenue", () => {
+    expect(byDay.rows.length).toBe(d30.period.days);
+    const total = byDay.rows.reduce((sum, r) => sum + (r.value ?? 0), 0);
+    expect(Math.abs(total - d30.kpis.cur!.revenue)).toBeLessThan(0.05);
+    expect(byDay.rows.every((r) => r.prev_value === null)).toBe(true);
+    // Closed days are null, matching the digest's closed days.
+    const closed = byDay.rows.filter((r) => r.value === null).length;
+    expect(closed).toBe(d30.daily.filter((d) => !d.open).length);
+  });
+
+  it("food cost by category is a ratio of totals", () => {
+    expect(foodByCategory.aggregation).toBe("ratio");
+    expect(foodByCategory.rows.every((r) => r.value === null || (r.value > 0 && r.value < 100))).toBe(true);
+    expect(compareSummary(foodByCategory)).toMatch(/highest is .+, lowest is .+/);
+  });
+
+  it("summarizes the real daily result with its closed days", () => {
+    const closed = byDay.rows.filter((r) => r.value === null).length;
+    expect(compareSummary(byDay)).toContain(`${closed} closed day`);
   });
 });

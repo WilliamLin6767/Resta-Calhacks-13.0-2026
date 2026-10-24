@@ -65,6 +65,13 @@ export function invalidPairReason(metric: MetricId, breakdown: BreakdownId): str
   return `${METRICS[metric].label} is counted per order, and one order can hold several dishes, so it can't be split by ${BREAKDOWNS[breakdown].label.toLowerCase()}. Try Revenue or Dishes sold instead.`;
 }
 
+// How analytics_compare aggregates a pair (same rule as the SQL).
+export function aggregationFor(metric: MetricId, breakdown: BreakdownId): CompareResult["aggregation"] {
+  if (metric === "avg_ticket" || metric === "food_cost_pct") return "ratio";
+  if (breakdown === "weekday" || breakdown === "hour") return "per_open_day";
+  return "total";
+}
+
 // ---------- Query (from the URL or from the AI's tool call) ----------
 
 export const CompareQuerySchema = z
