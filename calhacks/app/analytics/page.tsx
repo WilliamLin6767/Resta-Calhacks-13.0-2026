@@ -10,6 +10,8 @@ import {
   WeekdayChart,
 } from "@/components/analytics/Charts";
 import MenuTable from "@/components/analytics/MenuTable";
+import ChartView from "@/components/assistant/ChartView";
+import ExplainButton from "@/components/assistant/ExplainButton";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
@@ -23,6 +25,7 @@ import {
   type Kpis,
   type SectionId,
 } from "@/lib/analytics";
+import type { ChartId } from "@/lib/assistant";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
@@ -71,7 +74,7 @@ async function AnalyticsContent({ searchParams }: { searchParams: PageProps<"/an
       <AiPanel report={report} createdAt={saved?.created_at ?? null} days={days} />
       {reportResult.error && <ErrorMessage message={`Could not load the saved AI report: ${reportResult.error.message}`} />}
 
-      <ChartCard title="Key numbers" note={note("kpis")}>
+      <ChartCard chart="kpis" title="Key numbers" note={note("kpis")}>
         {digest.kpis.cur ? (
           <KpiCards cur={digest.kpis.cur} prev={digest.kpis.prev} />
         ) : (
@@ -79,29 +82,29 @@ async function AnalyticsContent({ searchParams }: { searchParams: PageProps<"/an
         )}
       </ChartCard>
 
-      <ChartCard title="Revenue per day" note={note("daily")}>
+      <ChartCard chart="daily" title="Revenue per day" note={note("daily")}>
         <DailyRevenueChart daily={digest.daily} />
       </ChartCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Average revenue by weekday" note={note("by_weekday")}>
+        <ChartCard chart="weekday" title="Average revenue by weekday" note={note("by_weekday")}>
           <WeekdayChart rows={digest.by_weekday} />
         </ChartCard>
-        <ChartCard title="Average orders by hour" note={note("by_hour")}>
+        <ChartCard chart="hour" title="Average orders by hour" note={note("by_hour")}>
           <HourChart rows={digest.by_hour} />
         </ChartCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ChartCard title="Revenue by channel" note={note("channels")}>
+        <ChartCard chart="channels" title="Revenue by channel" note={note("channels")}>
           <ChannelDonut channels={digest.channels} />
         </ChartCard>
-        <ChartCard title="Where the money goes" note={note("costs")}>
+        <ChartCard chart="waterfall" title="Where the money goes" note={note("costs")}>
           <CostBreakdownChart costs={digest.costs} />
         </ChartCard>
       </div>
 
-      <ChartCard title="Menu engineering" note={note("menu")}>
+      <ChartCard chart="menu" title="Menu engineering" note={note("menu")}>
         <MenuScatter menu={digest.menu} thresholds={digest.menu_thresholds} />
         <ul className="my-4 grid gap-2 text-sm sm:grid-cols-2">
           {MENU_CLASSES.map((c) => (
@@ -116,7 +119,7 @@ async function AnalyticsContent({ searchParams }: { searchParams: PageProps<"/an
         <MenuTable menu={digest.menu} />
       </ChartCard>
 
-      <ChartCard title="Supplier price changes" note={note("price_changes")}>
+      <ChartCard chart="price_changes" title="Supplier price changes" note={note("price_changes")}>
         <SimpleTable
           columns={[
             { key: "ingredient", label: "Ingredient" },
@@ -162,6 +165,12 @@ function PeriodPicker({ days, period }: { days: number; period: Digest["period"]
       <p className="text-sm text-gray-500">
         {period.start} to {period.end}, compared with {period.previous_start} to {period.previous_end}
       </p>
+      <Link
+        href={`/analytics/compare?days=${days}`}
+        className="ml-auto rounded border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-500"
+      >
+        Compare numbers →
+      </Link>
     </div>
   );
 }
@@ -224,11 +233,17 @@ const STATUS_STYLES = {
   concern: { label: "Concern", dot: "bg-red-500" },
 };
 
-function ChartCard({ title, note, children }: { title: string; note?: AiSection; children: React.ReactNode }) {
+// `title` must match chartContext(chart).title in lib/assistant.ts, so the assistant and the page agree.
+function ChartCard({ chart, title, note, children }: { chart: ChartId; title: string; note?: AiSection; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
-      <h2 className="mb-4 text-sm font-semibold text-gray-900">{title}</h2>
-      {children}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
+        <ExplainButton target={{ chart }} title={title} />
+      </div>
+      <ChartView target={{ chart }} title={title}>
+        {children}
+      </ChartView>
       {note && (
         <div className="mt-4 border-t border-gray-100 pt-3 text-sm">
           <p className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-500">

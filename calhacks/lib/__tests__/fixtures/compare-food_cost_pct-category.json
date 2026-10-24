@@ -1,0 +1,57 @@
+{
+  "rows": [
+    {
+      "key": "Pho",
+      "label": "Pho",
+      "value": 27.7,
+      "prev_value": 26.9
+    },
+    {
+      "key": "Appetizers",
+      "label": "Appetizers",
+      "value": 20.3,
+      "prev_value": 20.2
+    },
+    {
+      "key": "Noodles",
+      "label": "Noodles",
+      "value": 18,
+      "prev_value": 17.6
+    },
+    {
+      "key": "Sandwiches",
+      "label": "Sandwiches",
+      "value": 16.6,
+      "prev_value": 16.4
+    },
+    {
+      "key": "Rice",
+      "label": "Rice",
+      "value": 14.1,
+      "prev_value": 14.1
+    },
+    {
+      "key": "Drinks",
+      "label": "Drinks",
+      "value": 9.9,
+      "prev_value": 9.9
+    },
+    {
+      "key": "Dessert",
+      "label": "Dessert",
+      "value": 6.5,
+      "prev_value": 6.5
+    }
+  ],
+  "metric": "food_cost_pct",
+  "period": {
+    "end": "2026-10-22",
+    "days": 30,
+    "start": "2026-09-23",
+    "previous_end": "2026-09-22",
+    "previous_start": "2026-08-24"
+  },
+  "breakdown": "category",
+  "aggregation": "ratio",
+  "has_previous": true
+}

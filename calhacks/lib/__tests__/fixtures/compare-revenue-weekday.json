@@ -1,0 +1,51 @@
+{
+  "rows": [
+    {
+      "key": 1,
+      "label": "Monday",
+      "value": 2088.6,
+      "prev_value": 2130.05
+    },
+    {
+      "key": 3,
+      "label": "Wednesday",
+      "value": 2117.33,
+      "prev_value": 2055.73
+    },
+    {
+      "key": 4,
+      "label": "Thursday",
+      "value": 2030.13,
+      "prev_value": 2176.2
+    },
+    {
+      "key": 5,
+      "label": "Friday",
+      "value": 2850.49,
+      "prev_value": 2798.61
+    },
+    {
+      "key": 6,
+      "label": "Saturday",
+      "value": 3084.78,
+      "prev_value": 3018.21
+    },
+    {
+      "key": 7,
+      "label": "Sunday",
+      "value": 2871.29,
+      "prev_value": 2865.25
+    }
+  ],
+  "metric": "revenue",
+  "period": {
+    "end": "2026-10-22",
+    "days": 30,
+    "start": "2026-09-23",
+    "previous_end": "2026-09-22",
+    "previous_start": "2026-08-24"
+  },
+  "breakdown": "weekday",
+  "aggregation": "per_open_day",
+  "has_previous": true
+}

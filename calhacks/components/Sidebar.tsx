@@ -33,7 +33,7 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
       </div>
       <ul className="space-y-0.5">
         {links.map((link) => {
-          const active = pathname === link.href;
+          const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href + "/"));
           return (
             <li key={link.href}>
               <Link

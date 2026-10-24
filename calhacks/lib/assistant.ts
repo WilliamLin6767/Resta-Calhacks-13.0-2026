@@ -7,6 +7,7 @@ import {
   BREAKDOWN_IDS,
   METRICS,
   METRIC_IDS,
+  aggregationFor,
   compareSummary,
   compareTitle,
   type CompareResult,
@@ -102,6 +103,21 @@ export function chartContext(id: ChartId, digest: Digest): ChartContext {
 
 // ---------- Request ----------
 
+// A chart on the page: a dashboard chart by id, or a Compare chart by metric and breakdown.
+// The browser only ever sends these ids; the server looks up the numbers itself.
+export const ExplainTargetSchema = z.union([
+  z.object({ chart: z.enum(CHART_IDS) }).strict(),
+  z.object({ compare: z.object({ metric: z.enum(METRIC_IDS), breakdown: z.enum(BREAKDOWN_IDS) }) }).strict(),
+]);
+export type ExplainTarget = z.infer<typeof ExplainTargetSchema>;
+
+// What's on screen when the owner asks: the chart they're focused on, and every chart in view.
+export const ViewSchema = z.object({
+  focus: ExplainTargetSchema.optional(),
+  visible: z.array(ExplainTargetSchema).max(8),
+});
+export type AssistantView = z.infer<typeof ViewSchema>;
+
 export const AssistantRequestSchema = z.object({
   days: z.union([z.literal(7), z.literal(30), z.literal(60)]),
   messages: z
@@ -112,12 +128,8 @@ export const AssistantRequestSchema = z.object({
       }),
     )
     .max(12),
-  explain: z
-    .union([
-      z.object({ chart: z.enum(CHART_IDS) }).strict(),
-      z.object({ compare: z.object({ metric: z.enum(METRIC_IDS), breakdown: z.enum(BREAKDOWN_IDS) }) }).strict(),
-    ])
-    .optional(),
+  explain: ExplainTargetSchema.optional(),
+  view: ViewSchema.optional(),
   page: z.string().max(100).optional(),
 });
 
@@ -152,7 +164,47 @@ export const ASSISTANT_SYSTEM_PROMPT = [
   "Before explaining how something is calculated, read the notes in the dashboard summary.",
   "When the number of open days differs between periods, compare revenue per open day, not total revenue. Judge delivery channels by what the restaurant keeps after fees.",
   "Label suggestions as suggestions.",
+  "If the question is about what's on screen and it's unclear which chart they mean, ask which one, naming the charts on screen.",
 ].join("\n");
+
+// ---------- What the owner sees ----------
+
+// The title a chart has on the page, from its target alone.
+export function targetTitle(target: ExplainTarget, digest: Digest): string {
+  if ("chart" in target) return chartContext(target.chart, digest).title;
+  const { metric, breakdown } = target.compare;
+  return compareTitle({ metric, breakdown, aggregation: aggregationFor(metric, breakdown), period: digest.period });
+}
+
+// The "What the owner sees" block for the system prompt. Only the focused chart's data goes in,
+// to keep the prompt small. compareResult is the focused Compare chart's data, if it loaded.
+// Returns "" when the browser didn't send a view.
+export function screenContextText(view: AssistantView | undefined, digest: Digest, compareResult?: CompareResult): string {
+  if (!view) return "";
+  const titles = view.visible.map((t) => targetTitle(t, digest));
+  const lines = [
+    "What the owner sees:",
+    titles.length > 0 ? `On screen: ${titles.join(", ")}.` : "On screen: no charts right now.",
+  ];
+
+  const focus = view.focus;
+  if (focus) {
+    lines.push(
+      `They are looking at "${targetTitle(focus, digest)}". When they say "this", "that chart" or "here", they mean it.`,
+    );
+    if ("chart" in focus) {
+      const ctx = chartContext(focus.chart, digest);
+      lines.push(`How it's built: ${ctx.howItWorks}`, `Its data (JSON): ${JSON.stringify(ctx.data)}`);
+    } else if (compareResult) {
+      const metric = METRICS[compareResult.metric];
+      lines.push(
+        `How it's built: ${metric.label}: ${metric.description} Aggregation: ${compareResult.aggregation}.`,
+        `Its data (JSON): ${JSON.stringify(compareResult)}`,
+      );
+    }
+  }
+  return lines.join("\n");
+}
 
 const EXPLAIN_ASK =
   "Tell me what it shows, how to read it, the one thing that stands out, and one caveat. Don't call show_chart; I can already see it.";
