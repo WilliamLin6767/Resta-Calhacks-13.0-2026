@@ -16,6 +16,7 @@ export const TAB_LABELS: Record<Tab, { label: string; href: string }> = {
 export type Action =
   | { kind: "link"; label: string; href: string } // go somewhere in the app
   | { kind: "post"; label: string; path: string; body?: Record<string, unknown>; primary?: boolean } // call the server, then refresh
+  | { kind: "posts"; label: string; calls: { path: string; body?: Record<string, unknown> }[] } // several of those, in order
   | { kind: "open"; label: string; href: string } // open the owner's own app (Messages, phone, email); they press send there
   | { kind: "copy"; label: string; text: string } // copy a message to paste somewhere
   | { kind: "plan"; label: string; request: Record<string, unknown> }; // the supplier order plan (components/OrderPlan.tsx)

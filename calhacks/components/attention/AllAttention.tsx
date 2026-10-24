@@ -19,13 +19,13 @@ async function All() {
   return (
     <>
       {headlines.length > 0 && (
-        <ul className="mb-3 grid gap-1 text-sm">
+        <ul className="mb-4 grid gap-1 border-b border-gray-100 pb-4 text-sm">
           {headlines.map(({ tab, headline }) => (
             <li key={tab}><span className="font-medium">{TAB_LABELS[tab].label}:</span> <span className="text-gray-700">{headline}</span></li>
           ))}
         </ul>
       )}
-      <AttentionList items={items} showTab limit={8} />
+      <AttentionList items={items} showTab limit={5} />
       {failed.length > 0 && <ErrorMessage message={`Couldn't check: ${failed.map((t) => TAB_LABELS[t].label).join(", ")}.`} />}
     </>
   );
@@ -33,8 +33,8 @@ async function All() {
 
 export default function AllAttention() {
   return (
-    <section className="mb-8 rounded-xl border border-gray-200/80 bg-gray-50/60 p-4 shadow-sm">
-      <h2 className="mb-3 font-semibold">Needs you</h2>
+    <section className="mb-8 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5">
+      <h2 className="mb-3 font-semibold">Needs you today</h2>
       <Suspense fallback={<p className="text-sm text-gray-400">Checking every tab...</p>}>
         <All />
       </Suspense>
