@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import { getSupabase } from "@/lib/supabase";
 
@@ -30,8 +31,7 @@ async function TrendsTable() {
 export default function TrendsPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Trends</h1>
-      <p className="mb-6 text-gray-600">Spot food trends worth adding to the menu.</p>
+      <PageHeader title="Trends" description="Spot food trends worth adding to the menu." />
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
         <TrendsTable />
       </Suspense>

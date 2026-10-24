@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
@@ -30,8 +31,7 @@ async function IngredientsTable() {
 export default function InventoryPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Inventory</h1>
-      <p className="mb-6 text-gray-600">Track what&apos;s on the shelf and what needs reordering.</p>
+      <PageHeader title="Inventory" description="Track what's on the shelf and what needs reordering." />
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
         <IngredientsTable />
       </Suspense>

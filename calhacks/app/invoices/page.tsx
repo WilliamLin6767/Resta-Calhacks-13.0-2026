@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
@@ -39,8 +40,7 @@ async function InvoicesTable() {
 export default function InvoicesPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Invoices and buying</h1>
-      <p className="mb-6 text-gray-600">Check supplier invoices and create purchase orders.</p>
+      <PageHeader title="Invoices and buying" description="Check supplier invoices and create purchase orders." />
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
         <InvoicesTable />
       </Suspense>
