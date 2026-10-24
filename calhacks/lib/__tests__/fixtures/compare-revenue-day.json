@@ -1,0 +1,195 @@
+{
+  "rows": [
+    {
+      "key": "2026-09-23",
+      "label": "2026-09-23",
+      "value": 2337.7,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-24",
+      "label": "2026-09-24",
+      "value": 2033.3,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-25",
+      "label": "2026-09-25",
+      "value": 2822.1,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-26",
+      "label": "2026-09-26",
+      "value": 2808.15,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-27",
+      "label": "2026-09-27",
+      "value": 3132.35,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-28",
+      "label": "2026-09-28",
+      "value": 2188.85,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-29",
+      "label": "2026-09-29",
+      "value": null,
+      "prev_value": null
+    },
+    {
+      "key": "2026-09-30",
+      "label": "2026-09-30",
+      "value": 1925.3,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-01",
+      "label": "2026-10-01",
+      "value": 1887.9,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-02",
+      "label": "2026-10-02",
+      "value": 3231.3,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-03",
+      "label": "2026-10-03",
+      "value": 3045.9,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-04",
+      "label": "2026-10-04",
+      "value": 3056.1,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-05",
+      "label": "2026-10-05",
+      "value": 2193.45,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-06",
+      "label": "2026-10-06",
+      "value": null,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-07",
+      "label": "2026-10-07",
+      "value": 2381.75,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-08",
+      "label": "2026-10-08",
+      "value": 2242.25,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-09",
+      "label": "2026-10-09",
+      "value": 2440.65,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-10",
+      "label": "2026-10-10",
+      "value": 3516.7,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-11",
+      "label": "2026-10-11",
+      "value": 2844.05,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-12",
+      "label": "2026-10-12",
+      "value": 2159.35,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-13",
+      "label": "2026-10-13",
+      "value": null,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-14",
+      "label": "2026-10-14",
+      "value": 2047.5,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-15",
+      "label": "2026-10-15",
+      "value": 1990.85,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-16",
+      "label": "2026-10-16",
+      "value": 2907.9,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-17",
+      "label": "2026-10-17",
+      "value": 2968.35,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-18",
+      "label": "2026-10-18",
+      "value": 2452.65,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-19",
+      "label": "2026-10-19",
+      "value": 1812.75,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-20",
+      "label": "2026-10-20",
+      "value": null,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-21",
+      "label": "2026-10-21",
+      "value": 1894.4,
+      "prev_value": null
+    },
+    {
+      "key": "2026-10-22",
+      "label": "2026-10-22",
+      "value": 1996.35,
+      "prev_value": null
+    }
+  ],
+  "metric": "revenue",
+  "period": {
+    "end": "2026-10-22",
+    "days": 30,
+    "start": "2026-09-23",
+    "previous_end": "2026-09-22",
+    "previous_start": "2026-08-24"
+  },
+  "breakdown": "day",
+  "aggregation": "total",
+  "has_previous": true
+}

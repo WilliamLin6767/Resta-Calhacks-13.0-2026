@@ -12,6 +12,7 @@ import {
   checkQuestion,
   explainChartMessage,
   explainCompareMessage,
+  screenContextText,
   type AssistantChart,
   type AssistantResponse,
 } from "@/lib/assistant";
@@ -157,6 +158,19 @@ export async function POST(request: Request) {
     `Restaurant: ${digest.restaurant}.` +
     (req.page ? ` The owner is looking at: ${req.page}.` : "");
 
+  // What's on screen. The browser sent only chart ids; the numbers are looked up here.
+  // If the focused Compare chart fails to load, its title is still used.
+  let focusedCompare: CompareResult | undefined;
+  const focus = req.view?.focus;
+  if (focus && "compare" in focus) {
+    const query = CompareQuerySchema.safeParse({ ...focus.compare, days });
+    if (query.success) {
+      const loadedCompare = await loadCompare(query.data);
+      if ("result" in loadedCompare) focusedCompare = loadedCompare.result;
+    }
+  }
+  const screenText = screenContextText(req.view, digest, focusedCompare);
+
   // 6. Ask Claude. The tool runner calls the tools and loops until Claude answers.
   let final;
   try {
@@ -169,7 +183,7 @@ export async function POST(request: Request) {
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low" },
-      system: `${ASSISTANT_SYSTEM_PROMPT}\n\n${contextLine}`,
+      system: [ASSISTANT_SYSTEM_PROMPT, contextLine, screenText].filter(Boolean).join("\n\n"),
       messages,
       tools,
     });
