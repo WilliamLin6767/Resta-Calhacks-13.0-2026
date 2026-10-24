@@ -12,6 +12,7 @@ import { loadBank, type Bank } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
 import { CopyNote, MarkPaid, QuickbooksExport } from "./AccountingActions";
 import { ReserveInput, SetupBank } from "./BankActions";
+import CashPlan from "./CashPlan";
 
 const STATUS: Record<string, { label: string; className: string }> = {
   ok: { label: "Matches", className: "text-green-700" },
@@ -71,7 +72,10 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
         <p className="text-xs text-gray-500">Simulated account from Capital One Nessie · {account.nickname}{account.last4 ? ` ····${account.last4}` : ""} · not real money</p>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div><p className="text-xl font-semibold tabular-nums">{formatMoney(cash.balance)}</p><p className="text-sm text-gray-600">In the bank</p></div>
+        <div>
+          <p className="text-xl font-semibold tabular-nums">{formatMoney(cash.balance)}</p>
+          <p className="text-sm text-gray-600">In the bank{bank.savings ? ` (+ ${formatMoney(bank.savings)} in savings)` : ""}</p>
+        </div>
         <div><p className="text-xl font-semibold tabular-nums">− {formatMoney(cash.bills_due)}</p><p className="text-sm text-gray-600">Bills due this week</p></div>
         <div><p className={`text-xl font-semibold tabular-nums ${cash.spare < 0 ? "text-red-600" : ""}`}>{formatMoney(cash.after_bills)}</p><p className="text-sm text-gray-600">Left after bills</p></div>
         <div>
@@ -137,6 +141,7 @@ async function Accounting() {
       </div>
 
       <BankSection bank={bank} />
+      {"connected" in bank && bank.connected && <CashPlan />}
 
       <section className="mb-8">
         <h2 className="mb-1 text-lg font-semibold">Delivery app payouts</h2>

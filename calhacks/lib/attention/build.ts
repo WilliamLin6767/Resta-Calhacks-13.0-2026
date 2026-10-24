@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { payoutDispute, PLATFORMS } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
 import { bankNote } from "@/lib/bank/match";
+import { loadMoney } from "@/lib/bank/cashPlan";
 import { loadBank } from "@/lib/bank/service";
 import { loadInventory } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
@@ -170,12 +171,12 @@ async function prep(db: Db): Promise<Built> {
 async function invoices(db: Db): Promise<Built> {
   const since = addDays(todayLocal(), -45);
   const res = await db.from("invoices")
-    .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, money_impact, resolved), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
+    .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, planimpact, resolved), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
     .eq("restaurant_id", RESTAURANT_ID).gte("invoice_date", since).order("invoice_date", { ascending: false });
   if (res.error) throw new Error(`Could not load invoices: ${res.error.message}`);
   type Row = {
     id: number; invoice_number: string | null; invoice_date: string; total: number | null; status: string; suppliers: { name: string } | null;
-    invoice_flags: { kind: string; severity: string; message: string; money_impact: number | null; resolved: boolean }[];
+    invoice_flags: { kind: string; severity: string; message: string; planimpact: number | null; resolved: boolean }[];
     invoice_lines: { needs_review: boolean }[];
     invoice_disputes: { status: string; amount_claimed: number; to_email: string | null; sent_at: string | null; created_at: string }[];
   };
@@ -186,7 +187,7 @@ async function invoices(db: Db): Promise<Built> {
     const name = inv.invoice_number ?? `#${inv.id}`;
     const supplier = inv.suppliers?.name ?? "the supplier";
     const open = inv.invoice_flags.filter((f) => !f.resolved);
-    const wrong = open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).reduce((s, f) => s + Number(f.money_impact ?? 0), 0);
+    const wrong = open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).reduce((s, f) => s + Number(f.planimpact ?? 0), 0);
     const dispute = [...inv.invoice_disputes].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
     billedWrong += wrong;
     const href = `/invoices/${inv.id}`;
@@ -219,10 +220,10 @@ async function invoices(db: Db): Promise<Built> {
       });
     }
     for (const f of open.filter((x) => x.kind === "cheaper_elsewhere")) {
-      savings += Number(f.money_impact ?? 0);
+      savings += Number(f.planimpact ?? 0);
       items.push({
-        key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.money_impact), tab: "invoices", level: "info", dismissable: true,
-        title: `${f.message.split(":")[0]}: save ${cash(Number(f.money_impact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
+        key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.planimpact), tab: "invoices", level: "info", dismissable: true,
+        title: `${f.message.split(":")[0]}: save ${cash(Number(f.planimpact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
       });
     }
   }
@@ -291,10 +292,11 @@ async function menu(db: Db): Promise<Built> {
 
 // ---------- Accounting: payouts the apps owe, overdue bills ----------
 async function accounting(db: Db): Promise<Built> {
-  const [{ checks, bills, owed, restaurant }, bank] = await Promise.all([
-    loadAccounting(db),
-    loadBank(db).catch(() => ({ connected: false as const })), // the bar still works without the bank
-  ]);
+  const data = await loadAccounting(db);
+  const { checks, bills, owed, restaurant } = data;
+  // The bar still works without the bank or the cash plan
+  const plan = await loadMoney(db, data).catch(() => null);
+  const bank = plan?.bank ?? (await loadBank(db, data).catch(() => ({ connected: false as const })));
   const items: Item[] = [];
   // Simulated bank (Capital One Nessie): payouts that didn't reach the bank, and cash below the reserve
   if (bank.connected) {
@@ -315,6 +317,34 @@ async function accounting(db: Db): Promise<Built> {
         title: `This week's bills leave ${cash(bank.cash.after_bills)}, below your ${cash(bank.cash.reserve)} cash reserve`,
         detail: "Hold off on non-essential orders, or chase the money the delivery apps owe you.",
         actions: [{ kind: "link", label: "See bills", href: "/accounting" }],
+      });
+    }
+  }
+  // Cash plan: the 14-day forecast, spare cash for savings, and the food budget
+  if (plan) {
+    const { forecast: f, move, budget } = plan;
+    if (f.first_below && bank.connected && bank.cash.spare >= 0) {
+      items.push({
+        key: "forecast-dip", fingerprint: `${f.first_below}:${Math.round(f.lowest.balance)}`, tab: "accounting", level: "watch", dismissable: true,
+        title: `Cash is forecast to dip to ${cash(f.lowest.balance)} on ${shortDate(f.lowest.date)}, below your ${cash(f.reserve)} reserve`,
+        detail: "An estimate from bills, orders and expected payouts. Hold off on orders that can wait until the next payouts land.",
+        actions: [{ kind: "link", label: "See the cash plan", href: "/accounting" }],
+      });
+    }
+    if (move.kind === "now") {
+      items.push({
+        key: "savings", fingerprint: String(move.amount), tab: "accounting", level: "info", dismissable: true,
+        title: `You could move ${cash(move.amount)} to savings and stay above your reserve`,
+        detail: `The lowest day in the next two weeks would still be ${cash(move.lowest_after)}. Simulated account, not real money.`,
+        actions: [{ kind: "post", label: `Move ${cash(move.amount)} to savings`, path: "/api/bank/savings", body: { amount: move.amount }, primary: true }],
+      });
+    }
+    if (budget && budget.left < 0) {
+      items.push({
+        key: "food-budget", fingerprint: budget.pct.toFixed(1), tab: "accounting", level: "watch", dismissable: true,
+        title: `Food cost is ${budget.pct}% of sales, over your ${budget.target_pct}% target by ${cash(-budget.left)}`,
+        detail: budget.top.length ? `Biggest food costs: ${listShort(budget.top.map((t) => t.name), 3)}.` : undefined,
+        actions: [{ kind: "link", label: "See menu prices", href: "/menu" }],
       });
     }
   }
@@ -351,6 +381,13 @@ async function accounting(db: Db): Promise<Built> {
         overdue_total: money(bills.overdue.reduce((s, b) => s + b.total, 0)), due_this_week: money(bills.due_soon.reduce((s, b) => s + b.total, 0)),
         ...(bank.connected
           ? { simulated_bank_balance: money(bank.cash.balance), cash_after_bills: money(bank.cash.after_bills), cash_reserve: money(bank.cash.reserve), not_in_bank: money(bank.owed) }
+          : {}),
+        ...(plan
+          ? {
+            forecast_lowest_14_days: money(plan.forecast.lowest.balance), forecast_lowest_on: plan.forecast.lowest.date,
+            can_move_to_savings_now: plan.move.kind === "now" ? money(plan.move.amount) : 0,
+            food_cost_pct_30_days: plan.budget?.pct ?? null,
+          }
           : {}),
       },
     },
