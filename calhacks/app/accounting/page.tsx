@@ -53,15 +53,15 @@ async function Accounting() {
   return (
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold text-red-600">{formatMoney(owed)}</p>
           <p className="text-sm text-gray-600">Delivery apps owe you</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{formatMoney(sum(bills.overdue))}</p>
           <p className="text-sm text-gray-600">Bills overdue ({bills.overdue.length})</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{formatMoney(sum(bills.due_soon))}</p>
           <p className="text-sm text-gray-600">Bills due this week ({bills.due_soon.length})</p>
         </div>
@@ -85,9 +85,9 @@ async function Accounting() {
             </div>
           ))}
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-brand-50 text-brand-700">
               <tr>
                 <th className="px-4 py-2 font-medium">Week</th>
                 <th className="px-4 py-2 font-medium">App</th>
@@ -125,7 +125,7 @@ async function Accounting() {
               </h3>
               <div className="grid gap-2">
                 {bills[key].map((b) => (
-                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm">
+                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
                     <p className="min-w-0 flex-1">
                       <span className="font-medium">{b.supplier}</span>{" "}
                       <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
@@ -142,7 +142,7 @@ async function Accounting() {
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="rounded-2xl border border-brand-100 bg-white p-4">
         <h2 className="text-lg font-semibold">Export for QuickBooks</h2>
         <p className="mb-3 text-sm text-gray-600">
           Payouts received and bills paid, as a file QuickBooks Online can import (Banking, Upload transactions). Check the dates match your bank

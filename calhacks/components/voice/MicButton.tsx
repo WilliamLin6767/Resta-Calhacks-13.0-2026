@@ -59,7 +59,7 @@ export default function MicButton({ disabled, onClip, onError, onArm }: { disabl
       onPointerUp={stop}
       onPointerCancel={stop}
       onContextMenu={(event) => event.preventDefault()}
-      className="flex h-11 w-16 shrink-0 touch-none items-center justify-center rounded-full bg-gray-900 text-sm font-medium text-white select-none disabled:opacity-50"
+      className="flex h-11 w-16 shrink-0 touch-none items-center justify-center rounded-full bg-brand-600 text-sm font-medium text-white select-none disabled:opacity-50"
     >
       {recording ? "..." : "Hold"}
     </button>

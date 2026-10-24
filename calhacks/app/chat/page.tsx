@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import PageHeader from "@/components/PageHeader";
 import MicButton from "@/components/voice/MicButton";
 
 type Order = {
@@ -149,19 +150,17 @@ export default function ChatPage() {
   }
 
   return (
-    <div>
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Chat</h1>
-        <p className="mt-1 text-sm text-gray-500">Tell me what&apos;s low, or hold to talk.</p>
-      </header>
+    // On desktop the thread fills the page panel and the composer docks at its bottom.
+    <div className="md:flex md:min-h-[calc(100dvh-7rem)] md:flex-col">
+      <PageHeader title="Chat" description="Tell me what's low, or hold to talk." />
 
-      <div ref={listRef} className="space-y-3 pb-36 md:pb-28">
+      <div ref={listRef} className="space-y-3 pb-36 md:flex-1 md:pb-6">
         {messages.length === 0 && !busy && (
           <p className="text-sm text-gray-500">Ask about a food, or hold the button and say it.</p>
         )}
         {messages.map((message) => (
           <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-gray-900 text-white" : "border border-gray-200 bg-white text-gray-900"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-brand-600 text-white" : "border border-brand-100 bg-white text-gray-900"}`}>
               <p className="whitespace-pre-wrap">{message.content}</p>
               {message.order && (
                 <div className="mt-3 border-t border-gray-200 pt-3">
@@ -179,7 +178,7 @@ export default function ChatPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => approve(message.id, message.order!.orderId)}
-                      className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-white disabled:opacity-50"
+                      className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
                     >
                       Approve
                     </button>
@@ -192,7 +191,7 @@ export default function ChatPage() {
         {busy && <p className="text-sm text-gray-500">Working...</p>}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white md:bottom-0 md:left-60">
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white md:sticky md:bottom-6 md:rounded-2xl md:border md:border-brand-100 md:shadow-lg">
         {error && <p className="px-4 pt-2 text-sm text-red-600">{error}</p>}
         <audio
           ref={player}
@@ -211,7 +210,7 @@ export default function ChatPage() {
             suppressHydrationWarning
           />
           <MicButton disabled={busy} onArm={armPlayback} onClip={(blob) => void sendClip(blob)} onError={setError} />
-          <button type="submit" disabled={busy || !draft.trim()} className="flex h-11 shrink-0 items-center justify-center rounded-full bg-gray-900 px-4 text-sm font-medium text-white disabled:opacity-50">
+          <button type="submit" disabled={busy || !draft.trim()} className="flex h-11 shrink-0 items-center justify-center rounded-full bg-brand-600 px-4 text-sm font-medium text-white disabled:opacity-50">
             Send
           </button>
         </form>

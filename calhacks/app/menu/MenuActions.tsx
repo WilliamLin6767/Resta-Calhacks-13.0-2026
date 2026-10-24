@@ -24,7 +24,7 @@ export function ApprovePrice({ menuItemId, suggested, reason }: { menuItemId: nu
       <button
         disabled={loading || !(Number(price) > 0)}
         onClick={() => run(`/api/menu-items/${menuItemId}/price`, { price: Number(price), reason })}
-        className="rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Saving..." : "Approve"}
       </button>
@@ -41,7 +41,7 @@ export function ApplyDeliveryPrices({ count }: { count: number }) {
       <button
         disabled={loading}
         onClick={() => run("/api/menu/delivery-prices")}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Saving..." : `Set ${count} app ${count === 1 ? "price" : "prices"}`}
       </button>

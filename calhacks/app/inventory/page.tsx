@@ -1,7 +1,10 @@
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
+import { CallBadge } from "@/components/calls/CallControls";
+import CallRequests from "@/components/calls/CallRequests";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { loadInventory, type StockEvent } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
@@ -34,8 +37,10 @@ function eventText(e: StockEvent) {
 
 async function Inventory() {
   let data;
+  let counts = null;
   try {
-    data = await loadInventory(await getSupabase());
+    const supabase = await getSupabase();
+    [data, counts] = await Promise.all([loadInventory(supabase), pendingCounts(supabase).catch(() => null)]);
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
@@ -50,15 +55,15 @@ async function Inventory() {
   return (
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className={`text-2xl font-semibold ${low.length ? "text-amber-700" : ""}`}>{low.length}</p>
           <p className="text-sm text-gray-600">Items low or out</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{formatMoney(wasteWeek)}</p>
           <p className="text-sm text-gray-600">Thrown out this week (at cost)</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className={`text-2xl font-semibold ${missing > 0 ? "text-red-600" : ""}`}>{formatMoney(missing)}</p>
           <p className="text-sm text-gray-600">Counted less than expected (recent counts)</p>
         </div>
@@ -76,9 +81,9 @@ async function Inventory() {
           </div>
           {low.length > 0 && <OrderPlan request={{ kind: "low" }} label={`Plan orders for ${low.length} low ${low.length === 1 ? "item" : "items"}`} />}
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-brand-50 text-brand-700">
               <tr>
                 <th className="px-4 py-2 font-medium">Ingredient</th>
                 <th className="px-4 py-2 text-right font-medium">On hand now</th>
@@ -92,7 +97,10 @@ async function Inventory() {
             <tbody>
               {sorted.map((l) => (
                 <tr key={l.id} className="border-t border-gray-100">
-                  <td className="px-4 py-2">{l.name}</td>
+                  <td className="px-4 py-2">
+                    {l.name}
+                    <CallBadge count={counts?.byContext[`ingredient:${l.id}`]} />
+                  </td>
                   <td className="px-4 py-2 text-right tabular-nums">
                     {fmt(l.estimated)} {l.unit}
                     {l.used_since > 0 && <span className="block text-xs text-gray-400">counted {fmt(l.current_qty)}, sales used {fmt(l.used_since)}</span>}
@@ -111,12 +119,17 @@ async function Inventory() {
         </div>
       </section>
 
+      {/* No ingredient detail page yet, so ingredient calls (orders, price questions) show here. */}
+      <div className="mb-8">
+        <CallRequests contextType="ingredient" title="Supplier calls about stock" hideWhenEmpty />
+      </div>
+
       <section>
         <h2 className="mb-3 text-lg font-semibold">Recent changes</h2>
         {events.length === 0 ? (
           <p className="text-sm text-gray-500">No deliveries, counts or waste logged yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white text-sm">
+          <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
             {events.map((e) => (
               <li key={e.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>{eventText(e)}</span>
