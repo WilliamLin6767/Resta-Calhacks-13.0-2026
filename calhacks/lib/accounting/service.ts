@@ -24,7 +24,7 @@ export async function loadAccounting(db: Db) {
     db.from("v_daily_sales").select("day, channel, revenue, platform_fees").eq("restaurant_id", RESTAURANT_ID).in("channel", Object.keys(PLATFORMS)),
     db.from("platform_payouts").select("*").eq("restaurant_id", RESTAURANT_ID),
     db.from("invoices")
-      .select("id, invoice_number, invoice_date, due_date, total, status, suppliers(name), invoice_flags(kind, money_impact, resolved)")
+      .select("id, invoice_number, invoice_date, due_date, total, status, suppliers(name), invoice_flags(kind, money_impact, resolved), invoice_disputes(status, amount_claimed, amount_credited, created_at)")
       .eq("restaurant_id", RESTAURANT_ID)
       .neq("status", "paid"),
     db.from("restaurants").select("name").eq("id", RESTAURANT_ID).maybeSingle(),
@@ -34,7 +34,8 @@ export async function loadAccounting(db: Db) {
     must(payouts, "load payouts (has supabase/07_accounting.sql been run?)") as Payout[],
     today,
   );
-  type InvoiceRow = Omit<Bill, "supplier" | "disputed"> & {
+  type InvoiceRow = Omit<Bill, "supplier" | "disputed" | "dispute"> & {
+    invoice_disputes: (NonNullable<Bill["dispute"]> & { created_at: string })[];
     suppliers: { name: string } | null;
     invoice_flags: { kind: string; money_impact: number | null; resolved: boolean }[];
   };
@@ -42,6 +43,8 @@ export async function loadAccounting(db: Db) {
     id: i.id, invoice_number: i.invoice_number, supplier: i.suppliers?.name ?? "Unknown supplier", invoice_date: i.invoice_date,
     due_date: i.due_date, total: Number(i.total ?? 0), status: i.status,
     disputed: i.invoice_flags.filter((f) => !f.resolved && BILLING_ERROR_KINDS.has(f.kind)).reduce((s, f) => s + Number(f.money_impact ?? 0), 0),
+    dispute: [...(i.invoice_disputes ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((d) => ({ status: d.status, amount_claimed: Number(d.amount_claimed), amount_credited: d.amount_credited === null ? null : Number(d.amount_credited) }))[0] ?? null,
   }));
   return {
     today,

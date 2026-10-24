@@ -42,7 +42,7 @@ describe("checkPayouts", () => {
 
 describe("bills", () => {
   it("groups by due date", () => {
-    const bill = (id: number, due: string) => ({ id, invoice_number: null, supplier: "S", invoice_date: "2026-10-01", due_date: due, total: 10, status: "received", disputed: 0 });
+    const bill = (id: number, due: string) => ({ id, invoice_number: null, supplier: "S", invoice_date: "2026-10-01", due_date: due, total: 10, status: "received", disputed: 0, dispute: null });
     const g = groupBills([bill(1, "2026-10-20"), bill(2, "2026-10-27"), bill(3, "2026-11-20")], "2026-10-23");
     expect([g.overdue, g.due_soon, g.later].map((b) => b.map((x) => x.id))).toEqual([[1], [2], [3]]);
   });

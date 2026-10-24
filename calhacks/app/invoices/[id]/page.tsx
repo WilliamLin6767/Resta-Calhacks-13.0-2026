@@ -4,8 +4,10 @@ import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
+import { latestDispute } from "@/lib/purchasing/disputeService";
 import { formatUnitCost } from "@/lib/purchasing/units";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import DisputePanel from "./DisputePanel";
 import { FlagButtons, LineFix, RecheckButton } from "./InvoiceActions";
 
 // This page depends on the URL (/invoices/12), and the shared Sidebar reads the URL outside
@@ -27,13 +29,14 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
   if (!Number.isInteger(id) || id <= 0) notFound();
   const supabase = await getSupabase();
-  const [invRes, linesRes, flagsRes, ingRes] = await Promise.all([
+  const [invRes, linesRes, flagsRes, ingRes, disputeRes] = await Promise.all([
     supabase.from("invoices").select("*, suppliers(name)").eq("id", id).eq("restaurant_id", RESTAURANT_ID).maybeSingle(),
     supabase.from("invoice_lines").select("*, ingredients(name, unit)").eq("invoice_id", id).order("id"),
     supabase.from("invoice_flags").select("*").eq("invoice_id", id).eq("resolved", false).order("id"),
     supabase.from("ingredients").select("id, name").eq("restaurant_id", RESTAURANT_ID).order("name"),
+    latestDispute(supabase, id).then((d) => ({ data: d, error: null }), (e: Error) => ({ data: null, error: e })),
   ]);
-  const error = invRes.error ?? linesRes.error ?? flagsRes.error ?? ingRes.error;
+  const error = invRes.error ?? linesRes.error ?? flagsRes.error ?? ingRes.error ?? disputeRes.error;
   if (error) return <ErrorMessage message={error.message} />;
   const inv = invRes.data;
   if (!inv) notFound();
@@ -56,6 +59,9 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <RecheckButton invoiceId={inv.id} />
       </div>
+
+      {/* key: a status change starts the panel fresh */}
+      <DisputePanel key={`${disputeRes.data?.id}-${disputeRes.data?.status}`} invoiceId={inv.id} dispute={disputeRes.data} billedWrong={billedWrong} supplier={supplier} />
 
       <section className="space-y-2">
         {flags.length === 0 ? (
