@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
+  { href: "/chat", label: "Chat" },
   { href: "/", label: "Overview" },
   { href: "/inventory", label: "Inventory" },
   { href: "/prep", label: "Prep" },
@@ -21,7 +22,7 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <nav className="w-60 shrink-0 border-r border-gray-200/80 bg-white px-3 py-5">
+    <nav className="h-full w-60 shrink-0 overflow-y-auto border-r border-gray-200/80 bg-white px-3 py-5 md:h-auto">
       <div className="mb-6 flex items-center gap-3 px-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 text-sm font-bold text-white">
           BH
