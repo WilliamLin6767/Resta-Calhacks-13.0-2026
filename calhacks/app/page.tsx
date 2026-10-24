@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { DailyRevenueChart } from "@/components/analytics/Charts";
+import AllAttention from "@/components/attention/AllAttention";
 import Badge, { type BadgeTone } from "@/components/Badge";
 import Card from "@/components/Card";
 import ErrorMessage from "@/components/ErrorMessage";
@@ -183,6 +184,7 @@ export default function OverviewPage() {
   return (
     <div>
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
+      <AllAttention />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Yesterday's sales">
           <Suspense fallback={<Loading />}>

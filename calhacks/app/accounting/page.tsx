@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
@@ -157,6 +158,7 @@ export default function AccountingPage() {
   return (
     <div>
       <PageHeader title="Accounting" description="Check that delivery apps paid what they owe, see which bills are due, and send it all to QuickBooks." />
+      <AttentionBar tab="accounting" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Accounting />
       </Suspense>
