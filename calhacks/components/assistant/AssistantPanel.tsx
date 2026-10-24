@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAssistant } from "./AssistantProvider";
 import CompareChart from "./CompareChart";
@@ -12,6 +13,7 @@ export default function AssistantPanel() {
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pathname = usePathname();
 
   // Keep the newest message in view, and focus the box when the panel opens.
   useEffect(() => {
@@ -36,11 +38,13 @@ export default function AssistantPanel() {
   }
 
   if (!open) {
+    // The Chat page is its own assistant, and its composer sits where this button would.
+    if (pathname === "/chat") return null;
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-40 rounded-full bg-brand-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        className="fixed right-5 bottom-5 z-40 hidden rounded-full bg-brand-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 md:inline-flex"
       >
         ✦ Ask AI
       </button>

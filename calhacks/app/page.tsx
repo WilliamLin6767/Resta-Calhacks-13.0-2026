@@ -193,7 +193,7 @@ export default function OverviewPage() {
         </Card>
         <Card
           title="Revenue, last 30 days"
-          className="lg:col-span-2"
+          className="hidden md:block lg:col-span-2"
           action={
             <Link href="/analytics" className="text-xs font-medium text-gray-500 hover:text-gray-900">
               See analytics →
@@ -204,22 +204,27 @@ export default function OverviewPage() {
             <RevenueLast30Days />
           </Suspense>
         </Card>
-        <Card title="Low stock" className="lg:col-span-3">
+        <Card title="Low stock" className="hidden md:block lg:col-span-3">
           <Suspense fallback={<Loading />}>
             <LowStock />
           </Suspense>
         </Card>
-        <Card title="Supplier price increases" className="lg:col-span-2">
+        <Card title="Supplier price increases" className="hidden md:block lg:col-span-2">
           <Suspense fallback={<Loading />}>
             <PriceIncreases />
           </Suspense>
         </Card>
-        <Card title="AI suggestions">
+        <Card title="AI suggestions" className="hidden md:block">
           <Suspense fallback={<Loading />}>
             <AiSuggestions />
           </Suspense>
         </Card>
       </div>
+      <p className="mt-4 md:hidden">
+        <Link href="/analytics" className="text-sm font-medium text-gray-900 underline">
+          See analytics
+        </Link>
+      </p>
     </div>
   );
 }

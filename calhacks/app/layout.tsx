@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
 import { Suspense } from "react";
+import AppShell from "@/components/AppShell";
 import AssistantPanel from "@/components/assistant/AssistantPanel";
 import AssistantProvider from "@/components/assistant/AssistantProvider";
-import SectionMain from "@/components/SectionMain";
-import Sidebar from "@/components/Sidebar";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import "./globals.css";
 
@@ -23,6 +22,19 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Back of House",
   description: "Restaurant back-office dashboard",
+  applicationName: "Back of House",
+  appleWebApp: { capable: true, title: "Back of House", statusBarStyle: "default" },
+  icons: {
+    icon: [{ url: "/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#101010",
 };
 
 // Loads the restaurant's name for the sidebar.
@@ -37,19 +49,22 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
+      // Chrome adds __gcrremoteframetoken to <html> before React loads. This app does not render that attribute.
+      suppressHydrationWarning
     >
-      {/* Dark shell: sidebar on the left, each page in a rounded white panel on the right */}
-      <body className="flex min-h-full bg-gray-950 text-gray-800">
+      {/* Dark shell: sidebar on the left, each page in a rounded white panel on the right (AppShell) */}
+      <body className="min-h-full bg-gray-950 text-gray-800">
         {/* The AI assistant is on every page: the provider tracks the chat and the charts on screen */}
         <AssistantProvider>
-          <Sidebar
+          <AppShell
             restaurant={
               <Suspense fallback="Loading...">
                 <RestaurantName />
               </Suspense>
             }
-          />
-          <SectionMain>{children}</SectionMain>
+          >
+            {children}
+          </AppShell>
           <AssistantPanel />
         </AssistantProvider>
       </body>
