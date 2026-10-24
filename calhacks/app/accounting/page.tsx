@@ -7,8 +7,11 @@ import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/
 import { loadAccounting } from "@/lib/accounting/service";
 import { formatMoney } from "@/lib/format";
 import { amountToPay } from "@/lib/purchasing/disputes";
+import { bankNote, type BankCheck } from "@/lib/bank/match";
+import { loadBank, type Bank } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
 import { CopyNote, MarkPaid, QuickbooksExport } from "./AccountingActions";
+import { ReserveInput, SetupBank } from "./BankActions";
 
 const STATUS: Record<string, { label: string; className: string }> = {
   ok: { label: "Matches", className: "text-green-700" },
@@ -36,17 +39,83 @@ function BillDispute({ bill: b }: { bill: Bill }) {
   return null;
 }
 
+const BANK_STATUS: Record<BankCheck["status"], { label: string; className: string }> = {
+  matched: { label: "In the bank", className: "text-green-700" },
+  app_paid_short: { label: "In the bank", className: "text-green-700" },
+  bank_short: { label: "Bank got less", className: "text-red-700" },
+  no_deposit: { label: "No deposit", className: "text-red-700" },
+  missing_payout: { label: "Nothing", className: "text-red-700" },
+  not_due: { label: "-", className: "text-gray-400" },
+};
+
+// The simulated bank: cash after upcoming bills, and payouts that didn't fully reach the bank
+function BankSection({ bank }: { bank: Bank | { error: string } }) {
+  if ("error" in bank) return <ErrorMessage message={`Bank check: ${bank.error}`} />;
+  if (!bank.connected) {
+    return (
+      <section className="mb-8 rounded-2xl border border-dashed border-brand-100 bg-white p-4">
+        <h2 className="font-semibold">Bank check</h2>
+        <p className="mb-3 text-sm text-gray-600">
+          Connect a bank account to check that delivery payouts actually arrived, and to see the cash left after upcoming bills. For the demo this
+          is a simulated account from Capital One&apos;s Nessie API, with no real money.
+        </p>
+        <SetupBank />
+      </section>
+    );
+  }
+  const { cash, account, problems, restaurant } = bank;
+  return (
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-semibold">Bank check</h2>
+        <p className="text-xs text-gray-500">Simulated account from Capital One Nessie · {account.nickname}{account.last4 ? ` ····${account.last4}` : ""} · not real money</p>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div><p className="text-xl font-semibold tabular-nums">{formatMoney(cash.balance)}</p><p className="text-sm text-gray-600">In the bank</p></div>
+        <div><p className="text-xl font-semibold tabular-nums">− {formatMoney(cash.bills_due)}</p><p className="text-sm text-gray-600">Bills due this week</p></div>
+        <div><p className={`text-xl font-semibold tabular-nums ${cash.spare < 0 ? "text-red-600" : ""}`}>{formatMoney(cash.after_bills)}</p><p className="text-sm text-gray-600">Left after bills</p></div>
+        <div>
+          <p className="text-sm text-gray-600">Keep at least</p>
+          <ReserveInput reserve={cash.reserve} />
+          <p className={`text-xs ${cash.spare < 0 ? "text-red-600" : "text-gray-500"}`}>
+            {cash.spare < 0 ? `${formatMoney(-cash.spare)} below your reserve` : `${formatMoney(cash.spare)} to spend above it`}
+          </p>
+        </div>
+      </div>
+      {problems.length > 0 && (
+        <div className="mt-4 grid gap-2">
+          {problems.filter((c) => c.status === "bank_short" || c.status === "no_deposit").map((c) => (
+            <div key={`${c.week.platform}${c.week.period_start}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
+              <p className="min-w-0 flex-1">
+                <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-red-700">{BANK_STATUS[c.status].label}</span>
+                <span className="font-medium">{PLATFORMS[c.week.platform]}, week of {c.week.period_start}.</span> {c.message}
+              </p>
+              <CopyNote text={bankNote(c, restaurant, account.last4)} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function sum(bills: Bill[]) {
   return bills.reduce((s, b) => s + b.total, 0);
 }
 
 async function Accounting() {
   let data;
+  let bank: Bank | { error: string };
   try {
-    data = await loadAccounting(await getSupabase());
+    const db = await getSupabase();
+    [data, bank] = await Promise.all([
+      loadAccounting(db),
+      loadBank(db).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
+    ]);
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
+  const inBank = new Map(("connected" in bank && bank.connected ? bank.checks : []).map((b) => [`${b.week.platform}${b.week.period_start}`, b]));
   const { today, restaurant, checks, owed, bills } = data;
   const problems = checks.filter((c) => c.status === "short" || c.status === "missing");
 
@@ -66,6 +135,8 @@ async function Accounting() {
           <p className="text-sm text-gray-600">Bills due this week ({bills.due_soon.length})</p>
         </div>
       </div>
+
+      <BankSection bank={bank} />
 
       <section className="mb-8">
         <h2 className="mb-1 text-lg font-semibold">Delivery app payouts</h2>
@@ -96,6 +167,7 @@ async function Accounting() {
                 <th className="px-4 py-2 text-right font-medium">Should pay</th>
                 <th className="px-4 py-2 text-right font-medium">Paid</th>
                 <th className="px-4 py-2 font-medium">Check</th>
+                {inBank.size > 0 && <th className="px-4 py-2 text-right font-medium">Bank got</th>}
               </tr>
             </thead>
             <tbody>
@@ -108,6 +180,14 @@ async function Accounting() {
                   <td className="px-4 py-2 text-right tabular-nums">{formatMoney(c.expected_net)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{c.payout ? formatMoney(c.payout.net_amount) : "-"}</td>
                   <td className={`px-4 py-2 ${STATUS[c.status].className}`}>{STATUS[c.status].label}</td>
+                  {inBank.size > 0 && (() => {
+                    const b = inBank.get(`${c.platform}${c.period_start}`);
+                    return (
+                      <td className={`px-4 py-2 text-right tabular-nums ${b ? BANK_STATUS[b.status].className : "text-gray-400"}`}>
+                        {b?.deposit ? formatMoney(b.deposit.amount) : b ? BANK_STATUS[b.status].label : "-"}
+                      </td>
+                    );
+                  })()}
                 </tr>
               ))}
             </tbody>
