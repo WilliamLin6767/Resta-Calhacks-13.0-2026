@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import NavWheel from "@/components/NavWheel";
 import SectionMain from "@/components/SectionMain";
 import Sidebar from "@/components/Sidebar";
 
 const phoneLinks = [
-  { href: "/chat", label: "Chat" },
   { href: "/", label: "Overview" },
+  { href: "/chat", label: "Chat" },
   { href: "/invoices", label: "Invoices" },
   { href: "/suppliers", label: "Suppliers" },
 ];
@@ -17,8 +18,8 @@ function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
 }
 
-// Phone: top bar, full-screen menu, and a bottom bar. Chat is the first stop.
-// Desktop: the same sidebar, with no top or bottom bar.
+// Phone: top bar, full-screen menu, and a bottom bar.
+// Desktop: the menu wheel at the left edge (NavWheel), with no top or bottom bar.
 export default function AppShell({ restaurant, children }: { restaurant: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   // The page the menu was opened on: going to another page closes it.
@@ -56,9 +57,9 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         />
       )}
 
-      <div className={`${open ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:static md:flex md:shrink-0`}>
-        <div className="flex h-full flex-col bg-gray-950 shadow-xl md:shadow-none">
-          <div className="flex justify-end border-b border-white/10 md:hidden">
+      <div className={`${open ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:hidden`}>
+        <div className="flex h-full flex-col bg-gray-950 shadow-xl">
+          <div className="flex justify-end border-b border-white/10">
             <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-white/70">
               Close
             </button>
@@ -66,6 +67,8 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
           <Sidebar restaurant={restaurant} />
         </div>
       </div>
+
+      <NavWheel restaurant={restaurant} />
 
       <SectionMain>{children}</SectionMain>
 

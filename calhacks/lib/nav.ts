@@ -26,8 +26,8 @@ export type Section = {
 };
 
 export const SECTIONS: Section[] = [
-  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-500/20 text-chat-200" },
   { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-500/20 text-overview-200" },
+  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-500/20 text-chat-200" },
   { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-500/20 text-inventory-200" },
   { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-500/20 text-prep-200" },
   { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-500/20 text-invoices-200" },
