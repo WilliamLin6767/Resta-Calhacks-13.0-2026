@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AiThinking from "@/components/ui/AiThinking";
-import Fold from "@/components/ui/Fold";
 import Reveal from "@/components/ui/Reveal";
 import { table as tableClass, tableWrap, td, th, thead, tr } from "@/components/ui/table";
 import { useToast } from "@/components/ui/Toaster";
@@ -186,45 +185,41 @@ export default function Capture({ ingredients }: { ingredients: Ref[] }) {
   }
 
   return (
-    <section className="mb-8">
-      <h2 className="mb-3 text-lg font-semibold">Count stock or log waste</h2>
-      <Fold summary={<span className="text-gray-700">Take a photo of a shelf, say what you see, or count by hand</span>}>
-        <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="mb-3 text-sm text-gray-600">
-            Take a photo of a shelf, or say what you see (&quot;40 pounds of bones, two cases of limes, tossed 3 pounds of sprouts&quot;). The AI proposes
-            the numbers; nothing is saved until you check them.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && readPhoto(e.target.files[0])} />
-            <button disabled={!!busy} onClick={() => fileRef.current?.click()} className={primary}>Photo of a shelf</button>
-            <button disabled={!!busy} onClick={() => { setWaste([]); setSource("manual"); setCounts([{ key: nextKey++, ingredient_id: 0, qty: "", confidence: 1, seen: "added by hand", note: "" }]); }} className={secondary}>
-              Count by hand
-            </button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say or type a count or waste note" maxLength={2000}
-              aria-label="Count or waste note" className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            <button disabled={!!busy && !listening} onClick={toggleMic} className={secondary}>{listening ? "Stop" : "Speak"}</button>
-            <button disabled={!!busy || !text.trim()} onClick={readNote} className={primary}>Read note</button>
-          </div>
-          {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-          {done && <p className="mt-3 text-sm text-green-700">{done}</p>}
-          {notes && <p className="mt-3 text-sm text-gray-600">AI note on the photo: {notes}</p>}
-          {counts.length > 0 && (
-            <div className="mt-4">
-              <h3 className="mb-1 text-sm font-semibold">Counts to check</h3>
-              {table(counts, setCounts, "counts")}
-            </div>
-          )}
-          {waste.length > 0 && (
-            <div className="mt-4">
-              <h3 className="mb-1 text-sm font-semibold">Waste to check</h3>
-              {table(waste, setWaste, "waste")}
-            </div>
-          )}
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4">
+      <h2 className="text-lg font-semibold">Count stock or log waste</h2>
+      <p className="mb-3 text-sm text-gray-600">
+        Take a photo of a shelf, or say what you see (&quot;40 pounds of bones, two cases of limes, tossed 3 pounds of sprouts&quot;). The AI proposes
+        the numbers; nothing is saved until you check them.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && readPhoto(e.target.files[0])} />
+        <button disabled={!!busy} onClick={() => fileRef.current?.click()} className={primary}>Photo of a shelf</button>
+        <button disabled={!!busy} onClick={() => { setWaste([]); setSource("manual"); setCounts([{ key: nextKey++, ingredient_id: 0, qty: "", confidence: 1, seen: "added by hand", note: "" }]); }} className={secondary}>
+          Count by hand
+        </button>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Say or type a count or waste note" maxLength={2000}
+          aria-label="Count or waste note" className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm" />
+        <button disabled={!!busy && !listening} onClick={toggleMic} className={secondary}>{listening ? "Stop" : "Speak"}</button>
+        <button disabled={!!busy || !text.trim()} onClick={readNote} className={primary}>Read note</button>
+      </div>
+      {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {done && <p className="mt-3 text-sm text-green-700">{done}</p>}
+      {notes && <p className="mt-3 text-sm text-gray-600">AI note on the photo: {notes}</p>}
+      {counts.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-1 text-sm font-semibold">Counts to check</h3>
+          {table(counts, setCounts, "counts")}
         </div>
-      </Fold>
+      )}
+      {waste.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-1 text-sm font-semibold">Waste to check</h3>
+          {table(waste, setWaste, "waste")}
+        </div>
+      )}
     </section>
   );
 }

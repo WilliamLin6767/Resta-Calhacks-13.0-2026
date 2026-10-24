@@ -218,44 +218,28 @@ async function Accounting() {
             <EmptyState title="No bills to pay." hint="Scanned invoices show up here until they're marked paid." icon="receipt" />
           </div>
         )}
-        {GROUPS.some(({ key }) => bills[key].length > 0) && (
-          <Fold
-            summary={
-              <>
-                {bills.overdue.length > 0 && (
-                  <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />{bills.overdue.length} overdue</span>
-                )}
-                {bills.due_soon.length > 0 && (
-                  <span className="flex items-center gap-2 text-gray-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{bills.due_soon.length} due this week</span>
-                )}
-                {bills.later.length > 0 && <span className="text-gray-600">{bills.later.length} later</span>}
-              </>
-            }
-          >
-            {GROUPS.map(({ key, title }) =>
-              bills[key].length ? (
-                <div key={key} className="mb-4 last:mb-0">
-                  <h3 className="mb-2 text-sm font-semibold text-gray-700">
-                    {title} · {formatMoney(sum(bills[key]))}
-                  </h3>
-                  <div className="grid gap-2">
-                    {bills[key].map((b) => (
-                      <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
-                        <p className="min-w-0 flex-1">
-                          <span className="font-medium">{b.supplier}</span>{" "}
-                          <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
-                          <span className="ml-2 tabular-nums">{formatMoney(b.total)}</span>
-                          <span className="ml-2 text-gray-500">due {b.due_date ?? "?"}</span>
-                          <BillDispute bill={b} />
-                        </p>
-                        <MarkPaid invoiceId={b.id} />
-                      </div>
-                    ))}
+        {GROUPS.map(({ key, title }) =>
+          bills[key].length ? (
+            <div key={key} className="mb-4">
+              <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                {title} · {formatMoney(sum(bills[key]))}
+              </h3>
+              <div className="grid gap-2">
+                {bills[key].map((b) => (
+                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
+                    <p className="min-w-0 flex-1">
+                      <span className="font-medium">{b.supplier}</span>{" "}
+                      <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
+                      <span className="ml-2 tabular-nums">{formatMoney(b.total)}</span>
+                      <span className="ml-2 text-gray-500">due {b.due_date ?? "?"}</span>
+                      <BillDispute bill={b} />
+                    </p>
+                    <MarkPaid invoiceId={b.id} />
                   </div>
-                </div>
-              ) : null,
-            )}
-          </Fold>
+                ))}
+              </div>
+            </div>
+          ) : null,
         )}
       </section>
 

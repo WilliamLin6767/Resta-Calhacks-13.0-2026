@@ -5,7 +5,6 @@ import { CallBadge } from "@/components/calls/CallControls";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
-import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
@@ -25,28 +24,12 @@ async function PurchaseOrders() {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
   if (!orders.length) return null;
-  const count = (status: string) => orders.filter((o) => o.status === status).length;
-  const [drafts, approved, sent] = [count("draft"), count("approved"), count("sent")];
   return (
-    <section id="orders" className="mb-8 scroll-mt-4">
+    <section id="orders" className="mb-8">
       <h2 className="mb-3 text-lg font-semibold">Purchase orders</h2>
-      {/* Opens by itself after "Plan orders" or "Order from the cheaper supplier" sends the owner to #orders */}
-      <Fold
-        hash="orders"
-        summary={
-          <>
-            {drafts > 0 && (
-              <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{drafts} waiting for your OK</span>
-            )}
-            {approved > 0 && <span className="text-gray-700">{approved} approved, not sent yet</span>}
-            {sent > 0 && <span className="text-gray-600">{sent} on the way</span>}
-          </>
-        }
-      >
-        <div className="grid gap-3">
-          {orders.map((order) => <PurchaseOrderCard key={order.id} order={order} />)}
-        </div>
-      </Fold>
+      <div className="grid gap-3">
+        {orders.map((order) => <PurchaseOrderCard key={order.id} order={order} />)}
+      </div>
     </section>
   );
 }
