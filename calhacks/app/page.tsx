@@ -174,14 +174,48 @@ async function AiSuggestions() {
   );
 }
 
+async function MarketingDesk() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.from("marketing_posts").select("status").eq("restaurant_id", RESTAURANT_ID);
+  if (error) {
+    const missing = /marketing_posts|schema cache/i.test(error.message);
+    return <ErrorMessage message={missing ? `${error.message}. Has supabase/16_marketing.sql been run?` : error.message} />;
+  }
+  const drafts = data.filter((row) => row.status === "draft").length;
+  const posted = data.filter((row) => row.status === "posted").length;
+  return (
+    <div>
+      <p className="text-sm text-gray-600">Posts written here and sent to Instagram. No agency on the payroll.</p>
+      <p className="mt-3 text-sm text-gray-700">
+        {drafts} waiting · {posted} posted
+      </p>
+    </div>
+  );
+}
+
 export default function OverviewPage() {
   return (
     <div>
-      <ServiceTime />
+      <Suspense fallback={<p className="mb-3 h-6" aria-hidden="true" />}>
+        <ServiceTime />
+      </Suspense>
       <LiveRefresh topics={["overview", "attention"]} />
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
       <AllAttention />
       <div className="grid gap-6 lg:grid-cols-3">
+        <Card
+          title="Marketing"
+          className="lg:col-span-3"
+          action={
+            <Link href="/marketing" className="text-xs font-medium text-gray-500 hover:text-gray-900">
+              Open the desk →
+            </Link>
+          }
+        >
+          <Suspense fallback={<SkeletonLines lines={2} />}>
+            <MarketingDesk />
+          </Suspense>
+        </Card>
         <Card title="Yesterday's sales">
           <Suspense fallback={<SkeletonStat />}>
             <YesterdaySales />

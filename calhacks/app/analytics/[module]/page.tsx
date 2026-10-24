@@ -284,6 +284,13 @@ function ModuleCharts({ id, digest, note }: { id: ModuleId; digest: Digest; note
       return (
         <ChartCard chart="menu" title="Menu engineering" note={note("menu")}>
           <MenuScatter menu={digest.menu} thresholds={digest.menu_thresholds} />
+          <p className="mt-4 text-sm text-gray-600">
+            Puzzles, and dishes selling less than last period, get a post on{" "}
+            <Link href="/marketing" className="font-medium text-brand-700 underline">
+              Marketing
+            </Link>{" "}
+            so more people see them. Dishes from Trends become a poll there.
+          </p>
           <ul className="my-4 grid gap-2 text-sm sm:grid-cols-2">
             {MENU_CLASSES.map((c) => (
               <li key={c.id} className="flex items-start gap-2">
