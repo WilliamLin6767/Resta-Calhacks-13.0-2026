@@ -10,6 +10,7 @@ const links = [
   { href: "/invoices", label: "Invoices and buying" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/menu", label: "Menu and pricing" },
+  { href: "/accounting", label: "Accounting" },
   { href: "/analytics", label: "Analytics" },
   { href: "/trends", label: "Trends" },
 ];
