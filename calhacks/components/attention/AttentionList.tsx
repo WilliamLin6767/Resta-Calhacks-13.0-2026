@@ -7,8 +7,16 @@ import OrderPlan from "@/components/OrderPlan";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
 
 const DOT = { act: "bg-red-500", watch: "bg-amber-400", info: "bg-gray-300" };
-const mainClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto";
-const linkClass = "text-sm text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline disabled:opacity-50";
+const mainClass = "inline-flex min-h-10 items-center justify-center rounded-md bg-brand-600 px-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-8 sm:text-[13px]";
+const linkClass = "text-sm text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline disabled:opacity-50 sm:text-[13px]";
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}>
+      <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 // One button. The item's first action is the main button; the rest are small links next to it.
 function ActionButton({ action, main, onDone }: { action: Action; main: boolean; onDone: () => void }) {
@@ -66,69 +74,44 @@ function ActionButton({ action, main, onDone }: { action: Action; main: boolean;
   );
 }
 
+// One line per item: the title. Click it for the detail and the buttons.
 function Row({ item, showTab, onDismiss }: { item: Item; showTab: boolean; onDismiss: (i: Item) => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const refresh = () => router.refresh();
-  const primary = item.actions[0];
-  const rest = item.actions.slice(1);
   return (
-    <li className="py-3">
-      <div className="hidden gap-3 md:flex">
-        <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${DOT[item.level]}`} aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-gray-900">
-            {item.title}
-            {showTab && (
-              <Link href={TAB_LABELS[item.tab].href} className="ml-2 whitespace-nowrap text-xs font-normal text-gray-500 hover:underline">
-                {TAB_LABELS[item.tab].label} →
-              </Link>
-            )}
-          </p>
+    <li>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        className="no-lift flex w-full items-center gap-2.5 rounded-md px-1 py-2 text-left hover:bg-gray-50">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[item.level]}`} aria-hidden="true" />
+        <span className="min-w-0 flex-1 text-sm font-medium text-gray-900">
+          {item.title}
+          {showTab && <span className="ml-2 whitespace-nowrap text-xs font-normal text-gray-500">{TAB_LABELS[item.tab].label}</span>}
+        </span>
+        <Chevron open={open} />
+      </button>
+      {open && (
+        <div className="pb-3 pl-5 pr-1">
           {item.detail && <p className="text-sm text-gray-600">{item.detail}</p>}
-          {(item.actions.length > 0 || item.dismissable) && (
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-              {item.actions.map((action, i) => <ActionButton key={i} action={action} main={i === 0} onDone={refresh} />)}
-              {item.dismissable && (
-                <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700" title="Hide this until something changes">
-                  Not now
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="md:hidden">
-        <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="w-full text-left">
-          <p className="font-medium text-gray-900">{item.title}</p>
-          {item.detail && <p className="mt-0.5 line-clamp-2 text-sm font-normal text-gray-600">{item.detail}</p>}
-        </button>
-        {primary && (
-          <div className="mt-2">
-            <ActionButton action={primary} main onDone={refresh} />
-          </div>
-        )}
-        {open && (
-          <div className="mt-3 space-y-2">
-            {showTab && <Link href={TAB_LABELS[item.tab].href} className="text-sm text-gray-500 underline">{TAB_LABELS[item.tab].label}</Link>}
-            {rest.map((action, i) => <ActionButton key={i} action={action} main={false} onDone={refresh} />)}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {item.actions.map((action, i) => <ActionButton key={i} action={action} main={i === 0} onDone={refresh} />)}
+            {showTab && <Link href={TAB_LABELS[item.tab].href} className={linkClass}>Open {TAB_LABELS[item.tab].label}</Link>}
             {item.dismissable && (
-              <button onClick={() => onDismiss(item)} className="min-h-11 text-sm text-gray-500 underline">
+              <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700 sm:text-[13px]" title="Hide this until something changes">
                 Not now
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </li>
   );
 }
 
-// Decisions first ("To do now"); everything else folded under "Keep an eye on".
-// On a phone the row is the title, a short line, and the main button. Tap the title for the rest.
+// Folded by default: one line with the counts. Open it for the list, decisions first.
 export default function AttentionList({ items, showTab = false, limit = 4 }: { items: Item[]; showTab?: boolean; limit?: number }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const visible = items.filter((i) => !hidden.has(i.key));
@@ -142,28 +125,42 @@ export default function AttentionList({ items, showTab = false, limit = 4 }: { i
     router.refresh();
   }
 
+  if (visible.length === 0) return <p className="text-sm text-gray-600">Nothing needs a decision right now.</p>;
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{now.length ? `To do now (${now.length})` : "To do now"}</p>
-      {now.length === 0 ? (
-        <p className="py-3 text-sm text-gray-600">Nothing needs a decision right now.</p>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {shown.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
-        </ul>
-      )}
-      {now.length > limit && (
-        <button onClick={() => setAll(!all)} className="text-sm text-gray-600 hover:underline">
-          {all ? "Show fewer" : `Show ${now.length - limit} more`}
-        </button>
-      )}
-      {later.length > 0 && (
-        <details className="mt-2 border-t border-gray-100 pt-2">
-          <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">Keep an eye on ({later.length})</summary>
-          <ul className="divide-y divide-gray-100">
-            {later.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
-          </ul>
-        </details>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        className="no-lift flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-left text-sm hover:bg-gray-50">
+        {now.length > 0 ? (
+          <span className="flex items-center gap-2 font-medium text-gray-900"><span className={`h-1.5 w-1.5 rounded-full ${DOT.act}`} aria-hidden="true" />{now.length} to do now</span>
+        ) : (
+          <span className="text-gray-600">Nothing to decide right now</span>
+        )}
+        {later.length > 0 && (
+          <span className="flex items-center gap-2 text-gray-600"><span className={`h-1.5 w-1.5 rounded-full ${DOT.watch}`} aria-hidden="true" />{later.length} to keep an eye on</span>
+        )}
+        <span className="ml-auto flex items-center gap-1 text-gray-500">{open ? "Hide" : "Show"} <Chevron open={open} /></span>
+      </button>
+      {open && (
+        <div className="mt-2">
+          {now.length > 0 && (
+            <ul className="divide-y divide-gray-100">
+              {shown.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
+            </ul>
+          )}
+          {now.length > limit && (
+            <button onClick={() => setAll(!all)} className="mt-1 px-1 text-sm text-gray-600 hover:underline">
+              {all ? "Show fewer" : `Show ${now.length - limit} more`}
+            </button>
+          )}
+          {later.length > 0 && (
+            <>
+              <p className="mt-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Keep an eye on</p>
+              <ul className="divide-y divide-gray-100">
+                {later.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
+              </ul>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
