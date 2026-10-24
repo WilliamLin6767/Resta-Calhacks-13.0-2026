@@ -16,7 +16,7 @@ export function FlagButtons({ flagId, kind, disputeNote }: { flagId: number; kin
       {kind === "cheaper_elsewhere" && (
         <button
           disabled={loading}
-          onClick={() => run(`/api/invoice-flags/${flagId}/order`, {}, () => router.push("/invoices#orders"), { success: "Order drafted with the cheaper supplier" })}
+          onClick={() => run(`/api/invoice-flags/${flagId}/order`, {}, () => router.push("/invoices/orders"), { success: "Order drafted with the cheaper supplier" })}
           className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           Draft an order there

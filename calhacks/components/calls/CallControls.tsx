@@ -92,7 +92,7 @@ export function RequestCall({ suppliers }: { suppliers: { id: number; name: stri
     setMessage("");
     try {
       const made = await post("/api/calls/request", { supplier_id: supplierId, text });
-      setMessage(`Added "${made.title}". Open "Supplier calls" above to check it, then approve to call.`);
+      setMessage(`Added "${made.title}". It's at the top of Supplier calls above: check it, then approve to call.`);
       setText("");
       announceCallsChanged();
       router.refresh();

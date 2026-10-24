@@ -1,26 +1,24 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import MarketButton from "@/components/analytics/MarketButton";
-import { CallBadge, CheckForCalls, RequestCall } from "@/components/calls/CallControls";
+import { CheckForCalls, RequestCall } from "@/components/calls/CallControls";
 import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import EmptyState from "@/components/ui/EmptyState";
-import Fold from "@/components/ui/Fold";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
 import JumpCard from "@/components/suppliers/JumpCard";
 import MarketDetail from "@/components/suppliers/MarketDetail";
 import MarketSeriesChart from "@/components/suppliers/MarketSeriesChart";
 import type { Digest } from "@/lib/analytics";
-import { formatPhone, normalizePhone } from "@/lib/calls/phone";
-import { pendingCounts } from "@/lib/calls/service";
+import { normalizePhone } from "@/lib/calls/phone";
 import { formatMoney } from "@/lib/format";
-import { telHref } from "@/lib/market/leads";
 import { chartSeries, explainMarket, ingredientFamily, type IngredientFamily } from "@/lib/market/judge";
 import { pointsFromRows } from "@/lib/market/usda";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import SuppliersTable from "./SuppliersTable";
 
 type QuoteRow = {
   report_id: number | null;
@@ -43,56 +41,6 @@ type LeadRow = {
   state: string | null;
   matched_product: string | null;
 };
-
-async function SuppliersTable() {
-  const supabase = await getSupabase();
-  const [{ data, error }, counts] = await Promise.all([
-    supabase
-      .from("suppliers")
-      .select("id, name, category, contact_name, phone, preferred_channel, lead_time_days, delivery_days")
-      .eq("restaurant_id", RESTAURANT_ID)
-      .order("name"),
-    pendingCounts(supabase).catch(() => null),
-  ]);
-  if (error) return <ErrorMessage message={error.message} />;
-  const n = data?.length ?? 0;
-
-  return (
-    <Fold summary={<span className="text-gray-700">{n} {n === 1 ? "supplier" : "suppliers"} on file, with phone numbers and delivery days</span>}>
-      <SimpleTable
-        empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
-        columns={[
-          { key: "name", label: "Supplier" },
-          { key: "category", label: "Category" },
-          { key: "contact_name", label: "Contact" },
-          { key: "phone", label: "Phone" },
-          { key: "preferred_channel", label: "Order by" },
-          { key: "lead_time_days", label: "Lead time (days)" },
-          { key: "delivery_days", label: "Delivers" },
-        ]}
-        rows={(data ?? []).map((row) => {
-          const phone = normalizePhone(row.phone);
-          return {
-            ...row,
-            name: (
-              <>
-                {row.name}
-                <CallBadge count={counts?.bySupplier[row.id]} />
-              </>
-            ),
-            phone: phone ? (
-              <a href={telHref(phone)} className="font-medium text-gray-900 underline">
-                {formatPhone(phone)}
-              </a>
-            ) : (
-              <span className="text-gray-400">none on file</span>
-            ),
-          };
-        })}
-      />
-    </Fold>
-  );
-}
 
 // The owner's own call request: pick a supplier, say what to ask.
 async function RequestCallForm() {
@@ -272,18 +220,17 @@ export default function SuppliersPage() {
     <div>
       <PageHeader title="Suppliers" description="See who you buy from, whether a price jump is the wider market, and who to call." />
       {/* Every call request, for any record: the one place to approve them all. Nothing dials until "Approve and call". */}
-      <section className="mb-10 space-y-4">
-        <CallRequests title="Supplier calls" action={<CheckForCalls />} />
+      <section className="mb-10">
+        <CallRequests title="Supplier calls" action={<CheckForCalls />} view="preview" moreHref="/suppliers/calls" />
         <Suspense fallback={<Skeleton className="h-[150px] rounded-2xl" />}>
           <RequestCallForm />
         </Suspense>
       </section>
       <PriceJumps />
-      <h2 className="mb-3 text-lg font-semibold">Contacts on file</h2>
-      <Suspense fallback={<SkeletonTable rows={4} cols={7} />}>
-        <SuppliersTable />
+      <Suspense fallback={<SkeletonTable rows={3} cols={7} />}>
+        <SuppliersTable preview />
       </Suspense>
-      <p className="mt-4 text-sm text-gray-500">
+      <p className="text-sm text-gray-500">
         An order to a cheaper supplier already on file starts from{" "}
         <Link href="/invoices" className="font-medium text-gray-900 hover:underline">
           Invoices and buying
