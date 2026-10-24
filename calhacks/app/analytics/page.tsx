@@ -72,7 +72,11 @@ async function AnalyticsContent({ searchParams }: { searchParams: PageProps<"/an
       {reportResult.error && <ErrorMessage message={`Could not load the saved AI report: ${reportResult.error.message}`} />}
 
       <ChartCard title="Key numbers" note={note("kpis")}>
-        <KpiCards cur={digest.kpis.cur} prev={digest.kpis.prev} />
+        {digest.kpis.cur ? (
+          <KpiCards cur={digest.kpis.cur} prev={digest.kpis.prev} />
+        ) : (
+          <p className="text-sm text-gray-500">No orders in this period.</p>
+        )}
       </ChartCard>
 
       <ChartCard title="Revenue per day" note={note("daily")}>
