@@ -1,9 +1,10 @@
 // Prep planning on top of Supabase (server only).
 //   loadPrep        - the forecast for a day, stock expected by then, and where each ingredient comes from
-//   orderShortfalls - draft purchase orders for everything the day is short on
+//   prepShortNeeds  - what that day is short on, for the order plan
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { countDays, stockLines, todayRows, usageByDay, type LastCount } from "@/lib/inventory/stock";
-import { draftOrders, loadSources, type Source } from "@/lib/purchasing/sources";
+import type { Need } from "@/lib/purchasing/plan";
+import { loadSources, type Source } from "@/lib/purchasing/sources";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import {
   adjustForecast, forecastDay, prepNeeds, projectStock, weekdayName,
@@ -100,23 +101,18 @@ export async function loadPrep(db: Db, date: string): Promise<Prep> {
   };
 }
 
-// Draft purchase orders (one per supplier) for every ingredient the day is short on (not just tight).
+// What the day is short on (not just tight), for the order plan (lib/purchasing/planService.ts).
 // The forecast is worked out again here, with the AI factors clamped, so the browser can't send its own amounts.
-export async function orderShortfalls(db: Db, date: string, factors: Record<number, number>) {
+export async function prepShortNeeds(db: Db, date: string, factors: Record<number, number>): Promise<{ needs: Need[]; label: string }> {
   const prep = await loadPrep(db, date);
   const needs = prepNeeds(adjustForecast(prep.forecast, factors), prep.recipes, prep.stock).filter((n) => n.short > 0 && !n.tight);
-  const day = `${prep.forecast.weekday} ${date}`;
-  return draftOrders(
-    db,
-    prep.sources,
-    needs.map((n) => ({
-      ingredient_id: n.ingredient_id,
-      qty: n.short,
-      note: `${n.name}: ${n.needed_busy} ${n.unit} on a busy day, ${round1(n.on_hand + n.on_order)} ${n.unit} on hand or ordered`,
+  return {
+    label: `Prep for ${prep.forecast.weekday} ${date}.`,
+    needs: needs.map((n) => ({
+      ingredient_id: n.ingredient_id, name: n.name, unit: n.unit, qty: n.short,
+      note: `${n.needed_busy} ${n.unit} on a busy day, ${round1(n.on_hand + n.on_order)} ${n.unit} on hand or ordered`,
     })),
-    `Prep for ${day}.`,
-    date,
-  );
+  };
 }
 
 function round1(n: number) {
