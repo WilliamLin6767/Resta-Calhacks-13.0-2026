@@ -16,10 +16,14 @@ async function All() {
   const order = { act: 0, watch: 1, info: 2 };
   const items = ok.flatMap((b) => b.items).sort((a, b) => order[a.level] - order[b.level]);
   const headlines = ok.flatMap((b) => (b.summary ? [{ tab: b.tab, headline: b.summary.headline }] : []));
+  const decisions = items.filter((item) => item.level === "act").length;
   return (
     <>
+      <p className="mb-3 text-sm text-gray-700 md:hidden">
+        {decisions === 0 ? "Nothing needs a decision." : `${decisions} to decide`}
+      </p>
       {headlines.length > 0 && (
-        <ul className="mb-3 grid gap-1 text-sm">
+        <ul className="mb-3 hidden gap-1 text-sm md:grid">
           {headlines.map(({ tab, headline }) => (
             <li key={tab}><span className="font-medium">{TAB_LABELS[tab].label}:</span> <span className="text-gray-700">{headline}</span></li>
           ))}

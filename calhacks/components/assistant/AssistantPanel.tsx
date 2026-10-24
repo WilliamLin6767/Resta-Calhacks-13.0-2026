@@ -40,7 +40,7 @@ export default function AssistantPanel() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-40 rounded-full bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        className="fixed right-5 bottom-5 z-40 hidden rounded-full bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 md:inline-flex"
       >
         ✦ Ask AI
       </button>
