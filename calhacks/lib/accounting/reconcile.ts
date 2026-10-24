@@ -108,6 +108,7 @@ export function payoutDispute(c: PayoutCheck, restaurant: string): string {
 export type Bill = {
   id: number; invoice_number: string | null; supplier: string; invoice_date: string; due_date: string | null;
   total: number; status: string; disputed: number; // open billing errors found on it (A1)
+  dispute: { status: "draft" | "sent" | "credited" | "refused"; amount_claimed: number; amount_credited: number | null } | null; // latest dispute email
 };
 export type BillGroup = "overdue" | "due_soon" | "later";
 
