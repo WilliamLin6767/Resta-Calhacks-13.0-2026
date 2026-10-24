@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { replyToOwner, takeTurns } from "@/lib/voice/reply";
+import { signalAfter } from "@/lib/live/signal";
 
 const perVisitor = createRateLimiter({ limit: 20, windowMs: 10 * 60 * 1000 });
 const wholeApp = createRateLimiter({ limit: 300, windowMs: 24 * 60 * 60 * 1000 });
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const { answer, order } = await replyToOwner(messages, false);
+    if (order) signalAfter("/api/chat");
     return Response.json({ answer, order });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return errorResponse("The Anthropic API key is missing or invalid.", 500);

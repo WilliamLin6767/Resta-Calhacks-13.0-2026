@@ -1,0 +1,3 @@
+function_name,arguments,returns
+analytics_digest,"p_restaurant_id bigint, p_days integer DEFAULT 30",jsonb
+dish_sales_by_day,"p_restaurant_id bigint, p_days integer DEFAULT 56","TABLE(day date, menu_item_id bigint, units bigint)"

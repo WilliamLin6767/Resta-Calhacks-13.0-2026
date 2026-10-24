@@ -4,6 +4,8 @@ import { readInvoice } from "@/lib/purchasing/ai";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { saveScannedInvoice } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
+import { ROUTE_TOPICS } from "@/lib/live/routeTopics";
+import { signalAfter, syncCalls } from "@/lib/live/signal";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -24,7 +26,12 @@ export async function POST(request: Request) {
     const id = await saveScannedInvoice(supabase, read, "photo");
     // A new invoice can mean a billing error worth a call: look for calls after responding,
     // so the upload isn't slower. They only show up as pending requests to approve.
-    after(() => scanForCalls(supabase).catch((err) => console.error("Call scan after invoice failed:", err)));
+    after(() =>
+      scanForCalls(supabase)
+        .then((found) => syncCalls(supabase, found.created.map((c) => c.id), { topics: ROUTE_TOPICS["/api/calls/scan"] }))
+        .catch((err) => console.error("Call scan after invoice failed:", err))
+    );
+    signalAfter("/api/invoices/scan");
     return Response.json({ id });
   } catch (err) {
     return handleError(err);

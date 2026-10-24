@@ -5,6 +5,7 @@ import AppShell from "@/components/AppShell";
 import AssistantPanel from "@/components/assistant/AssistantPanel";
 import AssistantProvider from "@/components/assistant/AssistantProvider";
 import CommandPalette from "@/components/CommandPalette";
+import LiveProvider from "@/components/live/LiveProvider";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ToastProvider } from "@/components/ui/Toaster";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
@@ -57,6 +58,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       {/* Dark shell: sidebar on the left, each page in a rounded white panel on the right (AppShell) */}
       <body className="min-h-full bg-gray-950 text-gray-800">
+        {/* Convex live updates, when configured; otherwise this renders its children as they are */}
+        <LiveProvider>
         {/* The AI assistant is on every page: the provider tracks the chat and the charts on screen */}
         <AssistantProvider>
           {/* Toasts and the command palette (Ctrl/Cmd+K) work on every page */}
@@ -74,6 +77,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <CommandPalette />
           </ToastProvider>
         </AssistantProvider>
+        </LiveProvider>
       </body>
     </html>
   );

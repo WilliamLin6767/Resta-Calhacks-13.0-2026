@@ -21,6 +21,7 @@ import { telHref } from "@/lib/market/leads";
 import { chartSeries, explainMarket, ingredientFamily, type IngredientFamily } from "@/lib/market/judge";
 import { pointsFromRows } from "@/lib/market/usda";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 type QuoteRow = {
   report_id: number | null;
@@ -270,6 +271,7 @@ async function PriceJumpsContent() {
 export default function SuppliersPage() {
   return (
     <div>
+      <LiveRefresh topics={["suppliers", "attention"]} />
       <PageHeader title="Suppliers" description="See who you buy from, whether a price jump is the wider market, and who to call." />
       {/* Every call request, for any record: the one place to approve them all. Nothing dials until "Approve and call". */}
       <section className="mb-10 space-y-4">

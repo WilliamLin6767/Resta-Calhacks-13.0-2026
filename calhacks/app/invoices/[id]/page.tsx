@@ -15,6 +15,7 @@ import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import DisputePanel from "./DisputePanel";
 import { FlagButtons, LineFix, RecheckButton } from "./InvoiceActions";
 import ScannedLines, { FirstViewFlash } from "./ScannedLines";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // This page depends on the URL (/invoices/12), and the shared Sidebar reads the URL outside
 // <Suspense>, so let this route wait for the URL instead of requiring an instant static shell.
@@ -167,8 +168,11 @@ function InvoiceSkeleton() {
 // The URL's [id] is read inside <Suspense>, as Cache Components requires.
 export default function InvoicePage({ params }: PageProps<"/invoices/[id]">) {
   return (
-    <Suspense fallback={<InvoiceSkeleton />}>
-      <Invoice params={params} />
-    </Suspense>
+    <>
+      <LiveRefresh topics={["invoices", "attention"]} />
+      <Suspense fallback={<InvoiceSkeleton />}>
+        <Invoice params={params} />
+      </Suspense>
+    </>
   );
 }

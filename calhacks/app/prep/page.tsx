@@ -9,6 +9,7 @@ import { parsePrepDate } from "@/lib/prep/http";
 import { addDays, loadPrep, todayLocal } from "@/lib/prep/service";
 import { getSupabase } from "@/lib/supabase";
 import PrepPlanner from "./PrepPlanner";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 async function Prep({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const supabase = await getSupabase(); // before reading the date, so "tomorrow" is worked out per request
@@ -69,6 +70,7 @@ export default function PrepPage({ searchParams }: PageProps<"/prep">) {
   return (
     <div>
       <PageHeader title="Prep" description="How many of each dish to expect, what to prep, and what you'll run short of. The forecast is plain math from your past sales; the AI only adjusts it when you tell it something about the day." />
+      <LiveRefresh topics={["prep", "attention"]} />
       <AttentionBar tab="prep" />
       <Suspense fallback={<PrepSkeleton />}>
         <Prep searchParams={searchParams as Promise<{ date?: string }>} />

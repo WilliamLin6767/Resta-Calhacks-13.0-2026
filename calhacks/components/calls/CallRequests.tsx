@@ -5,12 +5,16 @@
 // Calling: live status. Done: the outcome, transcript and suggested actions.
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { followCalls } from "@/components/live/followedCalls";
+import { LIVE_RESTAURANT_ID, useLiveOn, useLiveQuery } from "@/components/live/useLiveQuery";
 import EmptyState from "@/components/ui/EmptyState";
 import Fold from "@/components/ui/Fold";
 import { SkeletonLines } from "@/components/ui/Skeleton";
+import { api } from "@/convex/_generated/api";
 import { formatPhone } from "@/lib/calls/phone";
 import type { CallView } from "@/lib/calls/service";
+import { mergeLiveCalls } from "@/lib/live/mergeCalls";
 import { CALL_STEPS, FINISHED_STATUSES, callStep, finishedPriority, needsSwitchCheck, sortFinished, type Brief, type ContextType, type SwitchCheck } from "@/lib/calls/types";
 
 export const CALLS_CHANGED = "calls-changed";
@@ -503,11 +507,29 @@ export default function CallRequests({
     return () => window.removeEventListener(CALLS_CHANGED, load);
   }, [load]);
 
+  // With Convex on, changes to these calls are pushed from any screen: fold them into the rows,
+  // and load the full rows again when a call appears or finishes.
+  const liveOn = useLiveOn();
+  const liveCalls = useLiveQuery(
+    api.live.callsFor,
+    liveOn ? { restaurantId: LIVE_RESTAURANT_ID, contextType, contextId: contextType ? contextId : undefined, supplierId: contextType ? undefined : supplierId } : "skip"
+  );
+  const seen = useRef(new Map<number, number>());
+  useEffect(() => {
+    if (!liveCalls || calls === null) return;
+    const merged = mergeLiveCalls(calls, liveCalls, seen.current);
+    // Pushed by Convex: show it (the merge returns the same rows when nothing new arrived)
+    if (merged.rows !== calls) setCalls(merged.rows);
+    if (merged.reload) load();
+  }, [liveCalls, calls, load]);
+
   // While a call runs (or its switch check does), ask for its status every 3 seconds
-  // (the server checks Wajo at most every 5).
+  // (the server checks Wajo at most every 5). With Convex on this only moves the call forward;
+  // the update itself arrives from Convex.
   const activeIds = (calls ?? []).filter(followed).map((c) => c.id).join(",");
   useEffect(() => {
     if (!activeIds) return;
+    const unfollow = followCalls(activeIds.split(",").map(Number));
     const timer = window.setInterval(async () => {
       const updates = await Promise.all(
         activeIds.split(",").map((id) => fetch(`/api/calls/${id}/status`).then((r) => r.json()).catch(() => null))
@@ -515,19 +537,24 @@ export default function CallRequests({
       const done = updates.filter((u) => u?.call && !followed(u.call)).map((u) => u.call.id as number);
       const finished = done.length > 0;
       if (finished) setWatched((w) => new Set([...w, ...done]));
-      setCalls((prev) =>
-        (prev ?? []).map((c) => {
-          const u = updates.find((x) => x?.call?.id === c.id)?.call;
-          return u ? { ...c, ...u, supplier: c.supplier, dial: c.dial, actions: c.actions } : c;
-        })
-      );
+      if (!liveOn) {
+        setCalls((prev) =>
+          (prev ?? []).map((c) => {
+            const u = updates.find((x) => x?.call?.id === c.id)?.call;
+            return u ? { ...c, ...u, supplier: c.supplier, dial: c.dial, actions: c.actions } : c;
+          })
+        );
+      }
       if (finished) {
         load(); // picks up the suggested actions, and a new call from the switch check
         announceCallsChanged();
       }
     }, 3000);
-    return () => window.clearInterval(timer);
-  }, [activeIds, load]);
+    return () => {
+      window.clearInterval(timer);
+      unfollow();
+    };
+  }, [activeIds, load, liveOn]);
 
   const changed = () => {
     load();
