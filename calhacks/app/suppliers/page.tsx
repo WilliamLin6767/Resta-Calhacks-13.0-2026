@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
@@ -31,8 +32,7 @@ async function SuppliersTable() {
 export default function SuppliersPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold">Suppliers</h1>
-      <p className="mb-6 text-gray-600">Keep supplier contacts, prices and delivery days in one place.</p>
+      <PageHeader title="Suppliers" description="Keep supplier contacts, prices and delivery days in one place." />
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
         <SuppliersTable />
       </Suspense>
