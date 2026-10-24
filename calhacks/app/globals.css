@@ -237,8 +237,104 @@
   }
 }
 
+/* Page and menu motion. Short (at most 250ms) and never in the way: nothing waits on an
+   animation, and all of it is skipped for people who ask for less motion. */
+
+/* Registered as colors so they can blend: moving between sections fades the theme (the wash,
+   buttons, tabs) from one color to the next instead of snapping. */
+@property --color-brand-50 { syntax: "<color>"; inherits: true; initial-value: #eef2f8; }
+@property --color-brand-100 { syntax: "<color>"; inherits: true; initial-value: #dbe3ef; }
+@property --color-brand-500 { syntax: "<color>"; inherits: true; initial-value: #4a6a96; }
+@property --color-brand-600 { syntax: "<color>"; inherits: true; initial-value: #3b5680; }
+@property --color-brand-700 { syntax: "<color>"; inherits: true; initial-value: #2e4466; }
+
+/* Something on the menu wheel's oval path: --wheel-a is its angle around the oval (0 = the
+   pointer), --rx/--ry the path's size. Animating the angle moves it along the curve. */
+@property --wheel-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.wheel-orbit {
+  translate: calc(cos(var(--wheel-a)) * var(--rx)) calc(sin(var(--wheel-a)) * var(--ry));
+}
+
+/* Expandable sections ("2 things worth a closer look") open and close smoothly where the
+   browser supports it; elsewhere they just open. */
+:root {
+  interpolate-size: allow-keywords;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .section-main {
+    transition:
+      --color-brand-50 400ms ease,
+      --color-brand-100 400ms ease,
+      --color-brand-500 400ms ease,
+      --color-brand-600 400ms ease,
+      --color-brand-700 400ms ease;
+  }
+
+  /* A new page rises in, its first few blocks one after another (app/template.tsx).
+     "backwards" only: once done, nothing is left transformed. */
+  .page-enter > * > :nth-child(-n + 6):not(.fixed) {
+    animation: page-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+  }
+  .page-enter > * > *:nth-child(2) { animation-delay: 40ms; }
+  .page-enter > * > *:nth-child(3) { animation-delay: 80ms; }
+  .page-enter > * > *:nth-child(4) { animation-delay: 120ms; }
+  .page-enter > * > *:nth-child(5) { animation-delay: 150ms; }
+  .page-enter > * > *:nth-child(6) { animation-delay: 180ms; }
+
+  details::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height 220ms ease,
+      content-visibility 220ms allow-discrete;
+  }
+  details[open]::details-content {
+    height: auto;
+  }
+
+  /* The menu wheel (components/NavWheel.tsx): it pops out with a slight overshoot, sections
+     and rim dots travel around the oval, and the pointer gives a small "click" at each step. */
+  .wheel-move {
+    transition: translate 320ms cubic-bezier(0.34, 1.3, 0.64, 1);
+  }
+  .wheel-orbit {
+    transition:
+      --wheel-a 300ms cubic-bezier(0.3, 1.2, 0.6, 1),
+      opacity 200ms ease;
+  }
+  .wheel-tick {
+    animation: wheel-tick 160ms ease-out;
+  }
+  .nav-progress {
+    animation: nav-progress 900ms ease-in-out infinite;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@keyframes wheel-tick {
+  50% {
+    scale: 1.05;
+    background-color: rgb(255 255 255 / 0.18);
+  }
+}
+@keyframes nav-progress {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 300% 0;
+  }
+}
+
 /* Colors are set with Tailwind classes in app/layout.tsx */
 body {
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
 }
+
 

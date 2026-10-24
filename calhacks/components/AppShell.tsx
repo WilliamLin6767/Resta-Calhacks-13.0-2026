@@ -68,7 +68,7 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         </div>
       </div>
 
-      <NavWheel restaurant={restaurant} />
+      <NavWheel />
 
       <SectionMain>{children}</SectionMain>
 
