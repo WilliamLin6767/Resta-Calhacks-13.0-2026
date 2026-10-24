@@ -16,6 +16,11 @@ export type StockLine = Ingredient & {
   status: "out" | "low" | "ok";
 };
 
+// Today's dishes so far, as sales rows for `day`
+export function todayRows(day: string, rows: { menu_item_id: number; units: number }[]): SalesRow[] {
+  return rows.map((r) => ({ day, menu_item_id: Number(r.menu_item_id), units: Number(r.units) }));
+}
+
 // Ingredient used per day by sales: units sold x recipe quantity
 export function usageByDay(sales: SalesRow[], recipes: RecipeRow[]): Map<string, Map<number, number>> {
   const recipeByDish = new Map<number, RecipeRow[]>();
@@ -48,20 +53,23 @@ export function countDays(countedAt: string, timeZone = "America/Los_Angeles"): 
 
 // Stock now = the last count (plus deliveries and minus waste since, already in current_qty)
 // minus what sales used after that count.
+// `today` (YYYY-MM-DD), if given, is a day still in progress: its sales come off stock but don't count
+// toward the daily average.
 export function stockLines(
   ingredients: Ingredient[],
   lastCounted: Map<number, LastCount>,
   usage: Map<string, Map<number, number>>,
+  today?: string,
 ): StockLine[] {
   const days = [...usage.keys()].sort();
-  const openDays = days.length || 1;
+  const openDays = days.filter((d) => d !== today).length || 1;
   return ingredients.map((ing) => {
     const counted = lastCounted.get(ing.id) ?? null;
     let usedSince = 0;
     let total = 0;
     for (const d of days) {
       const u = usage.get(d)!.get(ing.id) ?? 0;
-      total += u;
+      if (d !== today) total += u;
       if (counted !== null && d >= counted.sales_from) usedSince += u;
     }
     const estimated = Math.max(0, Number(ing.current_qty) - usedSince);

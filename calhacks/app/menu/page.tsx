@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
@@ -194,6 +195,7 @@ export default function MenuPage() {
   return (
     <div>
       <PageHeader title="Menu and pricing" description="What each dish costs to make right now, and what to charge. Plain math from your invoices and sales, no AI. Nothing changes until you approve it." />
+      <AttentionBar tab="menu" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Pricing />
       </Suspense>

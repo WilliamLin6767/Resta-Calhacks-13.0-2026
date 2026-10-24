@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
 import { formatMoney } from "@/lib/format";
+import { amountToPay } from "@/lib/purchasing/disputes";
 import { getSupabase } from "@/lib/supabase";
 import { CopyNote, MarkPaid, QuickbooksExport } from "./AccountingActions";
 
@@ -21,6 +23,18 @@ const GROUPS: { key: BillGroup; title: string }[] = [
   { key: "due_soon", title: "Due in the next 7 days" },
   { key: "later", title: "Later" },
 ];
+
+// What to do about billing errors on a bill, from its dispute (A1) if there is one
+function BillDispute({ bill: b }: { bill: Bill }) {
+  const pay = formatMoney(amountToPay(b.total, b.dispute));
+  if (b.dispute?.status === "sent" || b.dispute?.status === "draft") {
+    const what = b.dispute.status === "sent" ? "Dispute sent" : "Dispute email drafted, not sent";
+    return <span className="ml-2 text-amber-800">{what}: hold back {formatMoney(b.dispute.amount_claimed)}, pay {pay}</span>;
+  }
+  if (b.dispute?.status === "credited") return <span className="ml-2 text-green-700">Credit of {formatMoney(b.dispute.amount_credited ?? 0)} received: pay {pay}</span>;
+  if (b.disputed > 0) return <span className="ml-2 text-red-700">{formatMoney(b.disputed)} billed wrong: dispute it first, pay {formatMoney(b.total - b.disputed)}</span>;
+  return null;
+}
 
 function sum(bills: Bill[]) {
   return bills.reduce((s, b) => s + b.total, 0);
@@ -117,11 +131,7 @@ async function Accounting() {
                       <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
                       <span className="ml-2 tabular-nums">{formatMoney(b.total)}</span>
                       <span className="ml-2 text-gray-500">due {b.due_date ?? "?"}</span>
-                      {b.disputed > 0 && (
-                        <span className="ml-2 text-red-700">
-                          {formatMoney(b.disputed)} billed wrong: dispute it first, pay {formatMoney(b.total - b.disputed)}
-                        </span>
-                      )}
+                      <BillDispute bill={b} />
                     </p>
                     <MarkPaid invoiceId={b.id} />
                   </div>
@@ -148,6 +158,7 @@ export default function AccountingPage() {
   return (
     <div>
       <PageHeader title="Accounting" description="Check that delivery apps paid what they owe, see which bills are due, and send it all to QuickBooks." />
+      <AttentionBar tab="accounting" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Accounting />
       </Suspense>
