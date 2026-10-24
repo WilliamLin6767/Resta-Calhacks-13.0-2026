@@ -1,21 +1,23 @@
 import { z } from "zod";
 
-// ---------- The digest returned by analytics_digest(p_restaurant_id, p_days) ----------
+// ---------- The digest returned by analytics_digest(p_restaurant_id, p_days), version 2 ----------
+// See supabase/03_analytics.sql. Money is rounded to 2 decimals, percents to 1.
+// Anything divided by something that can be zero comes back as null.
 
 export type Kpis = {
   revenue: number;
   orders: number;
-  avg_ticket: number;
+  open_days: number;
+  avg_ticket: number | null;
+  revenue_per_open_day: number | null;
   food_cost: number;
-  food_cost_pct: number;
-  platform_fees: number;
+  food_cost_pct: number | null;
   labor: number;
+  prime_cost_pct: number | null;
+  platform_fees: number;
   fixed_costs: number;
   est_profit: number;
-  est_profit_pct: number;
-  prime_cost_pct: number;
-  open_days: number;
-  revenue_per_open_day: number;
+  est_profit_pct: number | null;
 };
 
 export type MenuClass = "star" | "plowhorse" | "puzzle" | "dog";
@@ -23,58 +25,58 @@ export type MenuClass = "star" | "plowhorse" | "puzzle" | "dog";
 export type MenuRow = {
   name: string;
   category: string;
-  class: MenuClass;
   price: number;
   units: number;
   prev_units: number;
   units_change_pct: number | null;
   revenue: number;
-  unit_food_cost: number;
-  unit_margin: number;
-  gross_profit: number;
-  food_cost_pct: number;
+  unit_food_cost: number | null;
+  food_cost_pct: number | null;
+  unit_margin: number | null;
+  gross_profit: number | null;
+  class: MenuClass;
 };
 
 export type ChannelRow = {
   channel: string;
   orders: number;
   revenue: number;
-  net_revenue: number;
+  revenue_share_pct: number | null;
   platform_fees: number;
-  fee_rate_pct: number;
-  revenue_share_pct: number;
+  fee_rate_pct: number | null;
+  net_revenue: number;
   prev_revenue: number;
   prev_net_revenue: number;
   net_revenue_change_pct: number | null;
 };
 
 export type PriceChangeRow = {
-  ingredient: string;
   supplier: string;
-  since: string;
-  previous_price: number;
-  current_price: number;
+  ingredient: string;
+  previous_price: number; // per pack
+  current_price: number; // per pack
   change_pct: number;
-  current_unit_cost: number;
-  cheapest_supplier: string | null;
-  cheapest_unit_cost: number | null;
+  since: string;
   is_current_supplier: boolean;
-  est_period_impact: number | null;
   dishes: string[];
+  est_period_impact: number | null; // only for the current (preferred) supplier
+  cheapest_supplier: string | null; // only when a different supplier is cheaper
+  cheapest_unit_cost: number | null;
+  current_unit_cost: number | null;
 };
 
 export type Digest = {
   version: number;
   restaurant: string;
-  period: { start: string; end: string; days: number; previous_start: string; previous_end: string };
-  // prev is missing when there is no data before the period (e.g. 60 days on the demo data).
-  kpis: { cur: Kpis; prev?: Kpis };
-  daily: { date: string; open: boolean; orders: number; revenue: number }[];
-  by_weekday: { weekday: string; days: number; avg_orders: number; avg_revenue: number }[];
-  by_hour: { hour: number; avg_orders: number; avg_revenue: number }[];
+  period: { days: number; start: string; end: string; previous_start: string; previous_end: string };
+  // A period with no orders is missing, so both are optional.
+  kpis: { cur?: Kpis; prev?: Kpis };
+  daily: { date: string; revenue: number; orders: number; open: boolean }[];
+  by_weekday: { weekday: string; avg_revenue: number; avg_orders: number; days: number }[];
+  by_hour: { hour: number; avg_orders: number | null; avg_revenue: number | null }[];
   channels: ChannelRow[];
   menu: MenuRow[];
-  menu_thresholds: { margin_threshold: number; popularity_threshold: number };
+  menu_thresholds: { popularity_threshold: number | null; margin_threshold: number | null };
   costs: { food: number; platform_fees: number; fixed: Record<string, number> };
   price_changes: PriceChangeRow[];
   notes: string[];
@@ -102,7 +104,7 @@ export const MENU_CLASSES: {
 export const PERIOD_OPTIONS = [7, 30, 60] as const;
 export const DEFAULT_DAYS = 30;
 
-// Turns a ?days= value into one of the allowed periods.
+// Turns a ?days= value into 7, 30 or 60. Anything else falls back to 30.
 export function parseDays(value: unknown): number {
   const n = Number(value);
   return (PERIOD_OPTIONS as readonly number[]).includes(n) ? n : DEFAULT_DAYS;
