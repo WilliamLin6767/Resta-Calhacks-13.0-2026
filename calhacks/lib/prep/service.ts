@@ -1,9 +1,10 @@
 // Prep planning on top of Supabase (server only).
 //   loadPrep        - the forecast for a day, stock expected by then, and where each ingredient comes from
-//   orderShortfalls - draft purchase orders for everything the day is short on
+//   prepShortNeeds  - what that day is short on, for the order plan
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { countDays, stockLines, usageByDay, type LastCount } from "@/lib/inventory/stock";
-import { draftOrders, loadSources, type Source } from "@/lib/purchasing/sources";
+import { countDays, stockLines, todayRows, usageByDay, type LastCount } from "@/lib/inventory/stock";
+import type { Need } from "@/lib/purchasing/plan";
+import { loadSources, type Source } from "@/lib/purchasing/sources";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import {
   adjustForecast, forecastDay, prepNeeds, projectStock, weekdayName,
@@ -41,13 +42,14 @@ export function addDays(date: string, n: number) {
 
 export async function loadPrep(db: Db, date: string): Promise<Prep> {
   const today = todayLocal();
-  const [sales, menu, recipes, ingredients, orders, counts] = await Promise.all([
+  const [sales, menu, recipes, ingredients, orders, counts, salesToday] = await Promise.all([
     db.rpc("dish_sales_by_day", { p_restaurant_id: RESTAURANT_ID, p_days: 56 }),
     db.from("menu_items").select("id, name").eq("restaurant_id", RESTAURANT_ID).eq("active", true).order("id"),
     db.from("recipe_items").select("menu_item_id, ingredient_id, qty"),
     db.from("ingredients").select("id, name, unit, category, current_qty, preferred_supplier_id").eq("restaurant_id", RESTAURANT_ID),
     db.from("purchase_orders").select("supplier_id, purchase_order_lines(ingredient_id, qty)").eq("restaurant_id", RESTAURANT_ID).in("status", ["draft", "approved", "sent"]),
     db.from("inventory_counts").select("ingredient_id, counted_at").order("counted_at", { ascending: false }).limit(1000),
+    db.rpc("dish_sales_today", { p_restaurant_id: RESTAURANT_ID }),
   ]);
   const salesRows = (must(sales, "load past sales (has supabase/06_prep.sql been run?)") as SalesRow[]).map((r) => ({ ...r, units: Number(r.units) }));
   const dishes = must(menu, "load the menu") as { id: number; name: string }[];
@@ -72,12 +74,13 @@ export async function loadPrep(db: Db, date: string): Promise<Prep> {
   // Stock at the start of the day: stock now minus what the days in between should use
   const daysBefore: Forecast[] = [];
   for (let d = addDays(today, 1); d < date; d = addDays(d, 1)) daysBefore.push(forecastDay(salesRows, dishes, d));
-  // Starting point: the last count minus what sales used since (see lib/inventory/stock.ts)
+  // Starting point: the last count minus what sales used since, today's included (see lib/inventory/stock.ts)
   const lastCounted = new Map<number, LastCount>();
   for (const c of must(counts, "load counts") as { ingredient_id: number; counted_at: string }[]) {
     if (!lastCounted.has(c.ingredient_id)) lastCounted.set(c.ingredient_id, countDays(c.counted_at));
   }
-  const now = stockLines(ingredientRows.map((i) => ({ ...i, par_level: null, reorder_point: null })), lastCounted, usageByDay(salesRows, recipeRows));
+  const today_ = todayRows(today, must(salesToday, "load today's sales (has supabase/09_sales_receipts.sql been run?)") as { menu_item_id: number; units: number }[]);
+  const now = stockLines(ingredientRows.map((i) => ({ ...i, par_level: null, reorder_point: null })), lastCounted, usageByDay([...salesRows, ...today_], recipeRows), today);
   const projected = projectStock(new Map(now.map((l) => [l.id, l.estimated])), recipeRows, daysBefore);
 
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -98,23 +101,18 @@ export async function loadPrep(db: Db, date: string): Promise<Prep> {
   };
 }
 
-// Draft purchase orders (one per supplier) for every ingredient the day is short on (not just tight).
+// What the day is short on (not just tight), for the order plan (lib/purchasing/planService.ts).
 // The forecast is worked out again here, with the AI factors clamped, so the browser can't send its own amounts.
-export async function orderShortfalls(db: Db, date: string, factors: Record<number, number>) {
+export async function prepShortNeeds(db: Db, date: string, factors: Record<number, number>): Promise<{ needs: Need[]; label: string }> {
   const prep = await loadPrep(db, date);
   const needs = prepNeeds(adjustForecast(prep.forecast, factors), prep.recipes, prep.stock).filter((n) => n.short > 0 && !n.tight);
-  const day = `${prep.forecast.weekday} ${date}`;
-  return draftOrders(
-    db,
-    prep.sources,
-    needs.map((n) => ({
-      ingredient_id: n.ingredient_id,
-      qty: n.short,
-      note: `${n.name}: ${n.needed_busy} ${n.unit} on a busy day, ${round1(n.on_hand + n.on_order)} ${n.unit} on hand or ordered`,
+  return {
+    label: `Prep for ${prep.forecast.weekday} ${date}.`,
+    needs: needs.map((n) => ({
+      ingredient_id: n.ingredient_id, name: n.name, unit: n.unit, qty: n.short,
+      note: `${n.needed_busy} ${n.unit} on a busy day, ${round1(n.on_hand + n.on_order)} ${n.unit} on hand or ordered`,
     })),
-    `Prep for ${day}.`,
-    date,
-  );
+  };
 }
 
 function round1(n: number) {

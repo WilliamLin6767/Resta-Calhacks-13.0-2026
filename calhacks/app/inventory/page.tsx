@@ -1,12 +1,14 @@
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
 import { loadInventory, type StockEvent } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
+import OrderPlan from "@/components/OrderPlan";
 import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
-import ReorderButton from "./ReorderButton";
+import SalesReceipts from "./SalesReceipts";
 
 const STATUS = {
   out: { label: "Out", className: "bg-red-50 text-red-700" },
@@ -62,6 +64,8 @@ async function Inventory() {
         </div>
       </div>
 
+      <SalesReceipts />
+
       <Capture ingredients={lines.map((l) => ({ id: l.id, name: l.name, unit: l.unit }))} />
 
       <section className="mb-8">
@@ -70,7 +74,7 @@ async function Inventory() {
             <h2 className="text-lg font-semibold">Stock</h2>
             <p className="text-sm text-gray-600">Last count, plus deliveries, minus waste and what sales used since (from recipes).</p>
           </div>
-          {low.length > 0 && <ReorderButton count={low.length} />}
+          {low.length > 0 && <OrderPlan request={{ kind: "low" }} label={`Plan orders for ${low.length} low ${low.length === 1 ? "item" : "items"}`} />}
         </div>
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
           <table className="w-full text-left text-sm">
@@ -134,6 +138,7 @@ export default function InventoryPage() {
   return (
     <div>
       <PageHeader title="Inventory" description="What's on hand, how long it lasts, and what went missing. Deliveries come in from scanned invoices." />
+      <AttentionBar tab="inventory" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Inventory />
       </Suspense>

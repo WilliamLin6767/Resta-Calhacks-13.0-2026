@@ -1,8 +1,9 @@
-// Where each ingredient is ordered from, and drafting orders for it (server only).
-// Used by prep planning (A3) and inventory (A2).
+// Where each ingredient is ordered from, and every supplier's offer (server only).
+// Used by prep planning (A3), inventory (A2) and the order plan (planService.ts).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { nextDeliveryDate } from "./orders";
+import type { Offer, SupplierInfo } from "./plan";
 
 type Db = SupabaseClient;
 
@@ -22,10 +23,12 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, wha
 export async function loadSources(db: Db, today: string) {
   const [ingredients, suppliers] = await Promise.all([
     db.from("ingredients").select("id, preferred_supplier_id").eq("restaurant_id", RESTAURANT_ID),
-    db.from("suppliers").select("id, name, lead_time_days, delivery_days").eq("restaurant_id", RESTAURANT_ID),
+    db.from("suppliers").select("id, name, lead_time_days, delivery_days, min_order_amount").eq("restaurant_id", RESTAURANT_ID),
   ]);
   const ingredientRows = must(ingredients, "load ingredients") as { id: number; preferred_supplier_id: number | null }[];
-  const supplierRows = must(suppliers, "load suppliers") as { id: number; name: string; lead_time_days: number | null; delivery_days: string | null }[];
+  const supplierRows = must(suppliers, "load suppliers") as {
+    id: number; name: string; lead_time_days: number | null; delivery_days: string | null; min_order_amount: number | null;
+  }[];
   const prices = must(
     await db.from("supplier_prices").select("supplier_id, ingredient_id, pack_desc, pack_qty, price, effective_date")
       .in("supplier_id", supplierRows.map((s) => s.id)).order("effective_date"),
@@ -51,40 +54,10 @@ export async function loadSources(db: Db, today: string) {
       };
     }
   }
-  return { sources, latest };
-}
-
-// One draft purchase order per supplier. `items` are amounts in the ingredient's unit; they're rounded
-// up to whole packs. Returns the new order ids.
-export async function draftOrders(
-  db: Db,
-  sources: Record<number, Source>,
-  items: { ingredient_id: number; qty: number; note: string }[],
-  reasonPrefix: string,
-  neededBy?: string,
-) {
-  const bySupplier = new Map<number, { lines: { ingredient_id: number; qty: number; est_unit_price: number }[]; notes: string[]; late: boolean }>();
-  for (const item of items) {
-    const src = sources[item.ingredient_id];
-    if (!src || item.qty <= 0) continue;
-    const entry = bySupplier.get(src.supplier_id) ?? { lines: [], notes: [], late: false };
-    entry.lines.push({ ingredient_id: item.ingredient_id, qty: Math.ceil(item.qty / src.pack_qty), est_unit_price: src.price });
-    entry.notes.push(item.note);
-    entry.late ||= Boolean(neededBy && src.earliest_delivery > neededBy);
-    bySupplier.set(src.supplier_id, entry);
-  }
-  const created: number[] = [];
-  for (const [supplierId, entry] of bySupplier) {
-    const late = entry.late ? " Their earliest delivery is after that day, so this may arrive late." : "";
-    const po = must(
-      await db.from("purchase_orders").insert({
-        restaurant_id: RESTAURANT_ID, supplier_id: supplierId, status: "draft", created_by: "ai", expected_date: neededBy ?? null,
-        reason: `${reasonPrefix} ${entry.notes.join("; ")}.${late}`,
-      }).select("id").single(),
-      "create the order",
-    ) as { id: number };
-    must(await db.from("purchase_order_lines").insert(entry.lines.map((l) => ({ ...l, purchase_order_id: po.id }))), "add the order lines");
-    created.push(po.id);
-  }
-  return created;
+  // Everything the order plan (plan.ts) compares: every supplier's latest offer, minimums, delivery dates
+  const supplierInfo: SupplierInfo[] = supplierRows.map((s) => ({
+    id: s.id, name: s.name, min_order_amount: Number(s.min_order_amount ?? 0), earliest_delivery: nextDeliveryDate(today, s),
+  }));
+  const preferred = new Map(ingredientRows.map((i) => [i.id, i.preferred_supplier_id]));
+  return { sources, latest, offers: [...latest.values()] as Offer[], suppliers: supplierInfo, preferred };
 }

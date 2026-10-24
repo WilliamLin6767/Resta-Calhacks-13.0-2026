@@ -1,13 +1,14 @@
 // Inventory on top of Supabase (server only).
-//   loadInventory     - stock now, recent changes, waste this week
+//   loadInventory     - stock now (including today's sales so far), recent changes, waste this week
 //   saveCounts        - the owner confirmed counts (from a photo, a voice note or by hand)
 //   logWaste          - stock thrown out, valued at cost
 //   addInvoiceToStock - a scanned invoice is the delivery: its lines go into stock once
-//   reorderLow        - draft orders to bring low items back to par
+//   lowStockNeeds     - what's low and how much brings it back to par, for the order plan
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { draftOrders, loadSources } from "@/lib/purchasing/sources";
+import type { Need } from "@/lib/purchasing/plan";
+import { loadSources } from "@/lib/purchasing/sources";
 import { RESTAURANT_ID } from "@/lib/supabase";
-import { countDays, countGap, reorderQty, stockLines, usageByDay, type Ingredient, type LastCount, type RecipeRow, type SalesRow, type StockLine } from "./stock";
+import { countDays, countGap, reorderQty, stockLines, todayRows, usageByDay, type Ingredient, type LastCount, type RecipeRow, type SalesRow, type StockLine } from "./stock";
 import type { IngredientRef } from "./ai";
 
 type Db = SupabaseClient;
@@ -28,10 +29,11 @@ export function todayLocal() {
 
 export async function loadInventory(db: Db) {
   const today = todayLocal();
-  const [ingredients, counts, sales, recipes, events, costs, sourcesResult] = await Promise.all([
+  const [ingredients, counts, sales, salesToday, recipes, events, costs, sourcesResult] = await Promise.all([
     db.from("ingredients").select("id, name, unit, category, current_qty, par_level, reorder_point").eq("restaurant_id", RESTAURANT_ID).order("name"),
     db.from("inventory_counts").select("ingredient_id, counted_at").order("counted_at", { ascending: false }).limit(1000),
     db.rpc("dish_sales_by_day", { p_restaurant_id: RESTAURANT_ID, p_days: 28 }),
+    db.rpc("dish_sales_today", { p_restaurant_id: RESTAURANT_ID }), // receipts scanned today (09)
     db.from("recipe_items").select("menu_item_id, ingredient_id, qty"),
     db.from("stock_events")
       .select("id, ingredient_id, kind, change, qty_after, reason, unit_cost, source, created_at, ingredients(name, unit)")
@@ -47,10 +49,13 @@ export async function loadInventory(db: Db) {
     if (!lastCounted.has(c.ingredient_id)) lastCounted.set(c.ingredient_id, countDays(c.counted_at));
   }
   const usage = usageByDay(
-    must(sales, "load past sales (has supabase/06_prep.sql been run?)") as SalesRow[],
+    [
+      ...(must(sales, "load past sales (has supabase/06_prep.sql been run?)") as SalesRow[]),
+      ...todayRows(today, must(salesToday, "load today's sales (has supabase/09_sales_receipts.sql been run?)") as { menu_item_id: number; units: number }[]),
+    ],
     must(recipes, "load recipes") as RecipeRow[],
   );
-  const lines = stockLines(ingredientRows, lastCounted, usage);
+  const lines = stockLines(ingredientRows, lastCounted, usage, today);
   const eventRows = must(events, "load stock changes (has supabase/08_inventory.sql been run?)") as unknown as StockEvent[];
   const unitCost = new Map((must(costs, "load costs") as { ingredient_id: number; unit_cost: number | null }[]).map((c) => [c.ingredient_id, Number(c.unit_cost ?? 0)]));
   const { sources } = sourcesResult;
@@ -146,13 +151,14 @@ export async function addInvoiceToStock(db: Db, invoiceId: number) {
   }
 }
 
-export async function reorderLow(db: Db) {
-  const { lines, sources } = await loadInventory(db);
+// Everything low, with how much brings it back to par, for the order plan (lib/purchasing/planService.ts)
+export async function lowStockNeeds(db: Db): Promise<{ needs: Need[]; label: string }> {
+  const { lines } = await loadInventory(db);
   const low: StockLine[] = lines.filter((l) => l.status !== "ok" && reorderQty(l) > 0);
-  return draftOrders(
-    db,
-    sources,
-    low.map((l) => ({ ingredient_id: l.id, qty: reorderQty(l), note: `${l.name}: about ${l.estimated} ${l.unit} left, par is ${l.par_level} ${l.unit}` })),
-    "Low stock.",
-  );
+  return {
+    label: "Low stock.",
+    needs: low.map((l) => ({
+      ingredient_id: l.id, name: l.name, unit: l.unit, qty: reorderQty(l), note: `about ${l.estimated} ${l.unit} left, par is ${l.par_level} ${l.unit}`,
+    })),
+  };
 }
