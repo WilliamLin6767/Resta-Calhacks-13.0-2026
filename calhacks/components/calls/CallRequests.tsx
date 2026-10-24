@@ -7,6 +7,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import EmptyState from "@/components/ui/EmptyState";
+import Fold from "@/components/ui/Fold";
 import { SkeletonLines } from "@/components/ui/Skeleton";
 import { formatPhone } from "@/lib/calls/phone";
 import type { CallView } from "@/lib/calls/service";
@@ -280,8 +281,10 @@ function SwitchSuggestion({ check, supplier, busy, onCheckAgain }: { check: Swit
   );
 }
 
-function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial<CallView>) => void }) {
+// `compact` (older finished calls): the summary and buttons only, the rest behind "More details".
+function CallCard({ call, onChanged, compact = false }: { call: CallView; onChanged: (c?: Partial<CallView>) => void; compact?: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [full, setFull] = useState(!compact);
   const [draft, setDraft] = useState<Brief>(call.brief);
   const [busy, setBusy] = useState(false);
   const [approving, setApproving] = useState(false); // shows the progress bar while Wajo starts the call
@@ -339,7 +342,14 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
       {call.status === "pending" && !approving && (
         <>
           <div className="mt-2"><DialLine call={call} /></div>
-          {editing ? <BriefEditor brief={draft} onChange={setDraft} /> : <BriefView brief={call.brief} />}
+          {editing ? (
+            <BriefEditor brief={draft} onChange={setDraft} />
+          ) : (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">See what the AI will say and agree to</summary>
+              <BriefView brief={call.brief} />
+            </details>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               className={primary}
@@ -372,13 +382,13 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
 
       {call.status === "completed" && (
         <div className="mt-3 space-y-2">
-          <CallProgress step={3} supplier={call.supplier.name} since={null} />
+          {full && <CallProgress step={3} supplier={call.supplier.name} since={null} />}
           <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
             <p className="text-xs font-medium tracking-wide text-gray-500 uppercase">Summary</p>
             <p className="mt-1 text-sm text-gray-900">{call.outcome}</p>
             <ResultFacts call={call} />
           </div>
-          {call.result?.switch && (
+          {full && call.result?.switch && (
             <SwitchSuggestion
               check={call.result.switch}
               supplier={call.supplier.name}
@@ -401,7 +411,8 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
       {call.status === "failed" && <p className="mt-2 text-sm text-red-700">{call.error ?? "The call didn't go through."}</p>}
 
       {/* The caller sometimes reports after the app stopped checking: read Wajo again (never dials). */}
-      {call.wajo_call_id &&
+      {full &&
+        call.wajo_call_id &&
         (call.status === "failed" || (call.status === "completed" && (call.result?.outcome === "callback_needed" || call.result?.outcome === "no_answer"))) && (
           <button className={`${button} mt-2`} disabled={busy} onClick={() => act(`/api/calls/${call.id}/recheck`, {})}>
             {busy ? "Checking..." : "Check Wajo again"}
@@ -410,7 +421,7 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
       {call.error && call.status === "completed" && <p className="mt-1 text-xs text-gray-500">{call.error}</p>}
 
       {/* The raw back-and-forth with the calling agent, only once the call is over and only if opened. */}
-      {(call.status === "completed" || call.status === "failed") && (call.transcript || (call.result?.qa?.length ?? 0) > 0) && (
+      {full && (call.status === "completed" || call.status === "failed") && (call.transcript || (call.result?.qa?.length ?? 0) > 0) && (
         <details className="mt-2 text-xs text-gray-500">
           <summary className="cursor-pointer hover:text-gray-700">Behind the scenes</summary>
           {(call.result?.qa?.length ?? 0) > 0 && (
@@ -422,6 +433,11 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
           )}
           {call.transcript && <p className="mt-1 whitespace-pre-wrap rounded-md bg-gray-50 px-3 py-2">{call.transcript}</p>}
         </details>
+      )}
+      {compact && (
+        <button className="mt-2 text-xs text-gray-500 hover:text-gray-800 hover:underline" onClick={() => setFull(!full)} aria-expanded={full}>
+          {full ? "Fewer details" : "More details"}
+        </button>
       )}
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
     </li>
@@ -457,6 +473,9 @@ export default function CallRequests({
   const router = useRouter();
   const [calls, setCalls] = useState<CallView[] | null>(null);
   const [error, setError] = useState("");
+  // Calls the owner watched finish here stay up top until the page reloads, so they don't
+  // vanish into the folded "Finished calls" while being read.
+  const [watched, setWatched] = useState<Set<number>>(new Set());
 
   const query = new URLSearchParams({
     ...(contextType ? { context_type: contextType } : {}),
@@ -493,7 +512,9 @@ export default function CallRequests({
       const updates = await Promise.all(
         activeIds.split(",").map((id) => fetch(`/api/calls/${id}/status`).then((r) => r.json()).catch(() => null))
       );
-      const finished = updates.some((u) => u?.call && !followed(u.call));
+      const done = updates.filter((u) => u?.call && !followed(u.call)).map((u) => u.call.id as number);
+      const finished = done.length > 0;
+      if (finished) setWatched((w) => new Set([...w, ...done]));
       setCalls((prev) =>
         (prev ?? []).map((c) => {
           const u = updates.find((x) => x?.call?.id === c.id)?.call;
@@ -516,11 +537,16 @@ export default function CallRequests({
 
   if (hideWhenEmpty && calls !== null && calls.length === 0 && !error) return null;
   const all = calls ?? [];
+  const isFinished = (c: CallView) => FINISHED_STATUSES.includes(c.status) && !watched.has(c.id);
   // Waiting for the owner's OK or under way, newest first (as the API sends them).
-  const open = all.filter((c) => c.status !== "rejected" && !FINISHED_STATUSES.includes(c.status));
+  const open = all.filter((c) => c.status !== "rejected" && !isFinished(c));
   // Done or didn't work: their own list, most important first.
-  const finished = sortFinished(all.filter((c) => FINISHED_STATUSES.includes(c.status)));
+  const finished = sortFinished(all.filter(isFinished));
   const rejected = all.filter((c) => c.status === "rejected").length;
+  const waiting = open.filter((c) => c.status === "pending").length;
+  const live = open.filter((c) => ACTIVE.includes(c.status)).length;
+  const justDone = open.length - waiting - live;
+  const finishedToDo = finished.filter((c) => finishedPriority(c) < 2).length;
 
   return (
     <section className="space-y-2" aria-label={title}>
@@ -530,38 +556,72 @@ export default function CallRequests({
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
       {calls === null && !error && <SkeletonLines lines={3} className="rounded-2xl border border-brand-100 bg-white p-4" />}
-      {calls !== null && open.length === 0 && (
-        <EmptyState title={finished.length ? "No calls waiting for your OK." : "No calls here."} icon="truck" />
+      {calls !== null && all.length === 0 && <EmptyState title="No calls here." icon="truck" />}
+      {calls !== null && all.length > 0 && (
+        <Fold
+          summary={
+            <>
+              {waiting > 0 && (
+                <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{waiting} waiting for your OK</span>
+              )}
+              {live > 0 && (
+                <span className="flex items-center gap-2 font-medium text-gray-900">
+                  <span className="relative inline-flex h-2 w-2" aria-hidden="true">
+                    <span className="live-pulse absolute inset-0 rounded-full bg-blue-500" />
+                    <span className="relative h-2 w-2 rounded-full bg-blue-600" />
+                  </span>
+                  {live} on the phone now
+                </span>
+              )}
+              {justDone > 0 && <span className="text-gray-600">{justDone} just finished</span>}
+              {finished.length > 0 && (
+                <span className="text-gray-600">
+                  {finished.length} finished{finishedToDo > 0 ? ` (${finishedToDo} need${finishedToDo === 1 ? "s" : ""} you)` : ""}
+                </span>
+              )}
+              {open.length === 0 && finished.length === 0 && <span className="text-gray-600">No calls waiting for your OK</span>}
+            </>
+          }
+        >
+          <div className="space-y-2">
+            {open.length === 0 && <p className="px-1 text-sm text-gray-600">No calls waiting for your OK.</p>}
+            <ul className="grid gap-3">
+              {open.map((c) => (
+                <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={changed} />
+              ))}
+            </ul>
+            {rejected > 0 && <p className="text-xs text-gray-500">{rejected} rejected request{rejected === 1 ? "" : "s"} hidden.</p>}
+            {finished.length > 0 && <FinishedCalls calls={finished} onChanged={changed} />}
+          </div>
+        </Fold>
       )}
-      <ul className="grid gap-3">
-        {open.map((c) => (
-          <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={changed} />
-        ))}
-      </ul>
-      {rejected > 0 && <p className="text-xs text-gray-500">{rejected} rejected request{rejected === 1 ? "" : "s"} hidden.</p>}
-      {finished.length > 0 && <FinishedCalls calls={finished} onChanged={changed} />}
     </section>
   );
 }
 
 const FINISHED_SHOWN = 5;
 
-// The "finished" folder: calls that still need something on top, older and settled ones further down.
+// The "finished" folder, folded: calls that still need something on top, older and settled ones
+// further down, each one short until opened.
 function FinishedCalls({ calls, onChanged }: { calls: CallView[]; onChanged: () => void }) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? calls : calls.slice(0, FINISHED_SHOWN);
   const toDo = calls.filter((c) => finishedPriority(c) < 2).length;
   return (
-    <details open className="group rounded-lg border border-gray-200 bg-gray-50/60 p-3">
-      <summary className="cursor-pointer list-none text-sm font-semibold text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
-        <span aria-hidden="true" className="mr-1 inline-block transition-transform group-open:rotate-90">›</span>
-        Finished calls ({calls.length})
-        {toDo > 0 && <span className="ml-2 text-xs font-normal text-gray-600">{toDo} need{toDo === 1 ? "s" : ""} something from you</span>}
-      </summary>
-      <p className="mt-1 text-xs text-gray-500">Most important first: calls with something left to do, then the newest. Older settled calls sink to the bottom.</p>
-      <ul className="mt-3 grid gap-3">
+    <Fold
+      summary={
+        <>
+          <span className="font-semibold text-gray-900">Finished calls ({calls.length})</span>
+          {toDo > 0 && (
+            <span className="flex items-center gap-2 text-gray-600"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{toDo} need{toDo === 1 ? "s" : ""} something from you</span>
+          )}
+        </>
+      }
+    >
+      <p className="px-1 text-xs text-gray-500">Most important first: calls with something left to do, then the newest.</p>
+      <ul className="mt-2 grid gap-3">
         {shown.map((c) => (
-          <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={onChanged} />
+          <CallCard key={`${c.id}-${c.status}`} call={c} onChanged={onChanged} compact />
         ))}
       </ul>
       {calls.length > FINISHED_SHOWN && (
@@ -569,6 +629,6 @@ function FinishedCalls({ calls, onChanged }: { calls: CallView[]; onChanged: () 
           {showAll ? "Show fewer" : `Show ${calls.length - FINISHED_SHOWN} older`}
         </button>
       )}
-    </details>
+    </Fold>
   );
 }
