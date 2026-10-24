@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import MarketButton from "@/components/analytics/MarketButton";
+import { CallBadge, CheckForCalls, RequestCall } from "@/components/calls/CallControls";
+import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
 import MarketSeriesChart from "@/components/suppliers/MarketSeriesChart";
 import type { Digest } from "@/lib/analytics";
+import { formatPhone, normalizePhone } from "@/lib/calls/phone";
+import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { telHref } from "@/lib/market/leads";
 import { chartSeries, explainMarket, ingredientFamily, type IngredientFamily } from "@/lib/market/judge";
@@ -37,11 +41,14 @@ type LeadRow = {
 
 async function SuppliersTable() {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("name, category, contact_name, phone, preferred_channel, lead_time_days, delivery_days")
-    .eq("restaurant_id", RESTAURANT_ID)
-    .order("name");
+  const [{ data, error }, counts] = await Promise.all([
+    supabase
+      .from("suppliers")
+      .select("id, name, category, contact_name, phone, preferred_channel, lead_time_days, delivery_days")
+      .eq("restaurant_id", RESTAURANT_ID)
+      .order("name"),
+    pendingCounts(supabase).catch(() => null),
+  ]);
   if (error) return <ErrorMessage message={error.message} />;
 
   return (
@@ -55,9 +62,29 @@ async function SuppliersTable() {
         { key: "lead_time_days", label: "Lead time (days)" },
         { key: "delivery_days", label: "Delivers" },
       ]}
-      rows={data ?? []}
+      rows={(data ?? []).map((s) => {
+        const phone = normalizePhone(s.phone);
+        return {
+          ...s,
+          name: (
+            <>
+              {s.name}
+              <CallBadge count={counts?.bySupplier[s.id]} />
+            </>
+          ),
+          phone: phone ? formatPhone(phone) : <span className="text-gray-400">none on file</span>,
+        };
+      })}
     />
   );
+}
+
+// The owner's own call request: pick a supplier, say what to ask.
+async function RequestCallForm() {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.from("suppliers").select("id, name, phone").eq("restaurant_id", RESTAURANT_ID).order("name");
+  if (error) return <ErrorMessage message={error.message} />;
+  return <RequestCall suppliers={(data ?? []).map((s) => ({ id: s.id, name: s.name, has_phone: normalizePhone(s.phone) !== null }))} />;
 }
 
 function phoneFor(name: string | null, phones: Map<string, string>): string | null {
@@ -205,7 +232,7 @@ async function PriceJumpsContent() {
                       <li key={`${lead.company_name}-${lead.phone}`} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="font-medium">{lead.company_name}</span>
                         <span className="text-gray-500">{[lead.city, lead.state].filter(Boolean).join(", ")}</span>
-                        <a href={telHref(lead.phone)} className="rounded bg-gray-900 px-2 py-0.5 text-xs font-medium text-white">
+                        <a href={telHref(lead.phone)} className="lift rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
                           Call {lead.phone}
                         </a>
                         {lead.matched_product && <span className="text-gray-500">{lead.matched_product}</span>}
@@ -228,6 +255,13 @@ export default function SuppliersPage() {
   return (
     <div>
       <PageHeader title="Suppliers" description="See who you buy from, whether a price jump is the wider market, and who to call." />
+      {/* Every call request, for any record: the one place to approve them all. Nothing dials until "Approve and call". */}
+      <section className="mb-10 space-y-4">
+        <CallRequests title="Supplier calls" action={<CheckForCalls />} />
+        <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
+          <RequestCallForm />
+        </Suspense>
+      </section>
       <PriceJumps />
       <h2 className="mb-3 text-lg font-semibold">Contacts on file</h2>
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>

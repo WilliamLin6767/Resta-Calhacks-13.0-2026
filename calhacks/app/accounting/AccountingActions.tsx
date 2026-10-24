@@ -54,7 +54,7 @@ export function QuickbooksExport({ defaultFrom, defaultTo }: { defaultFrom: stri
       <a
         href={valid ? `/api/accounting/quickbooks?from=${from}&to=${to}` : undefined}
         aria-disabled={!valid}
-        className={`rounded-md px-4 py-2 text-sm font-medium text-white ${valid ? "bg-gray-900 hover:bg-gray-700" : "pointer-events-none bg-gray-400"}`}
+        className={`lift rounded-md px-4 py-2 text-sm font-medium text-white ${valid ? "bg-brand-600 hover:bg-brand-700" : "pointer-events-none bg-gray-400"}`}
       >
         Download for QuickBooks
       </a>

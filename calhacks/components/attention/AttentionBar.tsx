@@ -66,7 +66,7 @@ async function Bar({ tab }: { tab: Tab }) {
 // The bar at the top of a tab: an AI summary of the tab, then what needs the owner, with the buttons to act.
 export default function AttentionBar({ tab }: { tab: Tab }) {
   return (
-    <section className="mb-8 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5">
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
       <Suspense fallback={<p className="text-sm text-gray-400">Checking what needs you...</p>}>
         <Bar tab={tab} />
       </Suspense>

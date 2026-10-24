@@ -60,7 +60,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/analytics"
         <PeriodPicker days={days} period={digest.period} />
         <Link
           href={`/analytics/compare?days=${days}`}
-          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-500"
+          className="lift rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-gray-500"
         >
           Compare numbers →
         </Link>
@@ -134,7 +134,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/analytics"
               <Link
                 key={m.id}
                 href={`/analytics/${m.id}?days=${days}`}
-                className="group flex h-full flex-col rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm hover:border-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+                className="lift-block group flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-4 hover:border-gray-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-gray-900">{m.title}</span>

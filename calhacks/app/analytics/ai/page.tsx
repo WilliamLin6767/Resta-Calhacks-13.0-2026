@@ -7,6 +7,7 @@ import AskChips from "@/components/analytics/AskChips";
 import { AiNote } from "@/components/analytics/ChartCard";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import SectionMark from "@/components/SectionMark";
 import { parseDays } from "@/lib/analytics";
 import { ACTION_AREA_MODULE, MODULES, aiNotesForModule, getModule } from "@/lib/analyticsSections";
 import { loadAnalytics } from "../data";
@@ -24,11 +25,14 @@ export default function AiPage({ searchParams }: PageProps<"/analytics/ai">) {
         </Link>{" "}
         / <span className="text-gray-900">AI analysis</span>
       </nav>
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">✦ AI analysis</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          A plain-language read of your numbers. The AI only uses numbers from the dashboard; estimates are labeled.
-        </p>
+      <header className="mb-4 flex items-start gap-4">
+        <SectionMark />
+        <div className="min-w-0">
+          <h1 className="text-[34px] leading-tight font-semibold tracking-[0.02em] text-gray-900">✦ AI analysis</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            A plain-language read of your numbers. The AI only uses numbers from the dashboard; estimates are labeled.
+          </p>
+        </div>
       </header>
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-gray-100" aria-label="Loading..." />}>
         <AiContent searchParams={searchParams} />
@@ -48,7 +52,7 @@ async function AiContent({ searchParams }: { searchParams: PageProps<"/analytics
     <div className="space-y-6">
       <PeriodPicker days={days} period={digest.period} basePath="/analytics/ai" />
 
-      <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-brand-100 bg-white p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             {report ? (
@@ -75,7 +79,7 @@ async function AiContent({ searchParams }: { searchParams: PageProps<"/analytics
 
       {report && (
         <>
-          <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-brand-100 bg-white p-5">
             <h2 className="mb-3 text-sm font-semibold text-gray-900">Suggested actions, most valuable first</h2>
             <ol className="space-y-3">
               {report.actions.map((action, i) => {
@@ -101,7 +105,7 @@ async function AiContent({ searchParams }: { searchParams: PageProps<"/analytics
             </ol>
           </section>
 
-          <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+          <section className="rounded-2xl border border-brand-100 bg-white p-5">
             <h2 className="mb-1 text-sm font-semibold text-gray-900">Notes by area</h2>
             <div className="divide-y divide-gray-100">
               {MODULES.map((m) => {
@@ -126,7 +130,7 @@ async function AiContent({ searchParams }: { searchParams: PageProps<"/analytics
         </>
       )}
 
-      <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-brand-100 bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">✦ Ask a follow-up</h2>
         <AskChips questions={["What should I do this week?", "What is going well?", "What is the biggest risk right now?"]} />
       </section>

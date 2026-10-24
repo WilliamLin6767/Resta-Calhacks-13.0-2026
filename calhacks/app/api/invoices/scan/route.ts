@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { scanForCalls } from "@/lib/calls/service";
 import { readInvoice } from "@/lib/purchasing/ai";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { saveScannedInvoice } from "@/lib/purchasing/service";
@@ -20,6 +22,9 @@ export async function POST(request: Request) {
     if (!read.lines.length) return errorResponse("No product lines found. Is this a supplier invoice?", 422);
     const supabase = await getSupabase();
     const id = await saveScannedInvoice(supabase, read, "photo");
+    // A new invoice can mean a billing error worth a call: look for calls after responding,
+    // so the upload isn't slower. They only show up as pending requests to approve.
+    after(() => scanForCalls(supabase).catch((err) => console.error("Call scan after invoice failed:", err)));
     return Response.json({ id });
   } catch (err) {
     return handleError(err);

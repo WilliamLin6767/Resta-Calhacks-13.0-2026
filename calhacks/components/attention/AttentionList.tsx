@@ -7,7 +7,7 @@ import OrderPlan from "@/components/OrderPlan";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
 
 const DOT = { act: "bg-red-500", watch: "bg-amber-400", info: "bg-gray-300" };
-const mainClass = "rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const mainClass = "rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 const linkClass = "text-sm text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline disabled:opacity-50";
 
 // One button. The item's first action is the main button; the rest are small links next to it.

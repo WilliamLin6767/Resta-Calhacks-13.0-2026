@@ -1,11 +1,228 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
+}
+
+/* The look, after the "Dashboard (Community)" Figma design: Poppins, navy-gray ink and
+   cool blue-gray neutrals. Overriding Tailwind's gray scale restyles every page at once,
+   so pages keep using plain gray-* classes. Status colors (red, amber, green, blue) and
+   the chart palette (lib/analytics.ts SERIES_COLORS) are unchanged. */
+@theme {
+  --color-gray-50: #f7f9fc; /* light panels (the design's right column) */
+  --color-gray-100: #eceff5; /* dividers, progress-bar tracks */
+  --color-gray-200: #e3e8f0; /* card borders */
+  --color-gray-300: #d2dce8; /* input borders, outlines */
+  --color-gray-400: #a3abb8;
+  --color-gray-500: #7b8494; /* muted text */
+  --color-gray-600: #5d6675;
+  --color-gray-700: #404852; /* secondary text */
+  --color-gray-800: #273240; /* body text */
+  --color-gray-900: #1f2336; /* headings, primary buttons */
+  --color-gray-950: #101010; /* the dark shell */
+
+  --color-accent: #31ba96; /* the design's green, for progress */
+
+  /* Brand color for main actions and selected states. This is the default (muted slate blue);
+     each section swaps it for its own color below, so a page's buttons, tabs and accents
+     match its sidebar tile. White text on 600 has at least 4.5:1 contrast in every palette. */
+  --color-brand-50: #eef2f8;
+  --color-brand-100: #dbe3ef;
+  --color-brand-200: #bccbe0;
+  --color-brand-500: #4a6a96;
+  --color-brand-600: #3b5680;
+  --color-brand-700: #2e4466;
+}
+
+/* Each section's palette: deep, muted tones. Static so every variable is emitted, since the
+   per-section rules below read them even where no class uses them. */
+@theme static {
+  --color-overview-50: #eef2f8;
+  --color-overview-100: #dbe3ef;
+  --color-overview-200: #bccbe0;
+  --color-overview-500: #4a6a96;
+  --color-overview-600: #3b5680;
+  --color-overview-700: #2e4466;
+
+  --color-inventory-50: #fbf3ed; /* terracotta */
+  --color-inventory-100: #f3e1d3;
+  --color-inventory-200: #e6c3aa;
+  --color-inventory-500: #b0663d;
+  --color-inventory-600: #92522f;
+  --color-inventory-700: #754125;
+
+  --color-prep-50: #eef5f0; /* forest green */
+  --color-prep-100: #d8e9de;
+  --color-prep-200: #b3d2be;
+  --color-prep-500: #3f7a57;
+  --color-prep-600: #2f6446;
+  --color-prep-700: #244e37;
+
+  --color-invoices-50: #f3f0f8; /* plum */
+  --color-invoices-100: #e4ddf0;
+  --color-invoices-200: #c9bce0;
+  --color-invoices-500: #6e5a9c;
+  --color-invoices-600: #5a4885;
+  --color-invoices-700: #47396a;
+
+  --color-suppliers-50: #edf5f6; /* petrol teal */
+  --color-suppliers-100: #d5e8ea;
+  --color-suppliers-200: #aed2d6;
+  --color-suppliers-500: #3a7d86;
+  --color-suppliers-600: #2c656d;
+  --color-suppliers-700: #235258;
+
+  --color-menu-50: #f8eff1; /* wine */
+  --color-menu-100: #efdce1;
+  --color-menu-200: #dfb8c2;
+  --color-menu-500: #a24d64;
+  --color-menu-600: #893d52;
+  --color-menu-700: #6d3041;
+
+  --color-accounting-50: #f8f3e8; /* ochre */
+  --color-accounting-100: #efe4c9;
+  --color-accounting-200: #e0cb98;
+  --color-accounting-500: #9c7426;
+  --color-accounting-600: #80601f;
+  --color-accounting-700: #664c19;
+
+  --color-analytics-50: #eff0f8; /* dusk indigo */
+  --color-analytics-100: #dcdff0;
+  --color-analytics-200: #babfe0;
+  --color-analytics-500: #525d9e;
+  --color-analytics-600: #434c87;
+  --color-analytics-700: #363d6c;
+
+  --color-trends-50: #f6eff5; /* berry */
+  --color-trends-100: #ebdbe8;
+  --color-trends-200: #d6b7d1;
+  --color-trends-500: #8e4f86;
+  --color-trends-600: #77416f;
+  --color-trends-700: #5f3459;
+}
+
+/* The page panel carries data-section (components/SectionMain.tsx); inside it, brand-* and the
+   progress accent become that section's color. */
+[data-section="overview"] {
+  --color-brand-50: var(--color-overview-50);
+  --color-brand-100: var(--color-overview-100);
+  --color-brand-200: var(--color-overview-200);
+  --color-brand-500: var(--color-overview-500);
+  --color-brand-600: var(--color-overview-600);
+  --color-brand-700: var(--color-overview-700);
+  --color-accent: var(--color-overview-500);
+}
+[data-section="inventory"] {
+  --color-brand-50: var(--color-inventory-50);
+  --color-brand-100: var(--color-inventory-100);
+  --color-brand-200: var(--color-inventory-200);
+  --color-brand-500: var(--color-inventory-500);
+  --color-brand-600: var(--color-inventory-600);
+  --color-brand-700: var(--color-inventory-700);
+  --color-accent: var(--color-inventory-500);
+}
+[data-section="prep"] {
+  --color-brand-50: var(--color-prep-50);
+  --color-brand-100: var(--color-prep-100);
+  --color-brand-200: var(--color-prep-200);
+  --color-brand-500: var(--color-prep-500);
+  --color-brand-600: var(--color-prep-600);
+  --color-brand-700: var(--color-prep-700);
+  --color-accent: var(--color-prep-500);
+}
+[data-section="invoices"] {
+  --color-brand-50: var(--color-invoices-50);
+  --color-brand-100: var(--color-invoices-100);
+  --color-brand-200: var(--color-invoices-200);
+  --color-brand-500: var(--color-invoices-500);
+  --color-brand-600: var(--color-invoices-600);
+  --color-brand-700: var(--color-invoices-700);
+  --color-accent: var(--color-invoices-500);
+}
+[data-section="suppliers"] {
+  --color-brand-50: var(--color-suppliers-50);
+  --color-brand-100: var(--color-suppliers-100);
+  --color-brand-200: var(--color-suppliers-200);
+  --color-brand-500: var(--color-suppliers-500);
+  --color-brand-600: var(--color-suppliers-600);
+  --color-brand-700: var(--color-suppliers-700);
+  --color-accent: var(--color-suppliers-500);
+}
+[data-section="menu"] {
+  --color-brand-50: var(--color-menu-50);
+  --color-brand-100: var(--color-menu-100);
+  --color-brand-200: var(--color-menu-200);
+  --color-brand-500: var(--color-menu-500);
+  --color-brand-600: var(--color-menu-600);
+  --color-brand-700: var(--color-menu-700);
+  --color-accent: var(--color-menu-500);
+}
+[data-section="accounting"] {
+  --color-brand-50: var(--color-accounting-50);
+  --color-brand-100: var(--color-accounting-100);
+  --color-brand-200: var(--color-accounting-200);
+  --color-brand-500: var(--color-accounting-500);
+  --color-brand-600: var(--color-accounting-600);
+  --color-brand-700: var(--color-accounting-700);
+  --color-accent: var(--color-accounting-500);
+}
+[data-section="analytics"] {
+  --color-brand-50: var(--color-analytics-50);
+  --color-brand-100: var(--color-analytics-100);
+  --color-brand-200: var(--color-analytics-200);
+  --color-brand-500: var(--color-analytics-500);
+  --color-brand-600: var(--color-analytics-600);
+  --color-brand-700: var(--color-analytics-700);
+  --color-accent: var(--color-analytics-500);
+}
+[data-section="trends"] {
+  --color-brand-50: var(--color-trends-50);
+  --color-brand-100: var(--color-trends-100);
+  --color-brand-200: var(--color-trends-200);
+  --color-brand-500: var(--color-trends-500);
+  --color-brand-600: var(--color-trends-600);
+  --color-brand-700: var(--color-trends-700);
+  --color-accent: var(--color-trends-500);
+}
+
+/* A wash of the section's color across the top of the page panel. */
+.section-main {
+  background: linear-gradient(to bottom, var(--color-brand-50), #fff 320px);
+}
+
+/* Hover lift: buttons, and links that look like buttons (.lift) or cards (.lift-block), grow a
+   little under the mouse and dip when pressed. Skipped for people who ask for less motion.
+   Not in a layer, so its transition (which keeps color fades) wins over Tailwind's. */
+@media (prefers-reduced-motion: no-preference) {
+  button,
+  .lift,
+  .lift-block {
+    transition:
+      scale 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease;
+  }
+  button:not(:disabled):hover,
+  .lift:hover {
+    scale: 1.04;
+  }
+  .lift-block:hover,
+  button.lift-block:not(:disabled):hover {
+    scale: 1.02; /* big cards grow less, so they don't jump */
+  }
+  button:not(:disabled):active,
+  .lift:active,
+  .lift-block:active {
+    scale: 0.98;
+  }
 }
 
 /* Colors are set with Tailwind classes in app/layout.tsx */
 body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
 }
+

@@ -6,6 +6,7 @@ import AskChips from "@/components/analytics/AskChips";
 import ChartCard from "@/components/analytics/ChartCard";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import SectionMark from "@/components/SectionMark";
 import { parseDays } from "@/lib/analytics";
 import { ALERT_THRESHOLDS, buildAlerts } from "@/lib/insights";
 import { loadAnalytics } from "../data";
@@ -22,9 +23,12 @@ export default function ChangesPage({ searchParams }: PageProps<"/analytics/chan
         </Link>{" "}
         / <span className="text-gray-900">What changed</span>
       </nav>
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">What changed</h1>
-        <p className="mt-1 text-sm text-gray-600">The numbers that moved enough to need a look, compared with the period before.</p>
+      <header className="mb-4 flex items-start gap-4">
+        <SectionMark />
+        <div className="min-w-0">
+          <h1 className="text-[34px] leading-tight font-semibold tracking-[0.02em] text-gray-900">What changed</h1>
+          <p className="mt-1 text-sm text-gray-600">The numbers that moved enough to need a look, compared with the period before.</p>
+        </div>
       </header>
       <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-gray-100" aria-label="Loading..." />}>
         <ChangesContent searchParams={searchParams} />
@@ -50,12 +54,12 @@ async function ChangesContent({ searchParams }: { searchParams: PageProps<"/anal
         <AlertList alerts={alerts} days={days} />
       </ChartCard>
 
-      <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+      <section className="rounded-2xl border border-brand-100 bg-white p-5">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">✦ Ask about these changes</h2>
         <AskChips questions={["What should I do about these changes first?", "Are any of these changes worrying?"]} />
       </section>
 
-      <section className="rounded-xl border border-gray-200/80 bg-white p-5 text-sm text-gray-600 shadow-sm">
+      <section className="rounded-2xl border border-brand-100 bg-white p-5 text-sm text-gray-600 shadow-sm">
         <h2 className="mb-2 text-sm font-semibold text-gray-900">How these are picked</h2>
         <p className="mb-2">Fixed rules, not AI. Each one compares this period with the same-length period before it:</p>
         <ul className="list-disc space-y-1 pl-5">
