@@ -7,7 +7,7 @@ import OrderPlan from "@/components/OrderPlan";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
 
 const DOT = { act: "bg-red-500", watch: "bg-amber-400", info: "bg-gray-300" };
-const mainClass = "rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
+const mainClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto";
 const linkClass = "text-sm text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline disabled:opacity-50";
 
 // One button. The item's first action is the main button; the rest are small links next to it.
@@ -68,24 +68,53 @@ function ActionButton({ action, main, onDone }: { action: Action; main: boolean;
 
 function Row({ item, showTab, onDismiss }: { item: Item; showTab: boolean; onDismiss: (i: Item) => void }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const refresh = () => router.refresh();
+  const primary = item.actions[0];
+  const rest = item.actions.slice(1);
   return (
-    <li className="flex gap-3 py-3">
-      <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${DOT[item.level]}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="font-medium text-gray-900">
-          {item.title}
-          {showTab && (
-            <Link href={TAB_LABELS[item.tab].href} className="ml-2 whitespace-nowrap text-xs font-normal text-gray-500 hover:underline">
-              {TAB_LABELS[item.tab].label} →
-            </Link>
+    <li className="py-3">
+      <div className="hidden gap-3 md:flex">
+        <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${DOT[item.level]}`} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-gray-900">
+            {item.title}
+            {showTab && (
+              <Link href={TAB_LABELS[item.tab].href} className="ml-2 whitespace-nowrap text-xs font-normal text-gray-500 hover:underline">
+                {TAB_LABELS[item.tab].label} →
+              </Link>
+            )}
+          </p>
+          {item.detail && <p className="text-sm text-gray-600">{item.detail}</p>}
+          {(item.actions.length > 0 || item.dismissable) && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {item.actions.map((action, i) => <ActionButton key={i} action={action} main={i === 0} onDone={refresh} />)}
+              {item.dismissable && (
+                <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700" title="Hide this until something changes">
+                  Not now
+                </button>
+              )}
+            </div>
           )}
-        </p>
-        {item.detail && <p className="text-sm text-gray-600">{item.detail}</p>}
-        {(item.actions.length > 0 || item.dismissable) && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {item.actions.map((a, i) => <ActionButton key={i} action={a} main={i === 0} onDone={() => router.refresh()} />)}
+        </div>
+      </div>
+
+      <div className="md:hidden">
+        <button type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open} className="w-full text-left">
+          <p className="font-medium text-gray-900">{item.title}</p>
+          {item.detail && <p className="mt-0.5 line-clamp-2 text-sm font-normal text-gray-600">{item.detail}</p>}
+        </button>
+        {primary && (
+          <div className="mt-2">
+            <ActionButton action={primary} main onDone={refresh} />
+          </div>
+        )}
+        {open && (
+          <div className="mt-3 space-y-2">
+            {showTab && <Link href={TAB_LABELS[item.tab].href} className="text-sm text-gray-500 underline">{TAB_LABELS[item.tab].label}</Link>}
+            {rest.map((action, i) => <ActionButton key={i} action={action} main={false} onDone={refresh} />)}
             {item.dismissable && (
-              <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700" title="Hide this until something changes">
+              <button onClick={() => onDismiss(item)} className="min-h-11 text-sm text-gray-500 underline">
                 Not now
               </button>
             )}
@@ -97,7 +126,7 @@ function Row({ item, showTab, onDismiss }: { item: Item; showTab: boolean; onDis
 }
 
 // Decisions first ("To do now"); everything else folded under "Keep an eye on".
-// `showTab` links each item to its tab (for Overview).
+// On a phone the row is the title, a short line, and the main button. Tap the title for the rest.
 export default function AttentionList({ items, showTab = false, limit = 4 }: { items: Item[]; showTab?: boolean; limit?: number }) {
   const router = useRouter();
   const [all, setAll] = useState(false);
