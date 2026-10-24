@@ -171,12 +171,12 @@ async function prep(db: Db): Promise<Built> {
 async function invoices(db: Db): Promise<Built> {
   const since = addDays(todayLocal(), -45);
   const res = await db.from("invoices")
-    .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, planimpact, resolved), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
+    .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, money_impact, resolved), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
     .eq("restaurant_id", RESTAURANT_ID).gte("invoice_date", since).order("invoice_date", { ascending: false });
   if (res.error) throw new Error(`Could not load invoices: ${res.error.message}`);
   type Row = {
     id: number; invoice_number: string | null; invoice_date: string; total: number | null; status: string; suppliers: { name: string } | null;
-    invoice_flags: { kind: string; severity: string; message: string; planimpact: number | null; resolved: boolean }[];
+    invoice_flags: { kind: string; severity: string; message: string; money_impact: number | null; resolved: boolean }[];
     invoice_lines: { needs_review: boolean }[];
     invoice_disputes: { status: string; amount_claimed: number; to_email: string | null; sent_at: string | null; created_at: string }[];
   };
@@ -187,7 +187,7 @@ async function invoices(db: Db): Promise<Built> {
     const name = inv.invoice_number ?? `#${inv.id}`;
     const supplier = inv.suppliers?.name ?? "the supplier";
     const open = inv.invoice_flags.filter((f) => !f.resolved);
-    const wrong = open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).reduce((s, f) => s + Number(f.planimpact ?? 0), 0);
+    const wrong = open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).reduce((s, f) => s + Number(f.money_impact ?? 0), 0);
     const dispute = [...inv.invoice_disputes].sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
     billedWrong += wrong;
     const href = `/invoices/${inv.id}`;
@@ -220,10 +220,10 @@ async function invoices(db: Db): Promise<Built> {
       });
     }
     for (const f of open.filter((x) => x.kind === "cheaper_elsewhere")) {
-      savings += Number(f.planimpact ?? 0);
+      savings += Number(f.money_impact ?? 0);
       items.push({
-        key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.planimpact), tab: "invoices", level: "info", dismissable: true,
-        title: `${f.message.split(":")[0]}: save ${cash(Number(f.planimpact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
+        key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.money_impact), tab: "invoices", level: "info", dismissable: true,
+        title: `${f.message.split(":")[0]}: save ${cash(Number(f.money_impact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
       });
     }
   }

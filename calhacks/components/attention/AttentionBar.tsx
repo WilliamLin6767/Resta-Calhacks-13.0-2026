@@ -9,7 +9,7 @@ import AttentionList from "./AttentionList";
 
 function SummaryView({ summary }: { summary: TabSummary }) {
   return (
-    <div className="mb-4 border-b border-gray-100 pb-4">
+    <div className="mb-3 border-b border-gray-100 pb-3">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-gray-900">✦ AI summary</p>
         <HealthBadge health={summary.status} />
