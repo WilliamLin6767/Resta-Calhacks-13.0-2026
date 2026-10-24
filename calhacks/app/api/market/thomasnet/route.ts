@@ -4,9 +4,9 @@ import { searchThomasNet } from "@/lib/market/thomasnet";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
-// One search pass per few minutes. Several ingredients run inside that one pass.
-const perVisitor = createRateLimiter({ limit: 1, windowMs: 3 * 60 * 1000 });
-const wholeApp = createRateLimiter({ limit: 1, windowMs: 3 * 60 * 1000 });
+// One search pass every 30 seconds. Several ingredients run inside that one pass.
+const perVisitor = createRateLimiter({ limit: 1, windowMs: 30 * 1000 });
+const wholeApp = createRateLimiter({ limit: 1, windowMs: 30 * 1000 });
 
 const MAX_INGREDIENTS = 6;
 

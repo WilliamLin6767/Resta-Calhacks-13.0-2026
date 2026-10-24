@@ -126,7 +126,7 @@ async function PriceJumpsContent() {
         <ErrorMessage message={quotesMissing ? `Run supabase/09_market.sql in the Supabase SQL editor. ${quotesResult.error.message}` : quotesResult.error.message} />
       )}
       {leadsResult.error && (
-        <ErrorMessage message={leadsMissing ? `Run supabase/11_supplier_leads.sql in the Supabase SQL editor. ${leadsResult.error.message}` : leadsResult.error.message} />
+        <ErrorMessage message={leadsMissing ? `Run supabase/12_supplier_leads.sql in the Supabase SQL editor. ${leadsResult.error.message}` : leadsResult.error.message} />
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-4">
