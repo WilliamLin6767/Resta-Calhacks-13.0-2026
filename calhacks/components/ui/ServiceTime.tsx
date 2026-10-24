@@ -1,6 +1,4 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { connection } from "next/server";
 
 // Parts of the restaurant's day, in Berkeley time. A guess for a typical lunch-and-dinner place:
 // change these per restaurant. Each entry starts at its time (minutes after midnight).
@@ -24,25 +22,15 @@ function nowInRestaurant() {
   return { period: period.label, date };
 }
 
-// "Lunch service · Saturday, Oct 24" above the Overview title. Worked out in the browser after
-// mount (the server render shows nothing, so there's no mismatch), and checked again each minute.
-export default function ServiceTime() {
-  const [now, setNow] = useState<ReturnType<typeof nowInRestaurant> | null>(null);
-  useEffect(() => {
-    const update = () => setNow(nowInRestaurant());
-    update();
-    const timer = setInterval(update, 60_000);
-    return () => clearInterval(timer);
-  }, []);
-  // Holds its line even before it knows the time, so the title below doesn't move.
+// "Lunch service · Saturday, Oct 24" above the Overview title. The time is read per request,
+// inside Suspense, so the home page's instant shell stays static.
+export default async function ServiceTime() {
+  await connection();
+  const now = nowInRestaurant();
   return (
     <p className="mb-3 flex h-6 items-center gap-2 text-sm text-gray-500">
-      {now && (
-        <>
-          <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-100">{now.period}</span>
-          <span>{now.date}</span>
-        </>
-      )}
+      <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-100">{now.period}</span>
+      <span>{now.date}</span>
     </p>
   );
 }

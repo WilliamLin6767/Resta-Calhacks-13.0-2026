@@ -113,6 +113,13 @@
   --color-trends-500: #8e4f86;
   --color-trends-600: #77416f;
   --color-trends-700: #5f3459;
+
+  --color-marketing-50: #fbf6ea; /* marigold */
+  --color-marketing-100: #f4e6c4;
+  --color-marketing-200: #e8cc8a;
+  --color-marketing-500: #b07a16;
+  --color-marketing-600: #8c6110;
+  --color-marketing-700: #6e4b0c;
 }
 
 /* The page panel carries data-section (components/SectionMain.tsx); inside it, brand-* and the
@@ -206,6 +213,15 @@
   --color-brand-600: var(--color-trends-600);
   --color-brand-700: var(--color-trends-700);
   --color-accent: var(--color-trends-500);
+}
+[data-section="marketing"] {
+  --color-brand-50: var(--color-marketing-50);
+  --color-brand-100: var(--color-marketing-100);
+  --color-brand-200: var(--color-marketing-200);
+  --color-brand-500: var(--color-marketing-500);
+  --color-brand-600: var(--color-marketing-600);
+  --color-brand-700: var(--color-marketing-700);
+  --color-accent: var(--color-marketing-500);
 }
 
 /* A wash of the section's color across the top of the page panel. */

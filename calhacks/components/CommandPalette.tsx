@@ -19,6 +19,7 @@ const KEYWORDS: Record<string, string[]> = {
   "/accounting": ["money", "bank", "cash", "savings", "payout", "quickbooks"],
   "/analytics": ["report", "numbers", "kpi", "charts"],
   "/trends": ["trend", "social"],
+  "/marketing": ["instagram", "post", "agency", "caption", "buffer"],
 };
 
 // Opening the palette from anywhere else (e.g. the "Search" button in the page panel).
