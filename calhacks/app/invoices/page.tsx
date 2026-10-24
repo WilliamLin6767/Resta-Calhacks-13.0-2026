@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
@@ -150,6 +151,7 @@ export default function InvoicesPage() {
   return (
     <div>
       <PageHeader title="Invoices and buying" description="Scan invoices, match lines to ingredients, and approve purchase orders." />
+      <AttentionBar tab="invoices" />
       <ScanInvoice />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <PurchaseOrders />
