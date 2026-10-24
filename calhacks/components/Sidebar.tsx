@@ -60,7 +60,8 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
   return (
     // The outer box holds the space in the page: full width open, a thin rail collapsed.
     // While peeking, the menu is wider than its box and slides over the page.
-    <div className={`relative shrink-0 transition-[width] duration-300 ease-out ${collapsed ? "w-[84px]" : "w-64"}`}>
+    // On phones it lives in AppShell's drawer, always open (the rail is desktop only).
+    <div className={`relative flex-1 shrink-0 transition-[width] duration-300 ease-out ${collapsed ? "w-64 md:w-[84px]" : "w-64"}`}>
       {/* Dark, like the Figma design: big white links, the current page bright and the rest faded. */}
       <nav
         ref={navRef}
@@ -71,8 +72,8 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
         onBlur={(e) => {
           if (!navRef.current?.contains(e.relatedTarget as Node | null)) setPeek(false);
         }}
-        className={`absolute inset-y-0 left-0 z-40 overflow-x-clip bg-gray-950 text-white transition-[width,box-shadow] duration-300 ease-out ${
-          open ? "w-64" : "w-[84px]"
+        className={`absolute inset-y-0 left-0 z-40 overflow-x-clip overflow-y-auto bg-gray-950 md:overflow-y-visible text-white transition-[width,box-shadow] duration-300 ease-out ${
+          open ? "w-64" : "w-64 md:w-[84px]"
         } ${collapsed && peek ? "shadow-2xl shadow-black/60" : ""}`}
       >
         {/* Always laid out at full width; a collapsed rail just clips everything right of the icons. */}
@@ -85,14 +86,14 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
                 onClick={toggle}
                 aria-label={collapsed ? "Keep menu open" : "Collapse menu"}
                 title={collapsed ? "Keep menu open" : "Collapse menu"}
-                className={`mr-2 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white ${open ? "" : "invisible"}`}
+                className={`mr-2 rounded-md p-1.5 text-white/60 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-white max-md:hidden ${open ? "" : "invisible"}`}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d={collapsed ? "M13 6l6 6-6 6 M5 6l6 6-6 6" : "M11 6l-6 6 6 6 M19 6l-6 6 6 6"} />
                 </svg>
               </button>
             </div>
-            <div className={`transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`}>
+            <div className={`transition-opacity duration-200 ${open ? "opacity-100" : "opacity-100 md:opacity-0"}`}>
               <p className="mt-5 text-2xl leading-tight font-semibold whitespace-nowrap">Back of House</p>
               <p className="mt-1 truncate text-sm text-white/60">{restaurant}</p>
             </div>
@@ -114,10 +115,10 @@ export default function Sidebar({ restaurant }: { restaurant: React.ReactNode })
                     <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors ${active ? `${link.solid} text-white` : link.soft}`}>
                       <NavIcon icon={link.icon} size={20} />
                       {/* On the rail the count can't show, so a dot marks calls to approve. */}
-                      {calls > 0 && !open && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-950" aria-hidden="true" />}
+                      {calls > 0 && !open && <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full max-md:hidden bg-red-500 ring-2 ring-gray-950" aria-hidden="true" />}
                     </span>
                     {/* Faded out on the rail, so no half-cut letters show at its edge. Screen readers still read it. */}
-                    <span className={`flex items-center gap-3 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`}>
+                    <span className={`flex items-center gap-3 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-100 md:opacity-0"}`}>
                       {link.label}
                       {calls > 0 && (
                         <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">

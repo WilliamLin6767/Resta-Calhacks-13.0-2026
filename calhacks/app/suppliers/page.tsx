@@ -7,6 +7,8 @@ import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
+import JumpCard from "@/components/suppliers/JumpCard";
+import MarketDetail from "@/components/suppliers/MarketDetail";
 import MarketSeriesChart from "@/components/suppliers/MarketSeriesChart";
 import type { Digest } from "@/lib/analytics";
 import { formatPhone, normalizePhone } from "@/lib/calls/phone";
@@ -62,17 +64,23 @@ async function SuppliersTable() {
         { key: "lead_time_days", label: "Lead time (days)" },
         { key: "delivery_days", label: "Delivers" },
       ]}
-      rows={(data ?? []).map((s) => {
-        const phone = normalizePhone(s.phone);
+      rows={(data ?? []).map((row) => {
+        const phone = normalizePhone(row.phone);
         return {
-          ...s,
+          ...row,
           name: (
             <>
-              {s.name}
-              <CallBadge count={counts?.bySupplier[s.id]} />
+              {row.name}
+              <CallBadge count={counts?.bySupplier[row.id]} />
             </>
           ),
-          phone: phone ? formatPhone(phone) : <span className="text-gray-400">none on file</span>,
+          phone: phone ? (
+            <a href={telHref(phone)} className="font-medium text-gray-900 underline">
+              {formatPhone(phone)}
+            </a>
+          ) : (
+            <span className="text-gray-400">none on file</span>
+          ),
         };
       })}
     />
@@ -89,7 +97,8 @@ async function RequestCallForm() {
 
 function phoneFor(name: string | null, phones: Map<string, string>): string | null {
   if (!name) return null;
-  return phones.get(name.trim().toLowerCase()) ?? null;
+  const phone = phones.get(name.trim().toLowerCase());
+  return phone || null;
 }
 
 function PriceJumps() {
@@ -135,7 +144,7 @@ async function PriceJumpsContent() {
   const families = [...new Set(jumps.map((jump) => ingredientFamily(jump.ingredient)).filter((family): family is IngredientFamily => family != null))];
 
   return (
-    <section className="mb-10 space-y-4">
+    <section className="mb-10 flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="max-w-xl">
           <h2 className="text-lg font-semibold">Price jumps</h2>
@@ -156,6 +165,7 @@ async function PriceJumpsContent() {
         <ErrorMessage message={leadsMissing ? `Run supabase/12_supplier_leads.sql in the Supabase SQL editor. ${leadsResult.error.message}` : leadsResult.error.message} />
       )}
 
+      <MarketDetail>
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <h3 className="mb-3 text-sm font-semibold text-gray-900">Supplier price changes</h3>
         <SimpleTable
@@ -195,11 +205,12 @@ async function PriceJumpsContent() {
           </div>
         );
       })}
+      </MarketDetail>
 
       {jumps.length === 0 ? (
-        <p className="text-sm text-gray-500">No supplier price increases in the last 30 days.</p>
+        <p className="order-3 text-sm text-gray-500 md:order-none">No supplier price increases in the last 30 days.</p>
       ) : (
-        <div className="space-y-4">
+        <div className="order-3 space-y-4 md:order-none">
           {jumps.map((jump) => {
             const market = explainMarket({
               ingredient: jump.ingredient,
@@ -211,38 +222,21 @@ async function PriceJumpsContent() {
             const cheaperPhone = phoneFor(jump.cheapest_supplier, phones);
             const calls = leads.filter((lead) => lead.ingredient_name === jump.ingredient).slice(0, 3);
             return (
-              <article key={`${jump.ingredient}-${jump.supplier}`} className="rounded-xl border border-gray-200 bg-white p-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="font-medium">{jump.ingredient}</h3>
-                  <p className="text-sm text-gray-600">+{jump.change_pct}% since {jump.since}</p>
-                </div>
-                <p className="mt-1 text-sm text-gray-700">
-                  {jump.supplier}
-                  {currentPhone ? ` · ${currentPhone}` : ""}
-                  {jump.cheapest_supplier ? ` · cheaper on file: ${jump.cheapest_supplier}` : ""}
-                  {cheaperPhone ? ` · ${cheaperPhone}` : ""}
-                  {jump.est_period_impact != null ? ` · about ${formatMoney(jump.est_period_impact)} this period` : ""}
-                </p>
-                <p className="mt-2 text-sm text-gray-600">
-                  <span className="font-medium text-gray-800">{market.verdict}.</span> {market.detail}
-                </p>
-                {leadsResult.error ? null : calls.length > 0 ? (
-                  <ul className="mt-3 space-y-2 text-sm">
-                    {calls.map((lead) => (
-                      <li key={`${lead.company_name}-${lead.phone}`} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="font-medium">{lead.company_name}</span>
-                        <span className="text-gray-500">{[lead.city, lead.state].filter(Boolean).join(", ")}</span>
-                        <a href={telHref(lead.phone)} className="lift rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">
-                          Call {lead.phone}
-                        </a>
-                        {lead.matched_product && <span className="text-gray-500">{lead.matched_product}</span>}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-sm text-gray-500">No food supplier with a phone was found for {jump.ingredient}.</p>
-                )}
-              </article>
+              <JumpCard
+                key={`${jump.ingredient}-${jump.supplier}`}
+                ingredient={jump.ingredient}
+                changePct={jump.change_pct}
+                since={jump.since}
+                supplier={jump.supplier}
+                cheapestSupplier={jump.cheapest_supplier}
+                impact={jump.est_period_impact == null ? null : formatMoney(jump.est_period_impact)}
+                currentPhone={currentPhone}
+                cheaperPhone={cheaperPhone}
+                verdict={market.verdict}
+                detail={market.detail}
+                calls={calls}
+                leadsMissing={leadsResult.error != null}
+              />
             );
           })}
         </div>
