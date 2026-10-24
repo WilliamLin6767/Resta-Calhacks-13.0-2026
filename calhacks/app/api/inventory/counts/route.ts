@@ -2,6 +2,7 @@ import { parseItems } from "@/lib/inventory/http";
 import { saveCounts } from "@/lib/inventory/service";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 const SOURCES = ["photo", "voice", "manual"] as const;
 
@@ -13,7 +14,9 @@ export async function POST(request: Request) {
   if (!items.length) return errorResponse("Nothing to save.", 400);
   const source = SOURCES.find((s) => s === body.source) ?? "manual";
   try {
-    return Response.json({ saved: await saveCounts(await getSupabase(), items, source) });
+    const saved = await saveCounts(await getSupabase(), items, source);
+    signalAfter("/api/inventory/counts");
+    return Response.json({ saved });
   } catch (err) {
     return handleError(err);
   }

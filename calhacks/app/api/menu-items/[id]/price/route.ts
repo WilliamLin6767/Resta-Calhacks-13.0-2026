@@ -1,6 +1,7 @@
 import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { changePrice } from "@/lib/pricing/service";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 // POST /api/menu-items/3/price   { "price": 18.75, "reason": "Brisket went up" }
 // The owner approves a new in-house price. Logged in menu_price_changes.
@@ -12,6 +13,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/menu-items/
   if (!Number.isFinite(price)) return errorResponse("Send a price.", 400);
   try {
     await changePrice(await getSupabase(), id, price, typeof body.reason === "string" ? body.reason.slice(0, 500) : "");
+    signalAfter("/api/menu-items/[id]/price");
     return Response.json({ ok: true });
   } catch (err) {
     return handleError(err);

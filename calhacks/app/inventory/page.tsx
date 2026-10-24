@@ -18,6 +18,7 @@ import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
 import SalesReceipts from "./SalesReceipts";
 import StockEvents, { fmt } from "./StockEvents";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // How many recent changes the tab shows; the rest are on /inventory/changes.
 const PREVIEW = 3;
@@ -146,6 +147,7 @@ export default function InventoryPage() {
   return (
     <div>
       <PageHeader title="Inventory" description="What's on hand, how long it lasts, and what went missing. Deliveries come in from scanned invoices." />
+      <LiveRefresh topics={["inventory", "attention"]} />
       <AttentionBar tab="inventory" />
       <Suspense fallback={<InventorySkeleton />}>
         <Inventory />

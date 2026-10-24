@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { OPEN_PALETTE } from "@/components/CommandPalette";
+import CallDriver from "@/components/live/CallDriver";
 import NavWheel from "@/components/NavWheel";
 import SectionMain from "@/components/SectionMain";
 import Sidebar from "@/components/Sidebar";
@@ -82,6 +83,8 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
       </div>
 
       <NavWheel />
+      {/* Keeps running supplier calls moving when no calls panel on this page shows them (Convex only) */}
+      <CallDriver />
 
       <SectionMain>{children}</SectionMain>
 

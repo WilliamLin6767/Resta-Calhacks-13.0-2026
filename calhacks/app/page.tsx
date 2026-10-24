@@ -13,6 +13,7 @@ import { SkeletonChart, SkeletonLines, SkeletonStat, SkeletonTable } from "@/com
 import Stat from "@/components/ui/Stat";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // A date as "YYYY-MM-DD", `daysAgo` days before today in the restaurant's time zone (Berkeley).
 function dateInLA(daysAgo: number): string {
@@ -177,6 +178,7 @@ export default function OverviewPage() {
   return (
     <div>
       <ServiceTime />
+      <LiveRefresh topics={["overview", "attention"]} />
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
       <AllAttention />
       <div className="grid gap-6 lg:grid-cols-3">

@@ -1,6 +1,7 @@
 import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { orderFromFlag } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 // POST /api/invoice-flags/12/order
 // Turns a "cheaper elsewhere" flag into a draft purchase order with that supplier,
@@ -10,6 +11,7 @@ export async function POST(_request: Request, ctx: RouteContext<"/api/invoice-fl
   if (!id) return errorResponse("Unknown flag.", 404);
   try {
     const orderId = await orderFromFlag(await getSupabase(), id);
+    signalAfter("/api/invoice-flags/[id]/order");
     return Response.json({ purchase_order_id: orderId });
   } catch (err) {
     return handleError(err);

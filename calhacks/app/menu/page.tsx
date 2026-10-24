@@ -14,6 +14,7 @@ import { loadPricing } from "@/lib/pricing/service";
 import { getSupabase } from "@/lib/supabase";
 import { ApplyDeliveryPrices } from "./MenuActions";
 import { ChangeRow, copyFirst, formatWholeMoney, pending, SuggestionCard } from "./parts";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // How many of each list the tab shows; the rest are on /menu/suggestions and /menu/changes.
 const PREVIEW = 3;
@@ -188,6 +189,7 @@ export default function MenuPage() {
   return (
     <div>
       <PageHeader title="Menu and pricing" description="What each dish costs to make right now, and what to charge. Plain math from your invoices and sales, no AI. Nothing changes until you approve it." />
+      <LiveRefresh topics={["menu", "attention"]} />
       <AttentionBar tab="menu" />
       <Suspense fallback={<PricingSkeleton />}>
         <Pricing />

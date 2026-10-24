@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import LiveRefresh from "@/components/live/LiveRefresh";
 import SubPageHeader from "@/components/SubPageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -49,6 +50,7 @@ export default function SuggestionsPage() {
       <Suspense fallback={<Skeleton className="h-72 rounded-2xl" />}>
         <Suggestions />
       </Suspense>
+      <LiveRefresh topics={["menu"]} />
     </div>
   );
 }

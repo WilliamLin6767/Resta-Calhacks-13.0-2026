@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
+import LiveRefresh from "@/components/live/LiveRefresh";
 import SubPageHeader from "@/components/SubPageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { SkeletonLines } from "@/components/ui/Skeleton";
@@ -35,6 +36,7 @@ export default function InventoryChangesPage() {
       <Suspense fallback={<SkeletonLines lines={8} className="rounded-2xl border border-brand-100 bg-white p-4" />}>
         <Changes />
       </Suspense>
+      <LiveRefresh topics={["inventory"]} />
     </div>
   );
 }

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Written by `npx convex dev`
+    "convex/_generated/**",
   ]),
 ]);
 

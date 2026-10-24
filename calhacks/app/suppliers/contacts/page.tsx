@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import LiveRefresh from "@/components/live/LiveRefresh";
 import SubPageHeader from "@/components/SubPageHeader";
 import { SkeletonTable } from "@/components/ui/Skeleton";
 import SuppliersTable from "../SuppliersTable";
@@ -18,6 +19,7 @@ export default function SupplierContactsPage() {
       <Suspense fallback={<SkeletonTable rows={6} cols={7} />}>
         <SuppliersTable />
       </Suspense>
+      <LiveRefresh topics={["suppliers"]} />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { loadOrders, sortOrders } from "@/lib/purchasing/service";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import { PurchaseOrderCard } from "./OrderActions";
 import ScanInvoice from "./ScanInvoice";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // How many orders the tab shows; the rest are on /invoices/orders.
 const PREVIEW = 3;
@@ -148,6 +149,7 @@ function InvoicesSkeleton() {
 export default function InvoicesPage() {
   return (
     <div className="flex flex-col">
+      <LiveRefresh topics={["invoices", "attention"]} />
       <PageHeader title="Invoices and buying" description="Scan invoices, match lines to ingredients, and approve purchase orders." />
       <div className="order-3 md:order-none">
         <AttentionBar tab="invoices" />
