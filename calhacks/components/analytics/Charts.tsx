@@ -148,8 +148,8 @@ export function MenuScatter({ menu, thresholds }: { menu: MenuRow[]; thresholds:
         <YAxis type="number" dataKey="unit_margin" name="Margin per plate" tick={AXIS} tickFormatter={shortMoney} width={56} />
         <ZAxis range={[90, 90]} />
         {/* Dashed lines mark the cut-offs the database used to sort dishes into classes */}
-        <ReferenceLine x={thresholds.popularity_threshold} stroke="#9ca3af" strokeDasharray="4 4" />
-        <ReferenceLine y={thresholds.margin_threshold} stroke="#9ca3af" strokeDasharray="4 4" />
+        <ReferenceLine x={thresholds.popularity_threshold ?? undefined} stroke="#9ca3af" strokeDasharray="4 4" />
+        <ReferenceLine y={thresholds.margin_threshold ?? undefined} stroke="#9ca3af" strokeDasharray="4 4" />
         <Tooltip content={<MenuTooltip />} />
         <Legend verticalAlign="top" height={28} />
         {MENU_CLASSES.map((c) => (
