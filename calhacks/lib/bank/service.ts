@@ -2,6 +2,8 @@
 //   loadBank     - balance, every payout checked against the bank, and cash after upcoming bills
 //   setupBank    - one click: a simulated Nessie account for the demo restaurant, with its payouts deposited
 //   setReserve   - how much cash the owner wants to keep in the bank
+// Nessie never changes a balance after an account is made, so money moved to savings
+// (lib/bank/cashPlan.ts, saved in bank_transfers) is taken off the balance here.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { PLATFORMS, type BillGroup } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
@@ -23,17 +25,17 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, wha
   return res.data as T;
 }
 
-type Link = { nessie_customer_id: string; nessie_account_id: string; cash_reserve: number };
+export type Link = { nessie_customer_id: string; nessie_account_id: string; nessie_savings_id?: string | null; cash_reserve: number };
 
-async function loadLink(db: Db): Promise<Link | null> {
+export async function loadLink(db: Db): Promise<Link | null> {
   return must(
-    await db.from("bank_links").select("nessie_customer_id, nessie_account_id, cash_reserve").eq("restaurant_id", RESTAURANT_ID).maybeSingle(),
+    await db.from("bank_links").select("*").eq("restaurant_id", RESTAURANT_ID).maybeSingle(),
     "load the bank link (has supabase/13_bank.sql been run?)",
   ) as Link | null;
 }
 
 // Overdue bills plus those due in the next 7 days, after any dispute holdbacks
-function billsDue(bills: Record<BillGroup, { total: number; dispute: Parameters<typeof amountToPay>[1] }[]>) {
+export function billsDue(bills: Record<BillGroup, { total: number; dispute: Parameters<typeof amountToPay>[1] }[]>) {
   return [...bills.overdue, ...bills.due_soon].reduce((s, b) => s + amountToPay(b.total, b.dispute), 0);
 }
 
@@ -42,6 +44,7 @@ export type Bank =
   | {
       connected: true;
       account: { nickname: string; last4: string; balance: number };
+      savings: number | null; // moved to the simulated savings account; null until supabase/14_cash.sql is run
       cash: Cash;
       checks: BankCheck[];
       problems: BankCheck[];
@@ -49,15 +52,17 @@ export type Bank =
       restaurant: string;
     };
 
-export async function loadBank(db: Db): Promise<Bank> {
+export async function loadBank(db: Db, loaded?: Awaited<ReturnType<typeof loadAccounting>>): Promise<Bank> {
   const link = await loadLink(db);
   if (!link) return { connected: false };
-  const [account, deposits, links, accounting] = await Promise.all([
+  const [account, deposits, links, accounting, savings] = await Promise.all([
     getAccount(link.nessie_account_id),
     listDeposits(link.nessie_account_id),
     db.from("bank_deposit_links").select("payout_id, nessie_deposit_id, amount").eq("restaurant_id", RESTAURANT_ID),
-    loadAccounting(db),
+    loaded ?? loadAccounting(db),
+    movedToSavings(db),
   ]);
+  const balance = Math.round((Number(account.balance) - (savings ?? 0)) * 100) / 100;
   const exact = new Map((must(links, "load deposit links") as { payout_id: number; nessie_deposit_id: string; amount: number }[]).map((l) => [l.nessie_deposit_id, l]));
   const bankDeposits: BankDeposit[] = deposits.map((d) => {
     const l = exact.get(d._id);
@@ -67,13 +72,21 @@ export async function loadBank(db: Db): Promise<Bank> {
   const problems = checks.filter((c) => c.shortfall > 0);
   return {
     connected: true,
-    account: { nickname: account.nickname, last4: (account.account_number ?? "").slice(-4), balance: Number(account.balance) },
-    cash: cashAfterBills(Number(account.balance), billsDue(accounting.bills), Number(link.cash_reserve)),
+    account: { nickname: account.nickname, last4: (account.account_number ?? "").slice(-4), balance },
+    savings,
+    cash: cashAfterBills(balance, billsDue(accounting.bills), Number(link.cash_reserve)),
     checks,
     problems,
     owed: Math.round(problems.reduce((s, c) => s + c.shortfall, 0) * 100) / 100,
     restaurant: accounting.restaurant,
   };
+}
+
+// Total moved to savings, or null if the bank_transfers table doesn't exist yet
+export async function movedToSavings(db: Db): Promise<number | null> {
+  const res = await db.from("bank_transfers").select("amount").eq("restaurant_id", RESTAURANT_ID);
+  if (res.error) return null;
+  return Math.round((res.data as { amount: number }[]).reduce((s, t) => s + Number(t.amount), 0) * 100) / 100;
 }
 
 // Creates the simulated account and one deposit per payout statement, once. The latest DoorDash week
