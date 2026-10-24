@@ -2,8 +2,9 @@ import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
+import AddToMenuButton from "@/components/trends/AddToMenuButton";
 import ScanTrendsButton from "@/components/trends/ScanTrendsButton";
-import { NEW_INGREDIENT_CAP, compareRecommendations } from "@/lib/trends/score";
+import { NEW_INGREDIENT_CAP, compareRecommendations, isOnMenu } from "@/lib/trends/score";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
 type YelpEvidence = { business?: string; rating?: number; reviewCount?: number; url?: string };
@@ -34,15 +35,21 @@ function links(row: Recommendation) {
 
 async function Recommendations() {
   const supabase = await getSupabase();
-  const { data, error } = await supabase
-    .from("dish_recommendations")
-    .select("dish_name, demand_score, fit_score, recommend_score, new_ingredient_count, have_ingredients, new_ingredients, reason, evidence, scraped_at")
-    .eq("restaurant_id", RESTAURANT_ID);
+  const [listed, menu] = await Promise.all([
+    supabase
+      .from("dish_recommendations")
+      .select("dish_name, demand_score, fit_score, recommend_score, new_ingredient_count, have_ingredients, new_ingredients, reason, evidence, scraped_at")
+      .eq("restaurant_id", RESTAURANT_ID),
+    supabase.from("menu_items").select("name").eq("restaurant_id", RESTAURANT_ID).eq("active", true),
+  ]);
+  const { data, error } = listed;
   if (error) {
     const missing = /dish_recommendations|schema cache/i.test(error.message);
     return <ErrorMessage message={missing ? `${error.message} Has supabase/15_dish_recommendations.sql been run?` : error.message} />;
   }
 
+  if (menu.error) return <ErrorMessage message={menu.error.message} />;
+  const menuNames = (menu.data ?? []).map((item) => item.name);
   const rows = ((data ?? []) as Recommendation[]).sort(compareRecommendations);
   const scanned = rows.map((row) => row.scraped_at).sort().at(-1);
   const top = rows.find((row) => row.new_ingredient_count <= NEW_INGREDIENT_CAP);
@@ -63,15 +70,18 @@ async function Recommendations() {
           const need = row.new_ingredients ?? [];
           return (
             <article key={row.dish_name} className="rounded-2xl border border-brand-100 bg-white p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="font-medium">
-                  {row.dish_name}
-                  {row === top && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Add this</span>}
-                  {!ready && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">More shopping</span>}
-                </p>
-                <p className="text-sm tabular-nums text-gray-600">
-                  Trend {pct(row.demand_score)} · Kitchen fit {pct(row.fit_score)}
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium">
+                    {row.dish_name}
+                    {row === top && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Add this</span>}
+                    {!ready && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">More shopping</span>}
+                  </p>
+                  <p className="mt-1 text-sm tabular-nums text-gray-600">
+                    Trend {pct(row.demand_score)} · Kitchen fit {pct(row.fit_score)}
+                  </p>
+                </div>
+                <AddToMenuButton dishName={row.dish_name} onMenu={isOnMenu(row.dish_name, menuNames)} />
               </div>
               <p className="mt-2 text-sm text-gray-700">{row.reason}</p>
               <p className="mt-2 text-sm text-gray-700">
