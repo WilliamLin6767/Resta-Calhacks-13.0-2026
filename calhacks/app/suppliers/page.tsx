@@ -7,6 +7,7 @@ import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import EmptyState from "@/components/ui/EmptyState";
+import Fold from "@/components/ui/Fold";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
 import JumpCard from "@/components/suppliers/JumpCard";
@@ -54,39 +55,42 @@ async function SuppliersTable() {
     pendingCounts(supabase).catch(() => null),
   ]);
   if (error) return <ErrorMessage message={error.message} />;
+  const n = data?.length ?? 0;
 
   return (
-    <SimpleTable
-      empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
-      columns={[
-        { key: "name", label: "Supplier" },
-        { key: "category", label: "Category" },
-        { key: "contact_name", label: "Contact" },
-        { key: "phone", label: "Phone" },
-        { key: "preferred_channel", label: "Order by" },
-        { key: "lead_time_days", label: "Lead time (days)" },
-        { key: "delivery_days", label: "Delivers" },
-      ]}
-      rows={(data ?? []).map((row) => {
-        const phone = normalizePhone(row.phone);
-        return {
-          ...row,
-          name: (
-            <>
-              {row.name}
-              <CallBadge count={counts?.bySupplier[row.id]} />
-            </>
-          ),
-          phone: phone ? (
-            <a href={telHref(phone)} className="font-medium text-gray-900 underline">
-              {formatPhone(phone)}
-            </a>
-          ) : (
-            <span className="text-gray-400">none on file</span>
-          ),
-        };
-      })}
-    />
+    <Fold summary={<span className="text-gray-700">{n} {n === 1 ? "supplier" : "suppliers"} on file, with phone numbers and delivery days</span>}>
+      <SimpleTable
+        empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
+        columns={[
+          { key: "name", label: "Supplier" },
+          { key: "category", label: "Category" },
+          { key: "contact_name", label: "Contact" },
+          { key: "phone", label: "Phone" },
+          { key: "preferred_channel", label: "Order by" },
+          { key: "lead_time_days", label: "Lead time (days)" },
+          { key: "delivery_days", label: "Delivers" },
+        ]}
+        rows={(data ?? []).map((row) => {
+          const phone = normalizePhone(row.phone);
+          return {
+            ...row,
+            name: (
+              <>
+                {row.name}
+                <CallBadge count={counts?.bySupplier[row.id]} />
+              </>
+            ),
+            phone: phone ? (
+              <a href={telHref(phone)} className="font-medium text-gray-900 underline">
+                {formatPhone(phone)}
+              </a>
+            ) : (
+              <span className="text-gray-400">none on file</span>
+            ),
+          };
+        })}
+      />
+    </Fold>
   );
 }
 
@@ -180,85 +184,97 @@ async function PriceJumpsContent() {
         <ErrorMessage message={leadsMissing ? `Run supabase/12_supplier_leads.sql in the Supabase SQL editor. ${leadsResult.error.message}` : leadsResult.error.message} />
       )}
 
-      <MarketDetail>
-      <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h3 className="mb-3 text-sm font-semibold text-gray-900">Supplier price changes</h3>
-        <SimpleTable
-          empty={<EmptyState title="No supplier price changes in this period." />}
-          columns={[
-            { key: "ingredient", label: "Ingredient" },
-            { key: "supplier", label: "Supplier" },
-            { key: "since", label: "Since" },
-            { key: "previous_price", label: "Was" },
-            { key: "current_price", label: "Now" },
-            { key: "change", label: "Change" },
-            { key: "impact", label: "Est. cost this period" },
-            { key: "cheapest", label: "Cheapest option" },
-            { key: "dishes", label: "Used in" },
-          ]}
-          rows={(digest.price_changes ?? []).map((change) => ({
-            ingredient: change.ingredient,
-            supplier: change.supplier,
-            since: change.since,
-            previous_price: <span className="tabular-nums">{formatMoney(change.previous_price)}</span>,
-            current_price: <span className="tabular-nums">{formatMoney(change.current_price)}</span>,
-            change: <span className="tabular-nums">{`${change.change_pct > 0 ? "+" : ""}${change.change_pct}%`}</span>,
-            impact: change.est_period_impact == null ? "-" : <span className="tabular-nums">{formatMoney(change.est_period_impact)}</span>,
-            cheapest: change.cheapest_supplier ?? "-",
-            dishes: change.dishes.join(", "),
-          }))}
-        />
-      </div>
-
-      {families.map((family) => {
-        const series = chartSeries(points, family);
-        if (!series) return null;
-        return (
-          <div key={family} className="rounded-xl border border-gray-200 bg-white p-4">
-            <p className="mb-2 text-sm font-medium text-gray-800">{family === "beef" ? "Cattle market" : "Dairy market"}</p>
-            <p className="mb-2 text-xs text-gray-500">{series.label}</p>
-            <MarketSeriesChart rows={series.rows} />
+      <Fold
+        summary={
+          jumps.length > 0 ? (
+            <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{jumps.length} supplier {jumps.length === 1 ? "price" : "prices"} went up in the last 30 days</span>
+          ) : (
+            <span className="text-gray-600">No supplier price increases in the last 30 days</span>
+          )
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <MarketDetail>
+          <div className="rounded-xl border border-gray-200 bg-white p-4">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">Supplier price changes</h3>
+            <SimpleTable
+              empty={<EmptyState title="No supplier price changes in this period." />}
+              columns={[
+                { key: "ingredient", label: "Ingredient" },
+                { key: "supplier", label: "Supplier" },
+                { key: "since", label: "Since" },
+                { key: "previous_price", label: "Was" },
+                { key: "current_price", label: "Now" },
+                { key: "change", label: "Change" },
+                { key: "impact", label: "Est. cost this period" },
+                { key: "cheapest", label: "Cheapest option" },
+                { key: "dishes", label: "Used in" },
+              ]}
+              rows={(digest.price_changes ?? []).map((change) => ({
+                ingredient: change.ingredient,
+                supplier: change.supplier,
+                since: change.since,
+                previous_price: <span className="tabular-nums">{formatMoney(change.previous_price)}</span>,
+                current_price: <span className="tabular-nums">{formatMoney(change.current_price)}</span>,
+                change: <span className="tabular-nums">{`${change.change_pct > 0 ? "+" : ""}${change.change_pct}%`}</span>,
+                impact: change.est_period_impact == null ? "-" : <span className="tabular-nums">{formatMoney(change.est_period_impact)}</span>,
+                cheapest: change.cheapest_supplier ?? "-",
+                dishes: change.dishes.join(", "),
+              }))}
+            />
           </div>
-        );
-      })}
-      </MarketDetail>
 
-      {jumps.length === 0 ? (
-        <div className="order-3 md:order-none">
-          <EmptyState title="No supplier price increases in the last 30 days." icon="truck" />
-        </div>
-      ) : (
-        <div className="order-3 space-y-4 md:order-none">
-          {jumps.map((jump) => {
-            const market = explainMarket({
-              ingredient: jump.ingredient,
-              supplierChangePct: jump.change_pct,
-              since: jump.since,
-              quotes: points,
-            });
-            const currentPhone = phoneFor(jump.supplier, phones);
-            const cheaperPhone = phoneFor(jump.cheapest_supplier, phones);
-            const calls = leads.filter((lead) => lead.ingredient_name === jump.ingredient).slice(0, 3);
+          {families.map((family) => {
+            const series = chartSeries(points, family);
+            if (!series) return null;
             return (
-              <JumpCard
-                key={`${jump.ingredient}-${jump.supplier}`}
-                ingredient={jump.ingredient}
-                changePct={jump.change_pct}
-                since={jump.since}
-                supplier={jump.supplier}
-                cheapestSupplier={jump.cheapest_supplier}
-                impact={jump.est_period_impact == null ? null : formatMoney(jump.est_period_impact)}
-                currentPhone={currentPhone}
-                cheaperPhone={cheaperPhone}
-                verdict={market.verdict}
-                detail={market.detail}
-                calls={calls}
-                leadsMissing={leadsResult.error != null}
-              />
+              <div key={family} className="rounded-xl border border-gray-200 bg-white p-4">
+                <p className="mb-2 text-sm font-medium text-gray-800">{family === "beef" ? "Cattle market" : "Dairy market"}</p>
+                <p className="mb-2 text-xs text-gray-500">{series.label}</p>
+                <MarketSeriesChart rows={series.rows} />
+              </div>
             );
           })}
+          </MarketDetail>
+
+          {jumps.length === 0 ? (
+            <div className="order-3 md:order-none">
+              <EmptyState title="No supplier price increases in the last 30 days." icon="truck" />
+            </div>
+          ) : (
+            <div className="order-3 space-y-4 md:order-none">
+              {jumps.map((jump) => {
+                const market = explainMarket({
+                  ingredient: jump.ingredient,
+                  supplierChangePct: jump.change_pct,
+                  since: jump.since,
+                  quotes: points,
+                });
+                const currentPhone = phoneFor(jump.supplier, phones);
+                const cheaperPhone = phoneFor(jump.cheapest_supplier, phones);
+                const calls = leads.filter((lead) => lead.ingredient_name === jump.ingredient).slice(0, 3);
+                return (
+                  <JumpCard
+                    key={`${jump.ingredient}-${jump.supplier}`}
+                    ingredient={jump.ingredient}
+                    changePct={jump.change_pct}
+                    since={jump.since}
+                    supplier={jump.supplier}
+                    cheapestSupplier={jump.cheapest_supplier}
+                    impact={jump.est_period_impact == null ? null : formatMoney(jump.est_period_impact)}
+                    currentPhone={currentPhone}
+                    cheaperPhone={cheaperPhone}
+                    verdict={market.verdict}
+                    detail={market.detail}
+                    calls={calls}
+                    leadsMissing={leadsResult.error != null}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
-      )}
+      </Fold>
     </section>
   );
 }

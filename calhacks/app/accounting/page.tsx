@@ -4,6 +4,7 @@ import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
+import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
@@ -169,43 +170,45 @@ async function Accounting() {
             </div>
           ))}
         </div>
-        <div className={tableWrap}>
-          <table className={table}>
-            <thead className={thead}>
-              <tr>
-                <th className={th}>Week</th>
-                <th className={th}>App</th>
-                <th className={thNum}>Sales</th>
-                <th className={thNum}>Fees</th>
-                <th className={thNum}>Should pay</th>
-                <th className={thNum}>Paid</th>
-                <th className={th}>Check</th>
-                {inBank.size > 0 && <th className={thNum}>Bank got</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {checks.map((c) => (
-                <tr key={`${c.platform}${c.period_start}`} className={tr}>
-                  <td className={`${td} tabular-nums`}>{c.period_start}</td>
-                  <td className={td}>{PLATFORMS[c.platform]}</td>
-                  <td className={tdNum}>{formatMoney(c.expected_gross)}</td>
-                  <td className={`${tdNum} text-gray-500`}>{formatMoney(c.expected_fees)}</td>
-                  <td className={tdNum}>{formatMoney(c.expected_net)}</td>
-                  <td className={tdNum}>{c.payout ? formatMoney(c.payout.net_amount) : "-"}</td>
-                  <td className={`${td} ${STATUS[c.status].className}`}>{STATUS[c.status].label}</td>
-                  {inBank.size > 0 && (() => {
-                    const b = inBank.get(`${c.platform}${c.period_start}`);
-                    return (
-                      <td className={`${tdNum} ${b ? BANK_STATUS[b.status].className : "text-gray-400"}`}>
-                        {b?.deposit ? formatMoney(b.deposit.amount) : b ? BANK_STATUS[b.status].label : "-"}
-                      </td>
-                    );
-                  })()}
+        <Fold summary={<span className="text-gray-700">Every week, app by app ({checks.length} {checks.length === 1 ? "payout" : "payouts"})</span>}>
+          <div className={tableWrap}>
+            <table className={table}>
+              <thead className={thead}>
+                <tr>
+                  <th className={th}>Week</th>
+                  <th className={th}>App</th>
+                  <th className={thNum}>Sales</th>
+                  <th className={thNum}>Fees</th>
+                  <th className={thNum}>Should pay</th>
+                  <th className={thNum}>Paid</th>
+                  <th className={th}>Check</th>
+                  {inBank.size > 0 && <th className={thNum}>Bank got</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {checks.map((c) => (
+                  <tr key={`${c.platform}${c.period_start}`} className={tr}>
+                    <td className={`${td} tabular-nums`}>{c.period_start}</td>
+                    <td className={td}>{PLATFORMS[c.platform]}</td>
+                    <td className={tdNum}>{formatMoney(c.expected_gross)}</td>
+                    <td className={`${tdNum} text-gray-500`}>{formatMoney(c.expected_fees)}</td>
+                    <td className={tdNum}>{formatMoney(c.expected_net)}</td>
+                    <td className={tdNum}>{c.payout ? formatMoney(c.payout.net_amount) : "-"}</td>
+                    <td className={`${td} ${STATUS[c.status].className}`}>{STATUS[c.status].label}</td>
+                    {inBank.size > 0 && (() => {
+                      const b = inBank.get(`${c.platform}${c.period_start}`);
+                      return (
+                        <td className={`${tdNum} ${b ? BANK_STATUS[b.status].className : "text-gray-400"}`}>
+                          {b?.deposit ? formatMoney(b.deposit.amount) : b ? BANK_STATUS[b.status].label : "-"}
+                        </td>
+                      );
+                    })()}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Fold>
       </section>
 
       <section className="mb-8">
@@ -215,38 +218,58 @@ async function Accounting() {
             <EmptyState title="No bills to pay." hint="Scanned invoices show up here until they're marked paid." icon="receipt" />
           </div>
         )}
-        {GROUPS.map(({ key, title }) =>
-          bills[key].length ? (
-            <div key={key} className="mb-4">
-              <h3 className="mb-2 text-sm font-semibold text-gray-700">
-                {title} · {formatMoney(sum(bills[key]))}
-              </h3>
-              <div className="grid gap-2">
-                {bills[key].map((b) => (
-                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
-                    <p className="min-w-0 flex-1">
-                      <span className="font-medium">{b.supplier}</span>{" "}
-                      <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
-                      <span className="ml-2 tabular-nums">{formatMoney(b.total)}</span>
-                      <span className="ml-2 text-gray-500">due {b.due_date ?? "?"}</span>
-                      <BillDispute bill={b} />
-                    </p>
-                    <MarkPaid invoiceId={b.id} />
+        {GROUPS.some(({ key }) => bills[key].length > 0) && (
+          <Fold
+            summary={
+              <>
+                {bills.overdue.length > 0 && (
+                  <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />{bills.overdue.length} overdue</span>
+                )}
+                {bills.due_soon.length > 0 && (
+                  <span className="flex items-center gap-2 text-gray-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />{bills.due_soon.length} due this week</span>
+                )}
+                {bills.later.length > 0 && <span className="text-gray-600">{bills.later.length} later</span>}
+              </>
+            }
+          >
+            {GROUPS.map(({ key, title }) =>
+              bills[key].length ? (
+                <div key={key} className="mb-4 last:mb-0">
+                  <h3 className="mb-2 text-sm font-semibold text-gray-700">
+                    {title} · {formatMoney(sum(bills[key]))}
+                  </h3>
+                  <div className="grid gap-2">
+                    {bills[key].map((b) => (
+                      <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-2 text-sm">
+                        <p className="min-w-0 flex-1">
+                          <span className="font-medium">{b.supplier}</span>{" "}
+                          <Link href={`/invoices/${b.id}`} className="text-gray-500 underline decoration-gray-300">{b.invoice_number ?? `#${b.id}`}</Link>
+                          <span className="ml-2 tabular-nums">{formatMoney(b.total)}</span>
+                          <span className="ml-2 text-gray-500">due {b.due_date ?? "?"}</span>
+                          <BillDispute bill={b} />
+                        </p>
+                        <MarkPaid invoiceId={b.id} />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          ) : null,
+                </div>
+              ) : null,
+            )}
+          </Fold>
         )}
       </section>
 
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
-        <h2 className="text-lg font-semibold">Export for QuickBooks</h2>
-        <p className="mb-3 text-sm text-gray-600">
-          Payouts received and bills paid, as a file QuickBooks Online can import (Banking, Upload transactions). Check the dates match your bank
-          before accepting them.
-        </p>
-        <QuickbooksExport defaultFrom={addDays(today, -30)} defaultTo={today} />
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Export for QuickBooks</h2>
+        <Fold summary={<span className="text-gray-700">Download payouts and paid bills as a file for QuickBooks</span>}>
+          <div className="rounded-2xl border border-brand-100 bg-white p-4">
+            <p className="mb-3 text-sm text-gray-600">
+              Payouts received and bills paid, as a file QuickBooks Online can import (Banking, Upload transactions). Check the dates match your bank
+              before accepting them.
+            </p>
+            <QuickbooksExport defaultFrom={addDays(today, -30)} defaultTo={today} />
+          </div>
+        </Fold>
       </section>
     </>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export function Chevron({ open }: { open: boolean }) {
   return (
@@ -11,9 +11,17 @@ export function Chevron({ open }: { open: boolean }) {
 }
 
 // Folded by default: one line saying what's inside (counts, mostly). Click it for the rest.
-// Keeps long lists out of the owner's face until they want them.
-export default function Fold({ summary, children, defaultOpen = false }: { summary: ReactNode; children: ReactNode; defaultOpen?: boolean }) {
+// Keeps long lists out of the owner's face until they want them. With `hash`, a link to
+// "#<hash>" (e.g. /invoices#orders after drafting an order) opens it.
+export default function Fold({ summary, children, defaultOpen = false, hash }: { summary: ReactNode; children: ReactNode; defaultOpen?: boolean; hash?: string }) {
   const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    if (!hash) return;
+    const check = () => window.location.hash === `#${hash}` && setOpen(true);
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [hash]);
   return (
     <div>
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
