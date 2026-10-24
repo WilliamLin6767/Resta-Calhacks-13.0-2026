@@ -3,6 +3,7 @@ import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { explainPlan } from "@/lib/purchasing/planAi";
 import { parsePlanRequest } from "@/lib/purchasing/planHttp";
 import { buildPlan } from "@/lib/purchasing/planService";
+import { loadCash } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
 
 // POST /api/orders/plan   { "kind": "low" }  or  { "kind": "prep", "date": "2026-10-24", "factors": { "1": 1.3 } }
@@ -12,7 +13,9 @@ export async function POST(request: Request) {
   const req = parsePlanRequest(await request.json().catch(() => ({})));
   if (!req) return errorResponse("Say what to plan: low stock, or a prep day in the next week.", 400);
   try {
-    const { plan, label } = await buildPlan(await getSupabase(), req);
+    const db = await getSupabase();
+    // The bank's cash after upcoming bills, if a (simulated) bank is connected, so the plan can show what it leaves
+    const [{ plan, label }, cash] = await Promise.all([buildPlan(db, req), loadCash(db)]);
     let explanation = null;
     let explainError = "";
     if (plan.groups.length && !aiLimited(request)) {
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
         explainError = err instanceof Error ? err.message : "The AI explanation isn't available.";
       }
     }
-    return Response.json({ plan, explanation, explain_error: explainError });
+    return Response.json({ plan, explanation, explain_error: explainError, cash });
   } catch (err) {
     return handleError(err);
   }
