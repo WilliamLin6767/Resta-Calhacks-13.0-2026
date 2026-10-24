@@ -14,7 +14,6 @@ import ChartView from "@/components/assistant/ChartView";
 import ExplainButton from "@/components/assistant/ExplainButton";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
-import SimpleTable from "@/components/SimpleTable";
 import {
   MENU_CLASSES,
   PERIOD_OPTIONS,
@@ -117,31 +116,6 @@ async function AnalyticsContent({ searchParams }: { searchParams: PageProps<"/an
           ))}
         </ul>
         <MenuTable menu={digest.menu} />
-      </ChartCard>
-
-      <ChartCard chart="price_changes" title="Supplier price changes" note={note("price_changes")}>
-        <SimpleTable
-          columns={[
-            { key: "ingredient", label: "Ingredient" },
-            { key: "supplier", label: "Supplier" },
-            { key: "since", label: "Since" },
-            { key: "previous_price", label: "Was" },
-            { key: "current_price", label: "Now" },
-            { key: "change", label: "Change" },
-            { key: "impact", label: "Est. cost this period" },
-            { key: "cheapest", label: "Cheapest option" },
-            { key: "dishes", label: "Used in" },
-          ]}
-          rows={digest.price_changes.map((p) => ({
-            ...p,
-            previous_price: formatMoney(p.previous_price),
-            current_price: formatMoney(p.current_price),
-            change: `${p.change_pct > 0 ? "+" : ""}${p.change_pct}%`,
-            impact: p.est_period_impact == null ? "-" : formatMoney(p.est_period_impact),
-            cheapest: p.cheapest_supplier ?? "-",
-            dishes: p.dishes.join(", "),
-          }))}
-        />
       </ChartCard>
     </div>
   );
