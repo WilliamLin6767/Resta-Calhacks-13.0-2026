@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
@@ -137,6 +138,7 @@ export default function InventoryPage() {
   return (
     <div>
       <PageHeader title="Inventory" description="What's on hand, how long it lasts, and what went missing. Deliveries come in from scanned invoices." />
+      <AttentionBar tab="inventory" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Inventory />
       </Suspense>

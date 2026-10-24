@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { parsePrepDate } from "@/lib/prep/http";
@@ -48,6 +49,7 @@ export default function PrepPage({ searchParams }: PageProps<"/prep">) {
   return (
     <div>
       <PageHeader title="Prep" description="How many of each dish to expect, what to prep, and what you'll run short of. The forecast is plain math from your past sales; the AI only adjusts it when you tell it something about the day." />
+      <AttentionBar tab="prep" />
       <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
         <Prep searchParams={searchParams as Promise<{ date?: string }>} />
       </Suspense>
