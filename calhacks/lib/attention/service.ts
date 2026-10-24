@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRateLimiter } from "@/lib/aiLimits";
 import { RESTAURANT_ID } from "@/lib/supabase";
-import { summarizeTab, TabSummarySchema, type TabSummary } from "./ai";
+import { SUMMARY_VERSION, summarizeTab, TabSummarySchema, type TabSummary } from "./ai";
 import { buildTab } from "./build";
 import type { Item, Tab, TabFacts } from "./types";
 
@@ -21,7 +21,7 @@ function must<T>(res: { data: T | null; error: { message: string } | null }, wha
 }
 
 export function factsHash(facts: TabFacts) {
-  return createHash("sha256").update(JSON.stringify(facts)).digest("hex").slice(0, 32);
+  return createHash("sha256").update(`v${SUMMARY_VERSION}:${JSON.stringify(facts)}`).digest("hex").slice(0, 32);
 }
 
 async function dismissed(db: Db) {
