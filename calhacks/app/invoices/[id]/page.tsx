@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import CallRequests from "@/components/calls/CallRequests";
 import ErrorMessage from "@/components/ErrorMessage";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
@@ -51,7 +52,7 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link href="/invoices" className="text-sm text-gray-500 hover:underline">← Invoices</Link>
-          <h1 className="text-2xl font-semibold">{supplier}</h1>
+          <h1 className="text-[34px] leading-tight font-semibold tracking-[0.02em] text-gray-900">{supplier}</h1>
           <p className="text-gray-600">
             Invoice {inv.invoice_number ?? `#${inv.id}`} · {inv.invoice_date} · Total {formatMoney(inv.total)}
             {billedWrong > 0 && <span className="ml-2 font-medium text-red-600">{formatMoney(billedWrong)} billed wrong</span>}
@@ -63,9 +64,12 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
       {/* key: a status change starts the panel fresh */}
       <DisputePanel key={`${disputeRes.data?.id}-${disputeRes.data?.status}`} invoiceId={inv.id} dispute={disputeRes.data} billedWrong={billedWrong} supplier={supplier} />
 
+      {/* Calls about this invoice, e.g. disputing a billing error by phone. Hidden when there are none. */}
+      <CallRequests contextType="invoice" contextId={inv.id} title="Calls about this invoice" hideWhenEmpty />
+
       <section className="space-y-2">
         {flags.length === 0 ? (
-          <p className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
+          <p className="rounded-2xl border border-brand-100 bg-white p-4 text-sm text-gray-600">
             No open problems. Use &quot;Check this invoice&quot; to run the checks again.
           </p>
         ) : (
@@ -88,9 +92,9 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
         )}
       </section>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+          <thead className="bg-brand-50 text-brand-700">
             <tr>
               <th className="px-4 py-2 font-medium">As printed → ingredient</th>
               <th className="px-4 py-2 text-right font-medium">Ordered / delivered</th>

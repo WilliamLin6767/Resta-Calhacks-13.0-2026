@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAction } from "@/components/useAction";
 
 const buttonClass = "rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
-const primaryClass = "rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const primaryClass = "lift rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 
 // The buttons on one purchase order. Sending happens in the owner's own app (Messages, phone,
 // email, WeChat...): this only fills in the message and records what the owner did.

@@ -40,7 +40,7 @@ export default function AssistantPanel() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-40 rounded-full bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
+        className="fixed right-5 bottom-5 z-40 rounded-full bg-brand-600 px-4 py-3 text-sm font-medium text-white shadow-lg hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
       >
         ✦ Ask AI
       </button>
@@ -118,7 +118,7 @@ export default function AssistantPanel() {
         {messages.map((m) =>
           m.role === "user" ? (
             <div key={m.id} className="ml-8 text-right">
-              <p className="inline-block rounded-2xl rounded-br-sm bg-gray-900 px-3 py-2 text-left text-sm whitespace-pre-wrap text-white">
+              <p className="inline-block rounded-2xl rounded-br-sm bg-brand-600 px-3 py-2 text-left text-sm whitespace-pre-wrap text-white">
                 {m.content}
               </p>
               {m.about && <p className="mt-0.5 text-[11px] text-gray-400">about: {m.about}</p>}
@@ -171,7 +171,7 @@ export default function AssistantPanel() {
           <button
             type="submit"
             disabled={loading || !draft.trim()}
-            className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             Send
           </button>

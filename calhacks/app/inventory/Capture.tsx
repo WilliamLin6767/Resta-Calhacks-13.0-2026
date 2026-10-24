@@ -8,7 +8,7 @@ type Row = { key: number; ingredient_id: number; qty: string; confidence: number
 type Proposal = { ingredient_id: number; name: string; qty: number; confidence: number; seen: string; note: string; reason?: string };
 
 const REASONS = ["spoiled", "expired", "dropped", "overcooked", "returned", "other"];
-const primary = "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const primary = "rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 const secondary = "rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 
 // The browser's own speech recognition (Chrome, Edge, Safari). Not in every browser, so the mic button
@@ -174,7 +174,7 @@ export default function Capture({ ingredients }: { ingredients: Ref[] }) {
   }
 
   return (
-    <section className="mb-8 rounded-lg border border-gray-200 bg-white p-4">
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4">
       <h2 className="text-lg font-semibold">Count stock or log waste</h2>
       <p className="mb-3 text-sm text-gray-600">
         Take a photo of a shelf, or say what you see (&quot;40 pounds of bones, two cases of limes, tossed 3 pounds of sprouts&quot;). The AI proposes

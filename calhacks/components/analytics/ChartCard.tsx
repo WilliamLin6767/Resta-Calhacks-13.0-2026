@@ -25,7 +25,7 @@ export default function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+    <section className="min-w-0 rounded-2xl border border-brand-100 bg-white p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
         <div className="flex items-center gap-2">

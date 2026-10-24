@@ -17,7 +17,7 @@ export function FlagButtons({ flagId, kind, disputeNote }: { flagId: number; kin
         <button
           disabled={loading}
           onClick={() => run(`/api/invoice-flags/${flagId}/order`, {}, () => router.push("/invoices#orders"))}
-          className="rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+          className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
         >
           Draft an order there
         </button>
@@ -103,7 +103,7 @@ export function RecheckButton({ invoiceId }: { invoiceId: number }) {
       <button
         disabled={loading}
         onClick={() => run(`/api/invoices/${invoiceId}/check`)}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
       >
         {loading ? "Checking..." : "Check this invoice"}
       </button>
