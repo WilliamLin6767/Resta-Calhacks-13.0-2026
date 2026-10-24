@@ -49,7 +49,7 @@ export default function AiSummary({
 
   const top = report.actions[0];
   return (
-    <section className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5">
+    <section className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold text-gray-900">✦ AI summary</p>
         <HealthBadge health={report.health} />

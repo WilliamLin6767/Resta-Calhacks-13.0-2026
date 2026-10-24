@@ -15,14 +15,14 @@ export default function SimpleTable({ columns, rows }: Props) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200/80 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
       <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50/80">
+        <thead className="bg-brand-50">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="border-b border-gray-200 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-500"
+                className="border-b border-brand-100 px-3 py-2 text-xs font-medium uppercase tracking-wide text-brand-700"
               >
                 {col.label}
               </th>
@@ -31,7 +31,7 @@ export default function SimpleTable({ columns, rows }: Props) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60">
+            <tr key={i} className="border-b border-gray-100 last:border-0 hover:bg-brand-50/60">
               {columns.map((col) => {
                 const value = row[col.key];
                 return (

@@ -19,6 +19,7 @@ import MenuTable from "@/components/analytics/MenuTable";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
 import SimpleTable from "@/components/SimpleTable";
+import SectionMark from "@/components/SectionMark";
 import { MENU_CLASSES, parseDays, type AiReport, type Digest, type SectionId } from "@/lib/analytics";
 import {
   MODULES,
@@ -58,9 +59,12 @@ export default async function ModulePage({ params, searchParams }: PageProps<"/a
         </Link>{" "}
         / <span className="text-gray-900">{def.title}</span>
       </nav>
-      <header className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{def.title}</h1>
-        <p className="mt-1 text-sm text-gray-600">{def.question}</p>
+      <header className="mb-4 flex items-start gap-4">
+        <SectionMark />
+        <div className="min-w-0">
+          <h1 className="text-[34px] leading-tight font-semibold tracking-[0.02em] text-gray-900">{def.title}</h1>
+          <p className="mt-1 text-sm text-gray-600">{def.question}</p>
+        </div>
       </header>
       {/* searchParams are only known at request time, so read them inside Suspense */}
       <Suspense
@@ -93,7 +97,7 @@ async function ModuleContent({ id, searchParams }: { id: ModuleId; searchParams:
 
       {/* What changed in this area (Busy times has no alert rules) */}
       {id !== "busy" && (
-        <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <section className="rounded-2xl border border-brand-100 bg-white p-5">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">What changed here</h2>
           <AlertList alerts={alerts} days={days} showLinks={false} empty="Nothing in this area changed enough to flag." />
         </section>
@@ -117,7 +121,7 @@ function ModuleTabs({ current, days }: { current: ModuleId; days: number }) {
               href={`/analytics/${m.id}?days=${days}`}
               aria-current={m.id === current ? "page" : undefined}
               className={`block rounded-md px-3 py-1.5 text-sm whitespace-nowrap ${
-                m.id === current ? "bg-gray-900 font-medium text-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                m.id === current ? "bg-brand-600 font-medium text-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
             >
               {m.title}
@@ -132,7 +136,7 @@ function ModuleTabs({ current, days }: { current: ModuleId; days: number }) {
 // The assistant, set up for this area: one-tap questions, and a pointer to the AI report.
 function AskPanel({ id, report, stale, days }: { id: ModuleId; report: AiReport | null; stale: boolean; days: number }) {
   return (
-    <section className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-brand-100 bg-white p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold text-gray-900">✦ Ask about {getModule(id).title.toLowerCase()}</h2>
         {report && stale && <StaleBadge />}
@@ -179,7 +183,7 @@ function ModuleCharts({ id, digest, note }: { id: ModuleId; digest: Digest; note
             {defs.map((d) => {
               const change = kpiChange(d, cur, digest.kpis.prev);
               return (
-                <div key={d.key} className="rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm">
+                <div key={d.key} className="rounded-2xl border border-brand-100 bg-white p-4">
                   <p className="text-xs font-medium text-gray-500">{d.label}</p>
                   <p className="mt-1 text-xl font-semibold tabular-nums">
                     {d.key === "avg_ticket" ? formatMoney(cur.avg_ticket) : formatKpiValue(d, cur)}

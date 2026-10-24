@@ -39,7 +39,7 @@ export default function MenuTable({ menu }: { menu: MenuRow[] }) {
   return (
     <div className="overflow-x-auto rounded border border-gray-200 bg-white">
       <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50">
+        <thead className="bg-brand-50 text-brand-700">
           <tr>
             {COLUMNS.map((col) => (
               <th key={col.key} className="border-b border-gray-200 px-3 py-2 font-semibold">

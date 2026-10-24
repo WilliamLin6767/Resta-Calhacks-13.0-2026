@@ -33,7 +33,7 @@ async function All() {
 
 export default function AllAttention() {
   return (
-    <section className="mb-8 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5">
+    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
       <h2 className="mb-3 font-semibold">Needs you today</h2>
       <Suspense fallback={<p className="text-sm text-gray-400">Checking every tab...</p>}>
         <All />
