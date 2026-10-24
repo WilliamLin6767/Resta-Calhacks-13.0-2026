@@ -7,7 +7,7 @@ import { orderImpact, type Cash } from "@/lib/bank/match";
 import type { Plan } from "@/lib/purchasing/plan";
 import type { PlanExplanation } from "@/lib/purchasing/planAi";
 
-const primary = "inline-flex min-h-11 items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
+const primary = "inline-flex min-h-10 items-center justify-center rounded-md bg-brand-600 px-3 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:min-h-8 sm:text-[13px]";
 const secondary = "inline-flex min-h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 
 function money(n: number) {
@@ -63,7 +63,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
   if (!data) {
     return (
       <div>
-        <button disabled={!!busy} onClick={plan} className={`${primary} w-full sm:w-auto`}>{busy || label}</button>
+        <button disabled={!!busy} onClick={plan} className={primary}>{busy || label}</button>
         {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       </div>
     );

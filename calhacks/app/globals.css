@@ -248,6 +248,11 @@
   .lift-block:active {
     scale: 0.98;
   }
+  /* Full-width rows (the "Needs you" list) only change color, or they'd poke out of their card */
+  button.no-lift:not(:disabled):hover,
+  button.no-lift:not(:disabled):active {
+    scale: none;
+  }
 }
 
 /* Page and menu motion. Short (at most 250ms) and never in the way: nothing waits on an
