@@ -3,6 +3,7 @@ import { aiRateLimit, errorResponse, handleCallError } from "@/lib/calls/http";
 import { createOwnerRequest } from "@/lib/calls/service";
 import { CONTEXT_TYPES } from "@/lib/calls/types";
 import { getSupabase } from "@/lib/supabase";
+import { syncCallsAfter } from "@/lib/live/signal";
 
 const BodySchema = z.object({
   supplier_id: z.number().int().positive(),
@@ -19,7 +20,10 @@ export async function POST(request: Request) {
   const limited = aiRateLimit(request);
   if (limited) return limited;
   try {
-    return Response.json(await createOwnerRequest(await getSupabase(), parsed.data, "owner"));
+    const db = await getSupabase();
+    const made = await createOwnerRequest(db, parsed.data, "owner");
+    syncCallsAfter(db, [made.id], "/api/calls/request");
+    return Response.json(made);
   } catch (err) {
     return handleCallError(err);
   }

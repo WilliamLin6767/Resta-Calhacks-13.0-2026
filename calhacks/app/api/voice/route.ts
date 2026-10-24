@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { speak, transcribe } from "@/lib/voice/cartesia";
 import { replyToOwner, takeTurns, type DraftedOrder } from "@/lib/voice/reply";
+import { signalAfter } from "@/lib/live/signal";
 
 const perVisitor = createRateLimiter({ limit: 80, windowMs: 10 * 60 * 1000 });
 const wholeApp = createRateLimiter({ limit: 500, windowMs: 24 * 60 * 60 * 1000 });
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
     audio = null;
   }
 
+  if (order) signalAfter("/api/voice");
   return Response.json({
     transcript,
     answer,

@@ -1,6 +1,7 @@
 import { closeDispute, markSent, saveDraft } from "@/lib/purchasing/disputeService";
 import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 // POST /api/disputes/3   { "action": "save" | "sent", "to_email", "subject", "body", "save_email" }
 //                        { "action": "credited", "credited": 160 }  or  { "action": "refused" }
@@ -19,6 +20,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/disputes/[i
     else if (b.action === "sent") await markSent(db, id, edits, b.save_email === true);
     else if (b.action === "credited" || b.action === "refused") await closeDispute(db, id, b.action, Number(b.credited) || 0);
     else return errorResponse("action must be save, sent, credited or refused.", 400);
+    signalAfter("/api/disputes/[id]");
     return Response.json({ ok: true });
   } catch (err) {
     return handleError(err);

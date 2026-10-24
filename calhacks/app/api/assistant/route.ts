@@ -30,6 +30,7 @@ import {
 } from "@/lib/compare";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { syncCallsAfter } from "@/lib/live/signal";
 
 // Change this one line to try a different Claude model.
 const AI_MODEL = "claude-sonnet-5-5";
@@ -178,6 +179,7 @@ export async function POST(request: Request) {
         try {
           const made = await createOwnerRequest(db, { supplier_id: matches[0].id, text: input.request.slice(0, 1000) }, "ai");
           proposedCalls += 1;
+          syncCallsAfter(db, [made.id], "/api/assistant");
           return `Added a call request "${made.title}" for ${matches[0].name}. It waits for the owner's approval on the Suppliers page; nothing has been dialed.`;
         } catch (err) {
           return `Error: ${err instanceof Error ? err.message : String(err)}`;

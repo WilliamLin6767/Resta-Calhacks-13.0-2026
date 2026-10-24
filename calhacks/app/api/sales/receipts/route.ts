@@ -1,6 +1,7 @@
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { saveReceipt } from "@/lib/sales/service";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^\d{2}:\d{2}$/;
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       },
       b.source === "manual" ? "manual" : "photo",
     );
+    signalAfter("/api/sales/receipts");
     return Response.json(result);
   } catch (err) {
     return handleError(err);

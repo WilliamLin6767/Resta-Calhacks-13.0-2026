@@ -1,6 +1,7 @@
 import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { confirmLine } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
+import { signalAfter } from "@/lib/live/signal";
 
 // POST /api/invoice-lines/12/confirm
 //   body: { "ingredient_id": 5 }  or  { "new_ingredient_name": "Oxtail", "new_ingredient_unit": "lb" }
@@ -16,6 +17,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/invoice-lin
     const invoiceId = await confirmLine(await getSupabase(), id, {
       ingredient_id: ingredientId, new_ingredient_name: newName || undefined, new_ingredient_unit: body.new_ingredient_unit,
     });
+    signalAfter("/api/invoice-lines/[id]/confirm");
     return Response.json({ invoice_id: invoiceId });
   } catch (err) {
     return handleError(err);

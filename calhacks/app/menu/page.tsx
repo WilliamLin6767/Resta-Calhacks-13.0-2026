@@ -11,6 +11,7 @@ import { DELIVERY_MARKUP, TARGET_FOOD_COST } from "@/lib/pricing/pricing";
 import { loadPricing, SYSTEMS, type PriceChange, type System } from "@/lib/pricing/service";
 import { getSupabase } from "@/lib/supabase";
 import { ApplyDeliveryPrices, ApprovePrice, MarkUpdated } from "./MenuActions";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 // 1234.5 -> "$1,235", for estimates where cents are noise
 function formatWholeMoney(value: number) {
@@ -224,6 +225,7 @@ export default function MenuPage() {
   return (
     <div>
       <PageHeader title="Menu and pricing" description="What each dish costs to make right now, and what to charge. Plain math from your invoices and sales, no AI. Nothing changes until you approve it." />
+      <LiveRefresh topics={["menu", "attention"]} />
       <AttentionBar tab="menu" />
       <Suspense fallback={<PricingSkeleton />}>
         <Pricing />

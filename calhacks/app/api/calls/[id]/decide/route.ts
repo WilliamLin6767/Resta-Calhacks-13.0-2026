@@ -4,6 +4,7 @@ import { decideCall, supabaseStore } from "@/lib/calls/service";
 import { BriefSchema } from "@/lib/calls/types";
 import { getSupabase } from "@/lib/supabase";
 import { createWajo } from "@/lib/wajo/client";
+import { syncCallsAfter } from "@/lib/live/signal";
 
 const BodySchema = z.object({ approve: z.boolean(), brief: BriefSchema.optional() });
 
@@ -16,7 +17,9 @@ export async function POST(request: Request, ctx: RouteContext<"/api/calls/[id]/
   const parsed = BodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Send { approve: true or false } and, if edited, a valid brief.", 400);
   try {
-    const row = await decideCall(supabaseStore(await getSupabase()), createWajo(), id, parsed.data);
+    const db = await getSupabase();
+    const row = await decideCall(supabaseStore(db), createWajo(), id, parsed.data);
+    syncCallsAfter(db, [id], "/api/calls/[id]/decide");
     return Response.json({ call: row });
   } catch (err) {
     return handleCallError(err);

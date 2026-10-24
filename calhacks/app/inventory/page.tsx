@@ -16,6 +16,7 @@ import OrderPlan from "@/components/OrderPlan";
 import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
 import SalesReceipts from "./SalesReceipts";
+import LiveRefresh from "@/components/live/LiveRefresh";
 
 const STATUS = {
   out: { label: "Out", className: "bg-red-50 text-red-700" },
@@ -171,6 +172,7 @@ export default function InventoryPage() {
   return (
     <div>
       <PageHeader title="Inventory" description="What's on hand, how long it lasts, and what went missing. Deliveries come in from scanned invoices." />
+      <LiveRefresh topics={["inventory", "attention"]} />
       <AttentionBar tab="inventory" />
       <Suspense fallback={<InventorySkeleton />}>
         <Inventory />

@@ -2,6 +2,7 @@ import { aiRateLimit, errorResponse, handleCallError, parseId } from "@/lib/call
 import { supabaseStore } from "@/lib/calls/service";
 import { checkSwitch } from "@/lib/calls/switching";
 import { getSupabase } from "@/lib/supabase";
+import { syncCallsAfter } from "@/lib/live/signal";
 
 // POST /api/calls/12/switch   check again whether to switch suppliers after this call's supply
 // problem (e.g. after adding APIFY_TOKEN so ThomasNet can be searched). Only when the last check
@@ -15,6 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/calls/[id]/
     const db = await getSupabase();
     const check = await checkSwitch(db, id, { again: true });
     if (!check) return errorResponse("This call can't be checked again right now (a check is running, or it already suggested a new supplier).", 409);
+    syncCallsAfter(db, [id, check.follow_up_call_id], "/api/calls/[id]/switch");
     return Response.json({ call: await supabaseStore(db).get(id) });
   } catch (err) {
     return handleCallError(err);
