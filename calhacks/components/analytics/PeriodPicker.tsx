@@ -19,7 +19,7 @@ export default function PeriodPicker({
             key={option}
             href={`${basePath}?days=${option}`}
             aria-current={option === days ? "true" : undefined}
-            className={`px-3 py-1.5 ${option === days ? "bg-gray-900 text-white" : "hover:bg-gray-100"}`}
+            className={`px-3 py-1.5 ${option === days ? "bg-brand-600 text-white" : "hover:bg-gray-100"}`}
           >
             {option} days
           </Link>

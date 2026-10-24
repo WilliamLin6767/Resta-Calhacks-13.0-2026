@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Poppins } from "next/font/google";
 import { Suspense } from "react";
 import AppShell from "@/components/AppShell";
 import AssistantPanel from "@/components/assistant/AssistantPanel";
@@ -7,9 +7,11 @@ import AssistantProvider from "@/components/assistant/AssistantProvider";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// The type from the Figma design.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -32,7 +34,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#111827",
+  themeColor: "#101010",
 };
 
 // Loads the restaurant's name for the sidebar.
@@ -46,11 +48,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
       // Chrome adds __gcrremoteframetoken to <html> before React loads. This app does not render that attribute.
       suppressHydrationWarning
     >
-      <body className="min-h-full bg-gray-50 text-gray-900">
+      {/* Dark shell: sidebar on the left, each page in a rounded white panel on the right (AppShell) */}
+      <body className="min-h-full bg-gray-950 text-gray-800">
         {/* The AI assistant is on every page: the provider tracks the chat and the charts on screen */}
         <AssistantProvider>
           <AppShell

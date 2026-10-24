@@ -32,6 +32,7 @@ All purposes are **inferred** from table and column names.
 | `market_trends` | Food trend signals (sample data) | `id`, `keyword`, `source`, `region`, `score`, `change_pct`, `observed_at` †, `note` † | — | 6 |
 | `ai_insights` | Short AI-generated tips for the owner | `id`, `restaurant_id`, `kind`, `title`, `body`, `status` | restaurants | 4 |
 | `ai_reports` | Saved AI reports with the digest they were built from | `id`, `restaurant_id`, `period_days`, `digest` (jsonb), `report` (jsonb), `model` | restaurants | 5 |
+| `call_requests` † | Supplier phone calls an AI agent places only after the owner approves each one (from `13_calls.sql`; see `lib/calls/README.md`) | `id`, `restaurant_id`, `supplier_id`, `context_type`, `context_id`, `purpose`, `title`, `reason`, `brief` (jsonb), `status`, `proposed_by`, `wajo_call_id`, `dialed_number`, `progress`, `question`, `last_polled_at`, `outcome`, `result` (jsonb), `transcript`, `created_at`, `decided_at`, `completed_at`, `error` | restaurants, suppliers | 3 |
 | `v_daily_sales` † (view) | Sales totals per day and channel | `restaurant_id`, `day`, `channel`, `order_count`, `revenue`, `platform_fees` | — | ~204 (live count) |
 
 The other tables in the row-count export (`users`, `sessions`, `buckets`, `objects`, `migrations`, `schema_migrations` and so on) are Supabase's own auth and storage tables. Leave them alone.

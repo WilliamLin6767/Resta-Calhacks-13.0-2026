@@ -24,8 +24,8 @@ async function Prep({ searchParams }: { searchParams: Promise<{ date?: string }>
           <Link
             key={d.date}
             href={`/prep?date=${d.date}`}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              d.date === date ? "border-gray-900 bg-gray-900 text-white" : d.closed ? "border-gray-200 text-gray-400" : "border-gray-300 bg-white hover:bg-gray-100"
+            className={`lift rounded-md border px-3 py-1.5 text-sm ${
+              d.date === date ? "border-brand-600 bg-brand-600 text-white" : d.closed ? "border-gray-200 text-gray-400" : "border-gray-300 bg-white hover:bg-gray-100"
             }`}
           >
             {d.weekday.slice(0, 3)} {Number(d.date.slice(8))}

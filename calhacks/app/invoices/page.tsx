@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
+import { CallBadge } from "@/components/calls/CallControls";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import { pendingCounts } from "@/lib/calls/service";
 import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
 import { loadOrders } from "@/lib/purchasing/service";
@@ -32,6 +34,7 @@ type Flag = { kind: string; severity: string; money_impact: number | null; resol
 
 async function InvoicesTable() {
   const supabase = await getSupabase();
+  const counts = await pendingCounts(supabase).catch(() => null);
   // `...suppliers(supplier:name)` adds the supplier's name to each row as `supplier`;
   // invoice_flags(...) brings each invoice's problems along (see supabase/04_purchasing.sql).
   const { data, error } = await supabase
@@ -58,23 +61,23 @@ async function InvoicesTable() {
   return (
     <>
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold text-red-600">{formatMoney(totalWrong)}</p>
           <p className="text-sm text-gray-600">Billed wrong (to dispute)</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold text-green-700">{formatMoney(totalSave)}</p>
           <p className="text-sm text-gray-600">Could save with other suppliers</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
           <p className="text-2xl font-semibold">{rows.filter((r) => r.problems > 0).length}</p>
           <p className="text-sm text-gray-600">Invoices with problems</p>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-600">
+          <thead className="bg-brand-50 text-brand-700">
             <tr>
               <th className="px-4 py-2 font-medium">Invoice #</th>
               <th className="px-4 py-2 font-medium">Supplier</th>
@@ -91,6 +94,7 @@ async function InvoicesTable() {
                   <Link href={`/invoices/${r.id}`} className="font-medium underline decoration-gray-300 hover:decoration-gray-900">
                     {r.invoice_number ?? `#${r.id}`}
                   </Link>
+                  <CallBadge count={counts?.byContext[`invoice:${r.id}`]} />
                 </td>
                 <td className="px-4 py-2">{String(r.supplier ?? "")}</td>
                 <td className="px-4 py-2">{r.invoice_date}</td>
