@@ -3,6 +3,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { payoutDispute, PLATFORMS } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
+import { bankNote } from "@/lib/bank/match";
+import { loadBank } from "@/lib/bank/service";
 import { loadInventory } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
 import { prepNeeds } from "@/lib/prep/forecast";
@@ -289,8 +291,33 @@ async function menu(db: Db): Promise<Built> {
 
 // ---------- Accounting: payouts the apps owe, overdue bills ----------
 async function accounting(db: Db): Promise<Built> {
-  const { checks, bills, owed, restaurant } = await loadAccounting(db);
+  const [{ checks, bills, owed, restaurant }, bank] = await Promise.all([
+    loadAccounting(db),
+    loadBank(db).catch(() => ({ connected: false as const })), // the bar still works without the bank
+  ]);
   const items: Item[] = [];
+  // Simulated bank (Capital One Nessie): payouts that didn't reach the bank, and cash below the reserve
+  if (bank.connected) {
+    for (const c of bank.problems.filter((x) => x.status === "bank_short" || x.status === "no_deposit")) {
+      const reported = Number(c.week.payout?.net_amount ?? 0);
+      items.push({
+        key: `bank:${c.week.platform}:${c.week.period_start}`, fingerprint: c.shortfall.toFixed(2), tab: "accounting", level: "act", dismissable: true,
+        title: c.status === "bank_short"
+          ? `${PLATFORMS[c.week.platform]} says it paid ${cash(reported)}, but your bank got ${cash(c.deposit?.amount ?? 0)}`
+          : `${PLATFORMS[c.week.platform]}'s ${cash(reported)} payout never reached your bank`,
+        detail: `Week of ${shortDate(c.week.period_start)}. Your orders, their statement and your bank were checked separately.`,
+        actions: [{ kind: "copy", label: "Copy a note for their support", text: bankNote(c, restaurant, bank.account.last4) }],
+      });
+    }
+    if (bank.cash.spare < 0) {
+      items.push({
+        key: "reserve", fingerprint: bank.cash.after_bills.toFixed(0), tab: "accounting", level: "act", dismissable: true,
+        title: `This week's bills leave ${cash(bank.cash.after_bills)}, below your ${cash(bank.cash.reserve)} cash reserve`,
+        detail: "Hold off on non-essential orders, or chase the money the delivery apps owe you.",
+        actions: [{ kind: "link", label: "See bills", href: "/accounting" }],
+      });
+    }
+  }
   for (const c of checks.filter((x) => x.status === "short" || x.status === "missing")) {
     items.push({
       key: `payout:${c.platform}:${c.period_start}`, fingerprint: c.difference.toFixed(2), tab: "accounting", level: "act", dismissable: true,
@@ -322,6 +349,9 @@ async function accounting(db: Db): Promise<Built> {
       numbers: {
         apps_owe: money(owed), payout_weeks_checked: checks.length, payout_problems: checks.filter((c) => c.status === "short" || c.status === "missing").length,
         overdue_total: money(bills.overdue.reduce((s, b) => s + b.total, 0)), due_this_week: money(bills.due_soon.reduce((s, b) => s + b.total, 0)),
+        ...(bank.connected
+          ? { simulated_bank_balance: money(bank.cash.balance), cash_after_bills: money(bank.cash.after_bills), cash_reserve: money(bank.cash.reserve), not_in_bank: money(bank.owed) }
+          : {}),
       },
     },
   };

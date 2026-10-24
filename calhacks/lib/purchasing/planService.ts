@@ -10,7 +10,8 @@ import { loadSources } from "./sources";
 
 type Db = SupabaseClient;
 
-export type PlanRequest = { kind: "low" } | { kind: "prep"; date: string; factors: Record<number, number> };
+// exclude: suppliers the owner left out of this round (e.g. to keep cash above the reserve)
+export type PlanRequest = ({ kind: "low" } | { kind: "prep"; date: string; factors: Record<number, number> }) & { exclude?: number[] };
 
 function todayLocal() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" });
@@ -32,7 +33,7 @@ export async function buildPlan(db: Db, req: PlanRequest): Promise<{ plan: Plan;
 export async function draftPlan(db: Db, req: PlanRequest) {
   const { plan, label } = await buildPlan(db, req);
   const created: number[] = [];
-  for (const g of plan.groups) {
+  for (const g of plan.groups.filter((x) => !req.exclude?.includes(x.supplier_id))) {
     const items = g.lines.map((l) => `${l.name}: ${l.note} (${choiceReason(l)})`).join("; ");
     const warnings = [
       g.late ? "Their earliest delivery is after the day it's needed." : "",

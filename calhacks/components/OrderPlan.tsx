@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { orderImpact, type Cash } from "@/lib/bank/match";
 import type { Plan } from "@/lib/purchasing/plan";
 import type { PlanExplanation } from "@/lib/purchasing/planAi";
 
@@ -19,12 +20,13 @@ function day(date: string) {
 // and drafts one order per supplier when the owner agrees. `request` is sent to /api/orders/plan.
 export default function OrderPlan({ request, label }: { request: Record<string, unknown>; label: string }) {
   const router = useRouter();
-  const [data, setData] = useState<{ plan: Plan; explanation: PlanExplanation | null; explain_error: string } | null>(null);
+  const [data, setData] = useState<{ plan: Plan; explanation: PlanExplanation | null; explain_error: string; cash: Cash | null } | null>(null);
+  const [leftOut, setLeftOut] = useState<Set<number>>(new Set()); // suppliers the owner unticked
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
   async function post(path: string) {
-    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+    const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...request, exclude: [...leftOut] }) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? "Something went wrong.");
     return body;
@@ -33,6 +35,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
     setBusy("Comparing suppliers...");
     setError("");
     try {
+      setLeftOut(new Set());
       setData(await post("/api/orders/plan"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -61,8 +64,17 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
     );
   }
 
-  const { plan: p, explanation: ex } = data;
+  const { plan: p, explanation: ex, cash } = data;
   const notes = new Map((ex?.suppliers ?? []).map((s) => [s.supplier_id, s.note]));
+  const included = p.groups.filter((g) => !leftOut.has(g.supplier_id));
+  const includedTotal = Math.round(included.reduce((s, g) => s + g.total, 0) * 100) / 100;
+  const impact = cash ? orderImpact(cash, includedTotal) : null;
+  const toggle = (id: number) => {
+    const next = new Set(leftOut);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setLeftOut(next);
+  };
   return (
     <div className="mt-3 w-full rounded-2xl border border-brand-100 bg-white p-4 text-left">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -80,11 +92,30 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
       ) : (
         data.explain_error && <p className="mt-2 text-sm text-gray-500">No AI explanation this time ({data.explain_error}). The plan below is still worked out.</p>
       )}
+      {cash && impact && (
+        // From the simulated bank (Capital One Nessie): what these orders leave after this week's bills
+        <div className={`mt-3 rounded-md p-3 text-sm ${impact.below_reserve > 0 ? "bg-red-50 text-red-900" : "bg-green-50 text-green-900"}`}>
+          <p className="font-medium">
+            {impact.below_reserve > 0
+              ? `These orders (${money(includedTotal)}) would leave ${money(impact.left)} after this week's bills: ${money(impact.below_reserve)} below your ${money(cash.reserve)} reserve.`
+              : `These orders (${money(includedTotal)}) leave ${money(impact.left)} after this week's bills, above your ${money(cash.reserve)} reserve.`}
+          </p>
+          <p className="mt-0.5 text-xs opacity-80">
+            Bank {money(cash.balance)} − bills due {money(cash.bills_due)} = {money(cash.after_bills)} before ordering. Simulated bank account.
+            {impact.below_reserve > 0 && " Untick a supplier to order the essentials first."}
+          </p>
+        </div>
+      )}
       <div className="mt-3 grid gap-3">
         {p.groups.map((g) => (
-          <div key={g.supplier_id} className="rounded-md border border-gray-200 p-3 text-sm">
+          <div key={g.supplier_id} className={`rounded-md border border-gray-200 p-3 text-sm ${leftOut.has(g.supplier_id) ? "opacity-50" : ""}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="font-medium">{g.supplier}</p>
+              <label className="flex items-center gap-2 font-medium">
+                {p.groups.length > 1 && (
+                  <input type="checkbox" checked={!leftOut.has(g.supplier_id)} onChange={() => toggle(g.supplier_id)} aria-label={`Include ${g.supplier}`} />
+                )}
+                {g.supplier}
+              </label>
               <p className="tabular-nums text-gray-600">
                 {money(g.total)} · arrives {day(g.arrives)}
                 {g.late && <span className="ml-2 text-red-700">after it&apos;s needed</span>}
@@ -109,9 +140,9 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
       </div>
       {p.cant_order.length > 0 && <p className="mt-2 text-sm text-amber-700">No supplier has a price for: {p.cant_order.map((n) => n.name).join(", ")}.</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        {p.groups.length > 0 && (
+        {included.length > 0 && (
           <button disabled={!!busy} onClick={draft} className={primary}>
-            {busy || `Draft ${p.groups.length} ${p.groups.length === 1 ? "order" : "orders"} for approval`}
+            {busy || `Draft ${included.length} ${included.length === 1 ? "order" : "orders"} for approval`}
           </button>
         )}
         <button disabled={!!busy} onClick={() => setData(null)} className={secondary}>Close</button>
