@@ -12,7 +12,7 @@ function errorResponse(message: string, status: number, headers?: HeadersInit) {
 // POST /api/marketing/save
 // Stores edits to a draft. Does not publish.
 export async function POST(request: Request) {
-  let body: { id?: unknown };
+  let body: { id?: unknown } & Parameters<typeof readPostEdit>[0];
   try {
     body = await request.json();
   } catch {

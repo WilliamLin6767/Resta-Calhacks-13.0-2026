@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const config = bufferConfig();
   if ("error" in config) return errorResponse(config.error, 500);
 
-  let body: { id?: unknown };
+  let body: { id?: unknown } & Parameters<typeof readPostEdit>[0];
   try {
     body = await request.json();
   } catch {
