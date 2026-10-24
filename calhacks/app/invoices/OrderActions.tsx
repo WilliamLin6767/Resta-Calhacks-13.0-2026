@@ -9,6 +9,9 @@ import type { OpenOrder } from "@/lib/purchasing/service";
 const buttonClass = "inline-flex min-h-11 w-full items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50 sm:w-auto";
 const primaryClass = "lift inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:w-auto";
 
+// What the toast says after each status change
+const STATUS_DONE: Record<string, string> = { approved: "Order approved", sent: "Order marked as sent", received: "Order marked as delivered", cancelled: "Order cancelled" };
+
 const STATUS_LABEL: Record<string, string> = { draft: "Waiting for your approval", approved: "Approved, not sent yet", sent: "Sent, waiting for delivery" };
 
 // The buttons on one purchase order. Sending happens in the owner's own app (Messages, phone,
@@ -19,7 +22,7 @@ export function OrderButtons({
 }: { orderId: number; status: string; message: string; contact: { label: string; href: string | null }; part?: "all" | "primary" | "secondary" }) {
   const { run, loading, error } = useAction();
   const [copied, setCopied] = useState(false);
-  const setStatus = (s: string) => run(`/api/purchase-orders/${orderId}/status`, { status: s });
+  const setStatus = (s: string) => run(`/api/purchase-orders/${orderId}/status`, { status: s }, undefined, { success: STATUS_DONE[s] });
   const showPrimary = part !== "secondary";
   const showSecondary = part !== "primary";
 

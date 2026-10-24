@@ -7,6 +7,10 @@ import Card from "@/components/Card";
 import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
+import EmptyState from "@/components/ui/EmptyState";
+import ServiceTime from "@/components/ui/ServiceTime";
+import { SkeletonChart, SkeletonLines, SkeletonStat, SkeletonTable } from "@/components/ui/Skeleton";
+import Stat from "@/components/ui/Stat";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
@@ -16,10 +20,6 @@ function dateInLA(daysAgo: number): string {
   const date = new Date(`${today}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() - daysAgo);
   return date.toISOString().slice(0, 10);
-}
-
-function Loading() {
-  return <p className="text-sm text-gray-500">Loading...</p>;
 }
 
 // Card 1: v_daily_sales has one row per day per channel, so add them up.
@@ -36,14 +36,7 @@ async function YesterdaySales() {
   const revenue = data.reduce((sum, row) => sum + Number(row.revenue), 0);
   const orders = data.reduce((sum, row) => sum + Number(row.order_count), 0);
 
-  return (
-    <div>
-      <p className="text-3xl font-semibold tracking-tight">{formatMoney(revenue)}</p>
-      <p className="mt-1 text-sm text-gray-500">
-        {orders} orders on {day}
-      </p>
-    </div>
-  );
+  return <Stat value={formatMoney(revenue)} sub={`${orders} orders on ${day}`} />;
 }
 
 // Card 2: revenue per day for the last 30 days (all channels added together).
@@ -67,12 +60,12 @@ async function RevenueLast30Days() {
     byDay.set(row.day, entry);
   }
   const daily = [...byDay.values()];
-  if (daily.length === 0) return <p className="text-sm text-gray-500">No sales in the last 30 days.</p>;
+  if (daily.length === 0) return <EmptyState title="No sales in the last 30 days." icon="chart" />;
 
   const total = daily.reduce((sum, d) => sum + d.revenue, 0);
   return (
     <div>
-      <p className="mb-2 text-sm text-gray-500">
+      <p className="mb-2 text-sm text-gray-500 tabular-nums">
         {formatMoney(total)} total over {daily.length} days with sales
       </p>
       <DailyRevenueChart daily={daily} />
@@ -89,7 +82,7 @@ async function LowStock() {
     .eq("restaurant_id", RESTAURANT_ID)
     .order("current_qty");
   if (error) return <ErrorMessage message={error.message} />;
-  if (data.length === 0) return <p className="text-sm text-gray-500">Nothing is low.</p>;
+  if (data.length === 0) return <EmptyState title="Nothing is low. The walk-in is in good shape." icon="box" />;
 
   // Out of stock, or at half the reorder point or less, is urgent.
   const level = (qty: number, reorderAt: number): { tone: BadgeTone; label: string } => {
@@ -112,8 +105,8 @@ async function LowStock() {
         return {
           ...item,
           status: <Badge tone={tone}>{label}</Badge>,
-          on_hand: `${item.current_qty} ${item.unit} (reorder at ${item.reorder_point})`,
-          order: `${item.suggested_order_qty} ${item.unit}`,
+          on_hand: <span className="tabular-nums">{`${item.current_qty} ${item.unit} (reorder at ${item.reorder_point})`}</span>,
+          order: <span className="tabular-nums">{`${item.suggested_order_qty} ${item.unit}`}</span>,
         };
       })}
     />
@@ -130,7 +123,7 @@ async function PriceIncreases() {
     .order("change_pct", { ascending: false })
     .limit(6);
   if (error) return <ErrorMessage message={error.message} />;
-  if (data.length === 0) return <p className="text-sm text-gray-500">No recent increases.</p>;
+  if (data.length === 0) return <EmptyState title="No price increases in the last 30 days." icon="truck" />;
 
   // 15% or more is a big jump; 5% or more is worth a look.
   const tone = (pct: number): BadgeTone => (pct >= 15 ? "red" : pct >= 5 ? "amber" : "gray");
@@ -146,7 +139,7 @@ async function PriceIncreases() {
       ]}
       rows={data.map((row) => ({
         ...row,
-        price: `${formatMoney(row.previous_price)} → ${formatMoney(row.current_price)}`,
+        price: <span className="tabular-nums">{`${formatMoney(row.previous_price)} → ${formatMoney(row.current_price)}`}</span>,
         change: <Badge tone={tone(Number(row.change_pct))}>+{row.change_pct}%</Badge>,
       }))}
     />
@@ -163,7 +156,7 @@ async function AiSuggestions() {
     .eq("status", "new")
     .order("created_at", { ascending: false });
   if (error) return <ErrorMessage message={error.message} />;
-  if (data.length === 0) return <p className="text-sm text-gray-500">No new suggestions.</p>;
+  if (data.length === 0) return <EmptyState title="No new suggestions. They show up here as the AI spots things." />;
 
   return (
     <ul className="divide-y divide-gray-100 text-sm">
@@ -183,11 +176,12 @@ async function AiSuggestions() {
 export default function OverviewPage() {
   return (
     <div>
+      <ServiceTime />
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
       <AllAttention />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Yesterday's sales">
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonStat />}>
             <YesterdaySales />
           </Suspense>
         </Card>
@@ -200,22 +194,22 @@ export default function OverviewPage() {
             </Link>
           }
         >
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonChart height={288} />}>
             <RevenueLast30Days />
           </Suspense>
         </Card>
         <Card title="Low stock" className="hidden md:block lg:col-span-3">
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonTable rows={4} cols={5} />}>
             <LowStock />
           </Suspense>
         </Card>
         <Card title="Supplier price increases" className="hidden md:block lg:col-span-2">
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonTable rows={4} cols={5} />}>
             <PriceIncreases />
           </Suspense>
         </Card>
         <Card title="AI suggestions" className="hidden md:block">
-          <Suspense fallback={<Loading />}>
+          <Suspense fallback={<SkeletonLines lines={5} />}>
             <AiSuggestions />
           </Suspense>
         </Card>

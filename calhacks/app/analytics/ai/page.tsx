@@ -7,6 +7,7 @@ import AskChips from "@/components/analytics/AskChips";
 import { AiNote } from "@/components/analytics/ChartCard";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import { SkeletonChart } from "@/components/ui/Skeleton";
 import SectionMark from "@/components/SectionMark";
 import { parseDays } from "@/lib/analytics";
 import { ACTION_AREA_MODULE, MODULES, aiNotesForModule, getModule } from "@/lib/analyticsSections";
@@ -34,7 +35,7 @@ export default function AiPage({ searchParams }: PageProps<"/analytics/ai">) {
           </p>
         </div>
       </header>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-gray-100" aria-label="Loading..." />}>
+      <Suspense fallback={<SkeletonChart height={384} />}>
         <AiContent searchParams={searchParams} />
       </Suspense>
     </div>

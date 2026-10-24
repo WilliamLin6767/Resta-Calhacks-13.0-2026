@@ -2,6 +2,10 @@ import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { formatMoney } from "@/lib/format";
 import { DELIVERY_MARKUP, TARGET_FOOD_COST } from "@/lib/pricing/pricing";
 import { loadPricing, SYSTEMS, type PriceChange, type System } from "@/lib/pricing/service";
@@ -47,17 +51,17 @@ async function Pricing() {
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{raises.length}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={String(raises.length)} /></p>
           <p className="text-sm text-gray-600">Dishes to reprice</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold text-green-700">
-            {formatWholeMoney(raises.reduce((s, r) => s + r.extra_profit, 0) + delivery.extra_profit)}
+          <p className="text-2xl font-semibold tabular-nums text-green-700">
+            <LiveValue value={formatWholeMoney(raises.reduce((s, r) => s + r.extra_profit, 0) + delivery.extra_profit)} />
           </p>
           <p className="text-sm text-gray-600">More profit a month if you approve all (if sales hold)</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{toCopy.length}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={String(toCopy.length)} /></p>
           <p className="text-sm text-gray-600">Price changes not in the POS or apps yet</p>
         </div>
       </div>
@@ -66,7 +70,11 @@ async function Pricing() {
       <p className="mb-3 text-sm text-gray-600">
         Ingredient costs today vs. {since}. Target food cost: {Math.round(TARGET_FOOD_COST * 100)}% of the price.
       </p>
-      {raises.length + reviews.length === 0 && <p className="mb-8 text-sm text-gray-500">Every dish is priced fine right now.</p>}
+      {raises.length + reviews.length === 0 && (
+        <div className="mb-8 rounded-2xl border border-brand-100 bg-white">
+          <EmptyState title="Every dish is priced fine right now." icon="tag" />
+        </div>
+      )}
       <div className="mb-8 grid gap-3">
         {[...raises, ...reviews].map((s) => (
           <div key={s.dish.id} className="rounded-2xl border border-brand-100 bg-white p-4">
@@ -99,23 +107,23 @@ async function Pricing() {
             DoorDash and Uber Eats keep {delivery.fee_pct}% of every order, and they are {delivery.share_pct}% of your sales. These dishes cost the
             same on the apps as in the restaurant. Most restaurants charge about {Math.round(DELIVERY_MARKUP * 100)}% more on the apps.
           </p>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="text-gray-600">
+          <div className={`mt-3 ${tableWrap}`}>
+            <table className={table}>
+              <thead className={thead}>
                 <tr>
-                  <th className="py-1 pr-4 font-medium">Dish</th>
-                  <th className="py-1 pr-4 text-right font-medium">On the apps now</th>
-                  <th className="py-1 pr-4 text-right font-medium">You keep</th>
-                  <th className="py-1 text-right font-medium">Suggested</th>
+                  <th className={th}>Dish</th>
+                  <th className={thNum}>On the apps now</th>
+                  <th className={thNum}>You keep</th>
+                  <th className={thNum}>Suggested</th>
                 </tr>
               </thead>
               <tbody>
                 {delivery.prices.map((p) => (
-                  <tr key={p.menu_item_id} className="border-t border-gray-100">
-                    <td className="py-1 pr-4">{p.name}</td>
-                    <td className="py-1 pr-4 text-right tabular-nums">{formatMoney(p.delivery_price)}</td>
-                    <td className="py-1 pr-4 text-right tabular-nums text-gray-500">{formatMoney(p.delivery_price * (1 - delivery.fee_pct / 100))}</td>
-                    <td className="py-1 text-right font-medium tabular-nums">{formatMoney(p.new_delivery_price)}</td>
+                  <tr key={p.menu_item_id} className={tr}>
+                    <td className={td}>{p.name}</td>
+                    <td className={tdNum}>{formatMoney(p.delivery_price)}</td>
+                    <td className={`${tdNum} text-gray-500`}>{formatMoney(p.delivery_price * (1 - delivery.fee_pct / 100))}</td>
+                    <td className={`${tdNum} font-medium`}>{formatMoney(p.new_delivery_price)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -157,31 +165,32 @@ async function Pricing() {
       )}
 
       <h2 className="mb-3 text-lg font-semibold">Every dish</h2>
-      <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-50 text-brand-700">
+      <div className={tableWrap}>
+        <table className={table}>
+          <thead className={thead}>
             <tr>
-              <th className="px-4 py-2 font-medium">Dish</th>
-              <th className="px-4 py-2 text-right font-medium">Price</th>
-              <th className="px-4 py-2 text-right font-medium">On the apps</th>
-              <th className="px-4 py-2 text-right font-medium">Cost to make</th>
-              <th className="px-4 py-2 text-right font-medium">Change</th>
-              <th className="px-4 py-2 text-right font-medium">Food cost</th>
-              <th className="px-4 py-2 text-right font-medium">Sold (30 days)</th>
+              <th className={th}>Dish</th>
+              <th className={thNum}>Price</th>
+              <th className={thNum}>On the apps</th>
+              <th className={thNum}>Cost to make</th>
+              <th className={thNum}>Change</th>
+              <th className={thNum}>Food cost</th>
+              <th className={thNum}>Sold (30 days)</th>
             </tr>
           </thead>
           <tbody>
             {suggestions.map((s) => (
-              <tr key={s.dish.id} className="border-t border-gray-100">
-                <td className="px-4 py-2">{s.dish.name}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{formatMoney(s.dish.price)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{formatMoney(s.dish.delivery_price ?? s.dish.price)}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{formatMoney(s.cost_now)}</td>
-                <td className={`px-4 py-2 text-right tabular-nums ${(s.cost_change_pct ?? 0) >= 3 ? "text-red-600" : "text-gray-500"}`}>
+              <tr key={s.dish.id} className={tr}>
+                <td className={td}>{s.dish.name}</td>
+                {/* Price, app price and food cost flash after an approval changes them */}
+                <td className={tdNum}><LiveValue value={formatMoney(s.dish.price)} /></td>
+                <td className={tdNum}><LiveValue value={formatMoney(s.dish.delivery_price ?? s.dish.price)} /></td>
+                <td className={tdNum}>{formatMoney(s.cost_now)}</td>
+                <td className={`${tdNum} ${(s.cost_change_pct ?? 0) >= 3 ? "text-red-600" : "text-gray-500"}`}>
                   {s.cost_change_pct === null ? "" : `${s.cost_change_pct > 0 ? "+" : ""}${s.cost_change_pct}%`}
                 </td>
-                <td className={`px-4 py-2 text-right tabular-nums ${s.food_cost_pct > TARGET_FOOD_COST * 100 ? "text-red-600" : ""}`}>{s.food_cost_pct}%</td>
-                <td className="px-4 py-2 text-right tabular-nums">{s.dish.units}</td>
+                <td className={`${tdNum} ${s.food_cost_pct > TARGET_FOOD_COST * 100 ? "text-red-600" : ""}`}><LiveValue value={`${s.food_cost_pct}%`} /></td>
+                <td className={tdNum}>{s.dish.units}</td>
               </tr>
             ))}
           </tbody>
@@ -191,12 +200,32 @@ async function Pricing() {
   );
 }
 
+// The three numbers, a couple of suggested prices and the dish table, while they load.
+function PricingSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading</span>
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="mb-3 h-6 w-48" />
+      <div className="mb-8 grid gap-3">
+        <Skeleton className="h-36 rounded-2xl" />
+        <Skeleton className="h-36 rounded-2xl" />
+      </div>
+      <SkeletonTable rows={6} cols={7} />
+    </div>
+  );
+}
+
 export default function MenuPage() {
   return (
     <div>
       <PageHeader title="Menu and pricing" description="What each dish costs to make right now, and what to charge. Plain math from your invoices and sales, no AI. Nothing changes until you approve it." />
       <AttentionBar tab="menu" />
-      <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+      <Suspense fallback={<PricingSkeleton />}>
         <Pricing />
       </Suspense>
     </div>

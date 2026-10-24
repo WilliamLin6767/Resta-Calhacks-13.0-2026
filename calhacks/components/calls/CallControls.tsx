@@ -5,9 +5,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toaster";
 import { announceCallsChanged } from "./CallRequests";
 
-const primary = "rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
+const primary = "rounded-md bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 
 async function post(path: string, body: unknown) {
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -20,6 +21,7 @@ type ScanResult = { created: { id: number; title: string }[]; considered: number
 
 export function CheckForCalls() {
   const router = useRouter();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState("");
@@ -29,11 +31,17 @@ export function CheckForCalls() {
     setError("");
     setResult(null);
     try {
-      setResult(await post("/api/calls/scan", {}));
+      const found: ScanResult = await post("/api/calls/scan", {});
+      setResult(found);
       announceCallsChanged();
       router.refresh();
+      toast({
+        message: found.created.length ? `${found.created.length} new call${found.created.length === 1 ? "" : "s"} to review` : "Checked: nothing needs a call",
+        tone: found.created.length ? "success" : "info",
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      toast({ message: err instanceof Error ? err.message : String(err), tone: "error" });
     } finally {
       setBusy(false);
     }
@@ -69,6 +77,7 @@ export function CheckForCalls() {
 
 export function RequestCall({ suppliers }: { suppliers: { id: number; name: string; has_phone: boolean }[] }) {
   const router = useRouter();
+  const toast = useToast();
   const callable = suppliers.filter((s) => s.has_phone);
   const [supplierId, setSupplierId] = useState(callable[0]?.id ?? 0);
   const [text, setText] = useState("");
@@ -87,14 +96,16 @@ export function RequestCall({ suppliers }: { suppliers: { id: number; name: stri
       setText("");
       announceCallsChanged();
       router.refresh();
+      toast({ message: "Call request added", tone: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      toast({ message: err instanceof Error ? err.message : String(err), tone: "error" });
     } finally {
       setBusy(false);
     }
   }
 
-  const field = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-brand-600";
+  const field = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm";
   return (
     <form onSubmit={submit} className="space-y-2 rounded-2xl border border-brand-100 bg-white p-4">
       <h2 className="text-lg font-semibold">Request a call</h2>

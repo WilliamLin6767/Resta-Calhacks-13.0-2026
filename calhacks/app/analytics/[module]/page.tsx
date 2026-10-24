@@ -18,6 +18,8 @@ import { PrimeCostBar, ProfitSteps } from "@/components/analytics/KpiVisuals";
 import MenuTable from "@/components/analytics/MenuTable";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton, SkeletonChart } from "@/components/ui/Skeleton";
 import SimpleTable from "@/components/SimpleTable";
 import SectionMark from "@/components/SectionMark";
 import { MENU_CLASSES, parseDays, type AiReport, type Digest, type SectionId } from "@/lib/analytics";
@@ -46,7 +48,26 @@ export async function generateMetadata({ params }: PageProps<"/analytics/[module
   return { title: isModuleId(module) ? `${getModule(module).title} · Analytics` : "Analytics" };
 }
 
-export default async function ModulePage({ params, searchParams }: PageProps<"/analytics/[module]">) {
+// params and searchParams are URL data, only known per link, so both are read inside Suspense
+// and the page's App Shell stays shared across every module.
+export default function ModulePage({ params, searchParams }: PageProps<"/analytics/[module]">) {
+  return (
+    <Suspense
+      fallback={
+        <div role="status">
+          <span className="sr-only">Loading</span>
+          <Skeleton className="mb-2 h-4 w-32" />
+          <Skeleton className="mb-4 h-12 w-72" />
+          <SkeletonChart height={512} />
+        </div>
+      }
+    >
+      <ModuleBody params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ModuleBody({ params, searchParams }: PageProps<"/analytics/[module]">) {
   const { module } = await params;
   if (!isModuleId(module)) notFound();
   const def = getModule(module);
@@ -68,11 +89,7 @@ export default async function ModulePage({ params, searchParams }: PageProps<"/a
       </header>
       {/* searchParams are only known at request time, so read them inside Suspense */}
       <Suspense
-        fallback={
-          <div className="h-[32rem] animate-pulse rounded-xl bg-gray-100" aria-busy="true">
-            <span className="sr-only">Loading...</span>
-          </div>
-        }
+        fallback={<SkeletonChart height={512} />}
       >
         <ModuleContent id={module} searchParams={searchParams} />
       </Suspense>
@@ -103,7 +120,7 @@ async function ModuleContent({ id, searchParams }: { id: ModuleId; searchParams:
         </section>
       )}
 
-      {digest.kpis.cur ? <ModuleCharts id={id} digest={digest} note={note} /> : <p className="text-sm text-gray-500">No orders in this period.</p>}
+      {digest.kpis.cur ? <ModuleCharts id={id} digest={digest} note={note} /> : <EmptyState title="No orders in this period." hint="Pick a longer period above." icon="chart" />}
 
       <AskPanel id={id} report={report} stale={stale} days={days} />
     </div>

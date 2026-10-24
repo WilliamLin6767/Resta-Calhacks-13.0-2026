@@ -3,6 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import { useToast } from "@/components/ui/Toaster";
+import TypingDots from "@/components/ui/TypingDots";
 import MicButton from "@/components/voice/MicButton";
 
 type Order = {
@@ -38,6 +41,7 @@ function playable(audio: string, audioType: string) {
 // A thread for the visit. Typed replies stay on screen. Spoken replies are also played.
 export default function ChatPage() {
   const router = useRouter();
+  const toast = useToast();
   const nextId = useRef(1);
   const listRef = useRef<HTMLDivElement>(null);
   const urls = useRef<string[]>([]);
@@ -142,6 +146,7 @@ export default function ChatPage() {
       if (!res.ok) throw new Error(data.error ?? "Could not approve the order.");
       setMessages((current) => current.map((message) => (message.id === messageId ? { ...message, approved: true } : message)));
       router.refresh();
+      toast({ message: "Order approved", tone: "success" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not approve the order.");
     } finally {
@@ -155,11 +160,10 @@ export default function ChatPage() {
       <PageHeader title="Chat" description="Tell me what's low, or hold to talk." />
 
       <div ref={listRef} className="space-y-3 pb-36 md:flex-1 md:pb-6">
-        {messages.length === 0 && !busy && (
-          <p className="text-sm text-gray-500">Ask about a food, or hold the button and say it.</p>
-        )}
+        {messages.length === 0 && !busy && <EmptyState title="Ask about a food, or hold the button and say it." icon="chat" />}
         {messages.map((message) => (
-          <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
+          // Each bubble rises in when it's added; the ones already on screen stay put
+          <div key={message.id} className={`reveal-in ${message.role === "user" ? "flex justify-end" : "flex justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-brand-600 text-white" : "border border-brand-100 bg-white text-gray-900"}`}>
               <p className="whitespace-pre-wrap">{message.content}</p>
               {message.order && (
@@ -188,7 +192,13 @@ export default function ChatPage() {
             </div>
           </div>
         ))}
-        {busy && <p className="text-sm text-gray-500">Working...</p>}
+        {busy && (
+          <div className="reveal-in flex justify-start">
+            <div className="rounded-2xl border border-brand-100 bg-white px-4 py-3">
+              <TypingDots />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white md:sticky md:bottom-6 md:rounded-2xl md:border md:border-brand-100 md:shadow-lg">

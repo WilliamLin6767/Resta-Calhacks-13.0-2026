@@ -6,6 +6,7 @@ import CompareChart from "@/components/assistant/CompareChart";
 import ExplainButton from "@/components/assistant/ExplainButton";
 import Card from "@/components/Card";
 import ErrorMessage from "@/components/ErrorMessage";
+import { SkeletonChart } from "@/components/ui/Skeleton";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import { PERIOD_OPTIONS } from "@/lib/analytics";
@@ -38,7 +39,7 @@ export default function ComparePage({ searchParams }: PageProps<"/analytics/comp
       </p>
       <PageHeader title="Compare" description="Pick one number and one way to split it." />
       {/* searchParams are only known at request time, so read them inside Suspense */}
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-gray-100" aria-label="Loading..." />}>
+      <Suspense fallback={<SkeletonChart height={384} />}>
         <CompareContent searchParams={searchParams} />
       </Suspense>
     </div>

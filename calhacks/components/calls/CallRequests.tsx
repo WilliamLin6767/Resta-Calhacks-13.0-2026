@@ -6,6 +6,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonLines } from "@/components/ui/Skeleton";
 import { formatPhone } from "@/lib/calls/phone";
 import type { CallView } from "@/lib/calls/service";
 import { CALL_STEPS, FINISHED_STATUSES, callStep, finishedPriority, needsSwitchCheck, sortFinished, type Brief, type ContextType, type SwitchCheck } from "@/lib/calls/types";
@@ -15,8 +17,8 @@ export function announceCallsChanged() {
   window.dispatchEvent(new Event(CALLS_CHANGED));
 }
 
-const button = "rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
-const primary = "rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600";
+const button = "rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
+const primary = "rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 
 const STATUS: Record<CallView["status"], { label: string; className: string }> = {
   pending: { label: "Waiting for your OK", className: "bg-amber-50 text-amber-800" },
@@ -180,7 +182,7 @@ function CallProgress({ step, supplier, since }: { step: number; supplier: strin
           <div key={label} className="flex-1">
             <div
               className={`h-1.5 rounded-full ${
-                i < step || !running ? "bg-accent" : i === step ? "animate-pulse bg-accent/60" : "bg-gray-100"
+                i < step || !running ? "bg-accent" : i === step ? "bg-accent/60 motion-safe:animate-pulse" : "bg-gray-100"
               }`}
             />
             <p className={`mt-1 text-xs ${i === step ? "font-medium text-gray-900" : "text-gray-500"}`}>{label}</p>
@@ -205,7 +207,7 @@ function SwitchSuggestion({ check, supplier, busy, onCheckAgain }: { check: Swit
   if (check.status === "checking") {
     return (
       <div aria-live="polite" className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-        <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-blue-600" aria-hidden="true" />
+        <span className="mr-2 inline-block h-2 w-2 rounded-full bg-blue-600 motion-safe:animate-pulse" aria-hidden="true" />
         Supply problem found. Checking what it means for sales and whether another supplier makes sense...
       </div>
     );
@@ -319,7 +321,16 @@ function CallCard({ call, onChanged }: { call: CallView; onChanged: (c?: Partial
               {finishedPriority(call) === 0 ? "To do" : "Follow up"}
             </span>
           )}
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
+          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>
+            {/* On a live call: a dot with a soft ring spreading out (still with reduced motion) */}
+            {(call.status === "calling" || call.status === "needs_input") && (
+              <span className="relative mr-1.5 inline-flex h-2 w-2" aria-hidden="true">
+                <span className="live-pulse absolute inset-0 rounded-full bg-blue-500" />
+                <span className="relative h-2 w-2 rounded-full bg-blue-600" />
+              </span>
+            )}
+            {status.label}
+          </span>
         </span>
       </div>
       <p className="text-sm text-gray-600">{call.supplier.name}{call.supplier.contact_name ? ` · ask for ${call.supplier.contact_name}` : ""}</p>
@@ -518,9 +529,9 @@ export default function CallRequests({
         {action}
       </div>
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {calls === null && !error && <p className="text-sm text-gray-400">Loading...</p>}
+      {calls === null && !error && <SkeletonLines lines={3} className="rounded-2xl border border-brand-100 bg-white p-4" />}
       {calls !== null && open.length === 0 && (
-        <p className="text-sm text-gray-500">{finished.length ? "No calls waiting for your OK." : "No calls here."}</p>
+        <EmptyState title={finished.length ? "No calls waiting for your OK." : "No calls here."} icon="truck" />
       )}
       <ul className="grid gap-3">
         {open.map((c) => (

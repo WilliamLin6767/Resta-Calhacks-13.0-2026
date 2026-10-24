@@ -22,6 +22,7 @@ import {
   YAxis,
   ZAxis,
 } from "recharts";
+import { useAnimateOnce } from "@/components/ui/useAnimateOnce";
 import { MENU_CLASSES, SERIES_COLORS as SERIES, type ChannelRow, type Digest, type MenuRow } from "@/lib/analytics";
 import { formatMoney } from "@/lib/format";
 const GRID = "#e5e7eb";
@@ -32,6 +33,7 @@ const shortMoney = (value: unknown) => `$${Math.round(Number(value)).toLocaleStr
 
 // Revenue per day (line). Closed days show as 0.
 export function DailyRevenueChart({ daily }: { daily: Digest["daily"] }) {
+  const animate = useAnimateOnce();
   return (
     <ResponsiveContainer width="100%" height={260}>
       <LineChart data={daily} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
@@ -39,7 +41,7 @@ export function DailyRevenueChart({ daily }: { daily: Digest["daily"] }) {
         <XAxis dataKey="date" tick={AXIS} tickFormatter={(d: string) => d.slice(5)} minTickGap={24} />
         <YAxis tick={AXIS} tickFormatter={shortMoney} width={64} />
         <Tooltip formatter={money} labelFormatter={(d) => `Date: ${d}`} />
-        <Line type="monotone" dataKey="revenue" name="Revenue" stroke={SERIES[0]} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="revenue" name="Revenue" stroke={SERIES[0]} strokeWidth={2} dot={false} isAnimationActive={animate} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -47,6 +49,7 @@ export function DailyRevenueChart({ daily }: { daily: Digest["daily"] }) {
 
 // Average revenue by weekday (bar).
 export function WeekdayChart({ rows }: { rows: Digest["by_weekday"] }) {
+  const animate = useAnimateOnce();
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
@@ -54,7 +57,7 @@ export function WeekdayChart({ rows }: { rows: Digest["by_weekday"] }) {
         <XAxis dataKey="weekday" tick={AXIS} tickFormatter={(d: string) => d.slice(0, 3)} />
         <YAxis tick={AXIS} tickFormatter={shortMoney} width={64} />
         <Tooltip formatter={money} cursor={{ fill: "#f3f4f6" }} />
-        <Bar dataKey="avg_revenue" name="Avg revenue" fill={SERIES[0]} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="avg_revenue" name="Avg revenue" fill={SERIES[0]} radius={[4, 4, 0, 0]} isAnimationActive={animate} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -62,6 +65,7 @@ export function WeekdayChart({ rows }: { rows: Digest["by_weekday"] }) {
 
 // Average orders by hour of the day (bar).
 export function HourChart({ rows }: { rows: Digest["by_hour"] }) {
+  const animate = useAnimateOnce();
   const data = rows.map((r) => ({ ...r, label: hourLabel(r.hour) }));
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -70,7 +74,7 @@ export function HourChart({ rows }: { rows: Digest["by_hour"] }) {
         <XAxis dataKey="label" tick={AXIS} />
         <YAxis tick={AXIS} width={40} />
         <Tooltip cursor={{ fill: "#f3f4f6" }} />
-        <Bar dataKey="avg_orders" name="Avg orders" fill={SERIES[0]} radius={[4, 4, 0, 0]} />
+        <Bar dataKey="avg_orders" name="Avg orders" fill={SERIES[0]} radius={[4, 4, 0, 0]} isAnimationActive={animate} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -84,6 +88,7 @@ function hourLabel(hour: number) {
 
 // Revenue by channel (donut), with each channel's platform fees listed beside it.
 export function ChannelDonut({ channels }: { channels: ChannelRow[] }) {
+  const animate = useAnimateOnce();
   return (
     <div className="flex flex-col items-center gap-4 sm:flex-row">
       <div className="h-56 w-56 shrink-0">
@@ -97,6 +102,7 @@ export function ChannelDonut({ channels }: { channels: ChannelRow[] }) {
               outerRadius="100%"
               stroke="#ffffff"
               strokeWidth={2}
+              isAnimationActive={animate}
             >
               {channels.map((c, i) => (
                 <Cell key={c.channel} fill={SERIES[i % SERIES.length]} />
@@ -140,6 +146,7 @@ export function channelName(channel: string) {
 // Menu engineering: each dish by popularity (x) and profit per plate (y).
 // Each class gets its own color AND marker shape, so it doesn't rely on color alone.
 export function MenuScatter({ menu, thresholds }: { menu: MenuRow[]; thresholds: Digest["menu_thresholds"] }) {
+  const animate = useAnimateOnce();
   return (
     <ResponsiveContainer width="100%" height={320}>
       <ScatterChart margin={{ top: 8, right: 24, bottom: 16, left: 8 }}>
@@ -161,6 +168,7 @@ export function MenuScatter({ menu, thresholds }: { menu: MenuRow[]; thresholds:
             shape={c.shape}
             stroke="#ffffff"
             strokeWidth={2}
+            isAnimationActive={animate}
           />
         ))}
       </ScatterChart>
@@ -182,6 +190,7 @@ function MenuTooltip({ active, payload }: { active?: boolean; payload?: { payloa
 
 // Where the money goes: food, platform fees and each fixed cost (horizontal bars).
 export function CostBreakdownChart({ costs }: { costs: Digest["costs"] }) {
+  const animate = useAnimateOnce();
   const rows = [
     { name: "Food", amount: costs.food },
     { name: "Platform fees", amount: costs.platform_fees },
@@ -204,6 +213,7 @@ export function CostBreakdownChart({ costs }: { costs: Digest["costs"] }) {
           fill={SERIES[0]}
           radius={[0, 4, 4, 0]}
           label={{ position: "right", fontSize: 12, fill: "#52514e", formatter: shortMoney }}
+          isAnimationActive={animate}
         />
       </BarChart>
     </ResponsiveContainer>

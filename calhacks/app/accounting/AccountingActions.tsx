@@ -28,7 +28,7 @@ export function MarkPaid({ invoiceId }: { invoiceId: number }) {
   const { run, loading, error } = useAction();
   return (
     <span className="inline-flex items-center gap-2">
-      <button disabled={loading} onClick={() => run(`/api/invoices/${invoiceId}/paid`)} className={buttonClass}>
+      <button disabled={loading} onClick={() => run(`/api/invoices/${invoiceId}/paid`, undefined, undefined, { success: "Invoice marked paid" })} className={buttonClass}>
         {loading ? "Saving..." : "Mark paid"}
       </button>
       {error && <span className="text-xs text-red-600">{error}</span>}

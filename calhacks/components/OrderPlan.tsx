@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/components/ui/Toaster";
 import { orderImpact, type Cash } from "@/lib/bank/match";
 import type { Plan } from "@/lib/purchasing/plan";
 import type { PlanExplanation } from "@/lib/purchasing/planAi";
@@ -20,6 +21,7 @@ function day(date: string) {
 // and drafts one order per supplier when the owner agrees. `request` is sent to /api/orders/plan.
 export default function OrderPlan({ request, label }: { request: Record<string, unknown>; label: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [data, setData] = useState<{ plan: Plan; explanation: PlanExplanation | null; explain_error: string; cash: Cash | null } | null>(null);
   const [leftOut, setLeftOut] = useState<Set<number>>(new Set()); // suppliers the owner unticked
   const [busy, setBusy] = useState("");
@@ -39,6 +41,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
       setData(await post("/api/orders/plan"));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" });
     } finally {
       setBusy("");
     }
@@ -49,8 +52,10 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
     try {
       await post("/api/orders/plan/draft");
       router.push("/invoices#orders");
+      toast({ message: "Orders drafted. Approve them under Purchase orders.", tone: "success" });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      toast({ message: e instanceof Error ? e.message : String(e), tone: "error" });
       setBusy("");
     }
   }

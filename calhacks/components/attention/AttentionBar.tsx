@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { HealthBadge } from "@/components/analytics/AiSummary";
 import ErrorMessage from "@/components/ErrorMessage";
+import AiThinking from "@/components/ui/AiThinking";
+import { SkeletonLines } from "@/components/ui/Skeleton";
 import type { TabSummary } from "@/lib/attention/ai";
 import { loadBar, writeSummary } from "@/lib/attention/service";
 import type { Tab, TabFacts } from "@/lib/attention/types";
@@ -55,7 +57,7 @@ async function Bar({ tab }: { tab: Tab }) {
   }
   return (
     <>
-      <Suspense fallback={<p className="mb-4 border-b border-gray-100 pb-4 text-sm text-gray-400">✦ Writing the AI summary...</p>}>
+      <Suspense fallback={<AiThinking label="Writing the AI summary..." className="mb-4 border-b border-gray-100 pb-4" />}>
         <Summary saved={bar.summary} facts={bar.facts} hash={bar.hash} />
       </Suspense>
       <AttentionList items={bar.items} />
@@ -67,7 +69,7 @@ async function Bar({ tab }: { tab: Tab }) {
 export default function AttentionBar({ tab }: { tab: Tab }) {
   return (
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
-      <Suspense fallback={<p className="text-sm text-gray-400">Checking what needs you...</p>}>
+      <Suspense fallback={<SkeletonLines lines={3} />}>
         <Bar tab={tab} />
       </Suspense>
     </section>

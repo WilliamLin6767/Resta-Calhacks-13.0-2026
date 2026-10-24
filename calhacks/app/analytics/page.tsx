@@ -8,6 +8,8 @@ import KpiExplorer from "@/components/analytics/KpiExplorer";
 import { kpiCards } from "@/components/analytics/kpiCards";
 import PeriodPicker from "@/components/analytics/PeriodPicker";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import PageHeader from "@/components/PageHeader";
 import { parseDays } from "@/lib/analytics";
 import { MODULES, alertCountsByModule, moduleSummary } from "@/lib/analyticsSections";
@@ -34,11 +36,11 @@ export default function AnalyticsPage({ searchParams }: PageProps<"/analytics">)
 
 function OverviewSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true">
-      <span className="sr-only">Loading...</span>
-      <div className="h-24 animate-pulse rounded-xl bg-gray-100" />
-      <div className="h-40 animate-pulse rounded-xl bg-gray-100" />
-      <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
+    <div role="status" className="space-y-6">
+      <span className="sr-only">Loading</span>
+      <Skeleton className="h-24 rounded-xl" />
+      <Skeleton className="h-40 rounded-xl" />
+      <Skeleton className="h-72 rounded-xl" />
     </div>
   );
 }
@@ -77,7 +79,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<"/analytics"
             <KpiExplorer cards={kpiCards(digest)} hasPrevious={Boolean(digest.kpis.prev)} days={days} />
           </>
         ) : (
-          <p className="text-sm text-gray-500">No orders in this period.</p>
+          <EmptyState title="No orders in this period." hint="Pick a longer period above." icon="chart" />
         )}
       </ChartCard>
 

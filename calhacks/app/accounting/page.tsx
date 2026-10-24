@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import LiveValue from "@/components/ui/LiveValue";
+import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
+import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
 import { formatMoney } from "@/lib/format";
@@ -73,11 +77,11 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div>
-          <p className="text-xl font-semibold tabular-nums">{formatMoney(cash.balance)}</p>
-          <p className="text-sm text-gray-600">In the bank{bank.savings ? ` (+ ${formatMoney(bank.savings)} in savings)` : ""}</p>
+          <p className="text-xl font-semibold tabular-nums"><LiveValue value={formatMoney(cash.balance)} /></p>
+          <p className="text-sm text-gray-600">In the bank{bank.savings ? <> (+ <LiveValue value={formatMoney(bank.savings)} className="tabular-nums" /> in savings)</> : ""}</p>
         </div>
-        <div><p className="text-xl font-semibold tabular-nums">− {formatMoney(cash.bills_due)}</p><p className="text-sm text-gray-600">Bills due this week</p></div>
-        <div><p className={`text-xl font-semibold tabular-nums ${cash.spare < 0 ? "text-red-600" : ""}`}>{formatMoney(cash.after_bills)}</p><p className="text-sm text-gray-600">Left after bills</p></div>
+        <div><p className="text-xl font-semibold tabular-nums">− <LiveValue value={formatMoney(cash.bills_due)} /></p><p className="text-sm text-gray-600">Bills due this week</p></div>
+        <div><p className={`text-xl font-semibold tabular-nums ${cash.spare < 0 ? "text-red-600" : ""}`}><LiveValue value={formatMoney(cash.after_bills)} /></p><p className="text-sm text-gray-600">Left after bills</p></div>
         <div>
           <p className="text-sm text-gray-600">Keep at least</p>
           <ReserveInput reserve={cash.reserve} />
@@ -127,15 +131,15 @@ async function Accounting() {
     <>
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold text-red-600">{formatMoney(owed)}</p>
+          <p className="text-2xl font-semibold tabular-nums text-red-600"><LiveValue value={formatMoney(owed)} /></p>
           <p className="text-sm text-gray-600">Delivery apps owe you</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{formatMoney(sum(bills.overdue))}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={formatMoney(sum(bills.overdue))} /></p>
           <p className="text-sm text-gray-600">Bills overdue ({bills.overdue.length})</p>
         </div>
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="text-2xl font-semibold">{formatMoney(sum(bills.due_soon))}</p>
+          <p className="text-2xl font-semibold tabular-nums"><LiveValue value={formatMoney(sum(bills.due_soon))} /></p>
           <p className="text-sm text-gray-600">Bills due this week ({bills.due_soon.length})</p>
         </div>
       </div>
@@ -148,7 +152,11 @@ async function Accounting() {
         <p className="mb-3 text-sm text-gray-600">
           Each week&apos;s payout compared with your own orders: sales minus the app&apos;s fees. Plain math, no AI.
         </p>
-        {problems.length === 0 && <p className="mb-3 text-sm text-green-700">Every finished week matches.</p>}
+        {problems.length === 0 && (
+          <div className="mb-3 rounded-2xl border border-brand-100 bg-white">
+            <EmptyState title="Every finished week matches." hint="Nothing to chase with the delivery apps." icon="dollar" />
+          </div>
+        )}
         <div className="mb-4 grid gap-2">
           {problems.map((c) => (
             <div key={`${c.platform}${c.period_start}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
@@ -161,34 +169,34 @@ async function Accounting() {
             </div>
           ))}
         </div>
-        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-50 text-brand-700">
+        <div className={tableWrap}>
+          <table className={table}>
+            <thead className={thead}>
               <tr>
-                <th className="px-4 py-2 font-medium">Week</th>
-                <th className="px-4 py-2 font-medium">App</th>
-                <th className="px-4 py-2 text-right font-medium">Sales</th>
-                <th className="px-4 py-2 text-right font-medium">Fees</th>
-                <th className="px-4 py-2 text-right font-medium">Should pay</th>
-                <th className="px-4 py-2 text-right font-medium">Paid</th>
-                <th className="px-4 py-2 font-medium">Check</th>
-                {inBank.size > 0 && <th className="px-4 py-2 text-right font-medium">Bank got</th>}
+                <th className={th}>Week</th>
+                <th className={th}>App</th>
+                <th className={thNum}>Sales</th>
+                <th className={thNum}>Fees</th>
+                <th className={thNum}>Should pay</th>
+                <th className={thNum}>Paid</th>
+                <th className={th}>Check</th>
+                {inBank.size > 0 && <th className={thNum}>Bank got</th>}
               </tr>
             </thead>
             <tbody>
               {checks.map((c) => (
-                <tr key={`${c.platform}${c.period_start}`} className="border-t border-gray-100">
-                  <td className="px-4 py-2 tabular-nums">{c.period_start}</td>
-                  <td className="px-4 py-2">{PLATFORMS[c.platform]}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatMoney(c.expected_gross)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums text-gray-500">{formatMoney(c.expected_fees)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatMoney(c.expected_net)}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{c.payout ? formatMoney(c.payout.net_amount) : "-"}</td>
-                  <td className={`px-4 py-2 ${STATUS[c.status].className}`}>{STATUS[c.status].label}</td>
+                <tr key={`${c.platform}${c.period_start}`} className={tr}>
+                  <td className={`${td} tabular-nums`}>{c.period_start}</td>
+                  <td className={td}>{PLATFORMS[c.platform]}</td>
+                  <td className={tdNum}>{formatMoney(c.expected_gross)}</td>
+                  <td className={`${tdNum} text-gray-500`}>{formatMoney(c.expected_fees)}</td>
+                  <td className={tdNum}>{formatMoney(c.expected_net)}</td>
+                  <td className={tdNum}>{c.payout ? formatMoney(c.payout.net_amount) : "-"}</td>
+                  <td className={`${td} ${STATUS[c.status].className}`}>{STATUS[c.status].label}</td>
                   {inBank.size > 0 && (() => {
                     const b = inBank.get(`${c.platform}${c.period_start}`);
                     return (
-                      <td className={`px-4 py-2 text-right tabular-nums ${b ? BANK_STATUS[b.status].className : "text-gray-400"}`}>
+                      <td className={`${tdNum} ${b ? BANK_STATUS[b.status].className : "text-gray-400"}`}>
                         {b?.deposit ? formatMoney(b.deposit.amount) : b ? BANK_STATUS[b.status].label : "-"}
                       </td>
                     );
@@ -202,6 +210,11 @@ async function Accounting() {
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold">Bills to pay</h2>
+        {GROUPS.every(({ key }) => bills[key].length === 0) && (
+          <div className="rounded-2xl border border-brand-100 bg-white">
+            <EmptyState title="No bills to pay." hint="Scanned invoices show up here until they're marked paid." icon="receipt" />
+          </div>
+        )}
         {GROUPS.map(({ key, title }) =>
           bills[key].length ? (
             <div key={key} className="mb-4">
@@ -239,12 +252,29 @@ async function Accounting() {
   );
 }
 
+// The three numbers, the bank box and the payouts table, while they load.
+function AccountingSkeleton() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading</span>
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="mb-8 h-40 rounded-2xl" />
+      <Skeleton className="mb-3 h-6 w-56" />
+      <SkeletonTable rows={6} cols={7} />
+    </div>
+  );
+}
+
 export default function AccountingPage() {
   return (
     <div>
       <PageHeader title="Accounting" description="Check that delivery apps paid what they owe, see which bills are due, and send it all to QuickBooks." />
       <AttentionBar tab="accounting" />
-      <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+      <Suspense fallback={<AccountingSkeleton />}>
         <Accounting />
       </Suspense>
     </div>

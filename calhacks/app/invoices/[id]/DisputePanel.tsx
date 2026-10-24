@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import AiThinking from "@/components/ui/AiThinking";
 import { useAction } from "@/components/useAction";
 import { looksLikeEmail, mailtoLink } from "@/lib/purchasing/disputes";
 import type { Dispute } from "@/lib/purchasing/disputeService";
@@ -35,9 +36,10 @@ export default function DisputePanel({ invoiceId, dispute, billedWrong, supplier
         <p className="text-sm">
           <span className="font-medium">{money(billedWrong)} billed wrong.</span> Claude can draft an email asking {supplier} for a credit. You check it and send it yourself.
         </p>
-        <button disabled={loading} onClick={() => run(`/api/invoices/${invoiceId}/dispute`)} className={primary}>
+        <button disabled={loading} onClick={() => run(`/api/invoices/${invoiceId}/dispute`, undefined, undefined, { success: "Dispute email drafted" })} className={primary}>
           {loading ? "Drafting..." : "Draft a dispute email"}
         </button>
+        {loading && <AiThinking label="Writing the dispute email..." className="w-full" />}
         {error && <p className="w-full text-sm text-red-600">{error}</p>}
       </section>
     );
@@ -97,12 +99,12 @@ export default function DisputePanel({ invoiceId, dispute, billedWrong, supplier
             </button>
           </li>
           <li>
-            <button disabled={loading || !looksLikeEmail(to)} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "sent", ...edits, save_email: saveEmail })} className={primary}>
+            <button disabled={loading || !looksLikeEmail(to)} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "sent", ...edits, save_email: saveEmail }, undefined, { success: "Dispute marked as sent" })} className={primary}>
               2. I sent it
             </button>
           </li>
           <li>
-            <button disabled={loading} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "save", ...edits })} className="text-sm text-gray-600 underline">
+            <button disabled={loading} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "save", ...edits }, undefined, { success: "Dispute changes saved" })} className="text-sm text-gray-600 underline">
               Save changes for later
             </button>
           </li>
@@ -124,10 +126,10 @@ export default function DisputePanel({ invoiceId, dispute, billedWrong, supplier
           <label className="flex items-center gap-1">
             $<input value={credit} onChange={(e) => setCredit(e.target.value)} inputMode="decimal" aria-label="Credit received" className="w-24 rounded-md border border-gray-300 bg-white px-2 py-1 tabular-nums" />
           </label>
-          <button disabled={loading || !(Number(credit) > 0)} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "credited", credited: Number(credit) })} className={primary}>
+          <button disabled={loading || !(Number(credit) > 0)} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "credited", credited: Number(credit) }, undefined, { success: `Credit of ${money(Number(credit))} recorded` })} className={primary}>
             Credit received
           </button>
-          <button disabled={loading} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "refused" })} className={secondary}>
+          <button disabled={loading} onClick={() => run(`/api/disputes/${dispute.id}`, { action: "refused" }, undefined, { success: "Dispute closed: no credit" })} className={secondary}>
             They said no
           </button>
         </div>

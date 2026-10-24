@@ -1,6 +1,7 @@
 // Small pictures for the expanded KPI cards. Plain HTML and CSS (no chart library),
 // rendered on the server, so they add nothing to the browser's JavaScript.
 
+import EmptyState from "@/components/ui/EmptyState";
 import type { ChannelRow, Digest, Kpis, PriceChangeRow } from "@/lib/analytics";
 import { formatWholeMoney } from "@/lib/format";
 import { channelName, type WaterfallStep } from "@/lib/insights";
@@ -69,7 +70,7 @@ export function PriceIncreaseList({ changes }: { changes: PriceChangeRow[] }) {
     .filter((p) => (p.est_period_impact ?? 0) > 0)
     .sort((a, b) => (b.est_period_impact ?? 0) - (a.est_period_impact ?? 0))
     .slice(0, 4);
-  if (top.length === 0) return <p className="text-sm text-gray-500">No supplier price increases cost you money this period.</p>;
+  if (top.length === 0) return <EmptyState title="No supplier price increases cost you money this period." />;
   return (
     <div>
       <Caption>Price increases adding to food cost</Caption>
@@ -125,7 +126,7 @@ export function PrimeCostBar({ kpis }: { kpis: Kpis }) {
 // For each delivery app: what you keep vs the fee, as one bar.
 export function FeeBars({ channels }: { channels: ChannelRow[] }) {
   const apps = channels.filter((c) => c.platform_fees > 0);
-  if (apps.length === 0) return <p className="text-sm text-gray-500">No delivery app fees this period.</p>;
+  if (apps.length === 0) return <EmptyState title="No delivery app fees this period." />;
   return (
     <div>
       <Caption>Kept vs paid in fees</Caption>
