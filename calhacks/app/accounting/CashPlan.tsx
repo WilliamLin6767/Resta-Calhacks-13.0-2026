@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { HealthBadge } from "@/components/analytics/AiSummary";
 import ErrorMessage from "@/components/ErrorMessage";
 import AiThinking from "@/components/ui/AiThinking";
+import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { loadMoney, type Money } from "@/lib/bank/cashPlan";
@@ -152,39 +153,43 @@ async function CashPlanBody() {
       </div>
       <div className="mt-3 border-b border-gray-100 pb-4"><Plan money={money} /></div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div>
-          <p className={`text-xl font-semibold tabular-nums ${f.first_below ? "text-red-600" : ""}`}>{formatWholeMoney(f.lowest.balance)}</p>
-          <p className="text-sm text-gray-600">Lowest, on {day(f.lowest.date)}</p>
-        </div>
-        <div><p className="text-xl font-semibold tabular-nums">{formatWholeMoney(f.days[f.days.length - 1].balance)}</p><p className="text-sm text-gray-600">In two weeks</p></div>
-        <div><p className="text-xl font-semibold tabular-nums text-green-700">+ {formatWholeMoney(f.money_in)}</p><p className="text-sm text-gray-600">Payouts expected</p></div>
-        <div><p className="text-xl font-semibold tabular-nums">− {formatWholeMoney(f.money_out)}</p><p className="text-sm text-gray-600">Bills, orders, usual buying</p></div>
-      </div>
       {f.first_below && (
-        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
           Cash is forecast to drop below your {formatWholeMoney(f.reserve)} reserve on {day(f.first_below)}. Hold off on orders that can wait, or chase money the apps owe you.
         </p>
       )}
-      <div className="mt-3"><ForecastChart f={f} /></div>
-      <details className="mt-1">
-        <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">How this is worked out</summary>
-        <div className="mt-2 text-sm text-gray-600">
-          <p>
-            Starts from the balance now. Each app pays a week after its last payout, at the average of its last 4. Bills come out on their due date
-            (overdue ones today), approved orders on their delivery date, and {formatMoney(f.daily_spend)} a day of usual supplier buying on top, from the last 6 weeks of invoices.
-          </p>
-          <ul className="mt-2 grid gap-0.5">
-            {big.map((d) => (
-              <li key={d.date}><span className="font-medium">{day(d.date)}:</span> {d.events.map((e) => `${e.label} ${e.amount > 0 ? "+" : "−"}${formatWholeMoney(Math.abs(e.amount))}`).join(", ")}</li>
-            ))}
-          </ul>
-        </div>
-      </details>
+      <div className="mt-4">
+        <Fold summary={<span className="text-gray-700">The 14-day forecast, savings and food budget</span>}>
+          <div className="grid grid-cols-2 gap-3 px-1 md:grid-cols-4">
+            <div>
+              <p className={`text-xl font-semibold tabular-nums ${f.first_below ? "text-red-600" : ""}`}>{formatWholeMoney(f.lowest.balance)}</p>
+              <p className="text-sm text-gray-600">Lowest, on {day(f.lowest.date)}</p>
+            </div>
+            <div><p className="text-xl font-semibold tabular-nums">{formatWholeMoney(f.days[f.days.length - 1].balance)}</p><p className="text-sm text-gray-600">In two weeks</p></div>
+            <div><p className="text-xl font-semibold tabular-nums text-green-700">+ {formatWholeMoney(f.money_in)}</p><p className="text-sm text-gray-600">Payouts expected</p></div>
+            <div><p className="text-xl font-semibold tabular-nums">− {formatWholeMoney(f.money_out)}</p><p className="text-sm text-gray-600">Bills, orders, usual buying</p></div>
+          </div>
+          <div className="mt-3"><ForecastChart f={f} /></div>
+          <details className="mt-1">
+            <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">How this is worked out</summary>
+            <div className="mt-2 text-sm text-gray-600">
+              <p>
+                Starts from the balance now. Each app pays a week after its last payout, at the average of its last 4. Bills come out on their due date
+                (overdue ones today), approved orders on their delivery date, and {formatMoney(f.daily_spend)} a day of usual supplier buying on top, from the last 6 weeks of invoices.
+              </p>
+              <ul className="mt-2 grid gap-0.5">
+                {big.map((d) => (
+                  <li key={d.date}><span className="font-medium">{day(d.date)}:</span> {d.events.map((e) => `${e.label} ${e.amount > 0 ? "+" : "−"}${formatWholeMoney(Math.abs(e.amount))}`).join(", ")}</li>
+                ))}
+              </ul>
+            </div>
+          </details>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <Savings money={money} />
-        <Budget money={money} />
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <Savings money={money} />
+            <Budget money={money} />
+          </div>
+        </Fold>
       </div>
     </section>
   );
@@ -194,7 +199,7 @@ async function CashPlanBody() {
 export default function CashPlan() {
   return (
     // Roughly the cash plan's height, so the page below doesn't jump when it arrives
-    <Suspense fallback={<Skeleton className="mb-8 h-[560px] rounded-2xl" />}>
+    <Suspense fallback={<Skeleton className="mb-8 h-[260px] rounded-2xl" />}>
       <CashPlanBody />
     </Suspense>
   );

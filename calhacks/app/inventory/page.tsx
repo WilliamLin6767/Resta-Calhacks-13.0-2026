@@ -5,6 +5,7 @@ import CallRequests from "@/components/calls/CallRequests";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
+import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
@@ -134,18 +135,20 @@ async function Inventory() {
         {events.length === 0 ? (
           <EmptyState title="No deliveries, counts or waste logged yet." hint="Scan an invoice, count a shelf or log waste above." icon="box" />
         ) : (
-          <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
-            {events.map((e) => (
-              <li key={e.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
-                <span>{eventText(e)}</span>
-                <span className="text-xs text-gray-400">
-                  {e.kind === "waste" && unitCost.get(e.ingredient_id) ? `${formatMoney(-Number(e.change) * Number(e.unit_cost ?? 0))} · ` : ""}
-                  {e.source ? `${e.source} · ` : ""}
-                  {new Date(e.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" })}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <Fold summary={<span className="text-gray-700">{events.length} recent {events.length === 1 ? "delivery, count or waste entry" : "deliveries, counts and waste entries"}</span>}>
+            <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
+              {events.map((e) => (
+                <li key={e.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
+                  <span>{eventText(e)}</span>
+                  <span className="text-xs text-gray-400">
+                    {e.kind === "waste" && unitCost.get(e.ingredient_id) ? `${formatMoney(-Number(e.change) * Number(e.unit_cost ?? 0))} · ` : ""}
+                    {e.source ? `${e.source} · ` : ""}
+                    {new Date(e.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Los_Angeles" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Fold>
         )}
       </section>
     </>

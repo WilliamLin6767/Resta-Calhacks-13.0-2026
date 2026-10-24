@@ -5,6 +5,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Fold from "@/components/ui/Fold";
 import { useToast } from "@/components/ui/Toaster";
 import { announceCallsChanged } from "./CallRequests";
 
@@ -92,7 +93,7 @@ export function RequestCall({ suppliers }: { suppliers: { id: number; name: stri
     setMessage("");
     try {
       const made = await post("/api/calls/request", { supplier_id: supplierId, text });
-      setMessage(`Added "${made.title}". Review it below, then approve to call.`);
+      setMessage(`Added "${made.title}". Open "Supplier calls" above to check it, then approve to call.`);
       setText("");
       announceCallsChanged();
       router.refresh();
@@ -107,34 +108,38 @@ export function RequestCall({ suppliers }: { suppliers: { id: number; name: stri
 
   const field = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm";
   return (
-    <form onSubmit={submit} className="space-y-2 rounded-2xl border border-brand-100 bg-white p-4">
-      <h2 className="text-lg font-semibold">Request a call</h2>
-      <p className="text-sm text-gray-600">Say what you want asked. The AI writes the call plan; nothing is dialed until you approve it.</p>
-      <div className="flex flex-wrap gap-2">
-        <label className="sr-only" htmlFor="call-supplier">Supplier</label>
-        <select id="call-supplier" className={field} value={supplierId} onChange={(e) => setSupplierId(Number(e.target.value))}>
-          {suppliers.map((s) => (
-            <option key={s.id} value={s.id} disabled={!s.has_phone}>
-              {s.name}{s.has_phone ? "" : " (no phone on file)"}
-            </option>
-          ))}
-        </select>
-        <label className="sr-only" htmlFor="call-text">What to ask</label>
-        <input
-          id="call-text"
-          className={`${field} min-w-0 flex-1`}
-          value={text}
-          maxLength={1000}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. ask if they can deliver extra brisket Saturday"
-        />
-        <button className={primary} disabled={busy || text.trim().length < 3 || !supplierId}>
-          {busy ? "Writing..." : "Add request"}
-        </button>
-      </div>
-      <p aria-live="polite" className="text-sm text-gray-700">{message}</p>
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    </form>
+    <section>
+      <h2 className="mb-3 text-lg font-semibold">Request a call</h2>
+      <Fold summary={<span className="text-gray-700">Ask the AI to call a supplier for you</span>}>
+        <form onSubmit={submit} className="space-y-2 rounded-2xl border border-brand-100 bg-white p-4">
+          <p className="text-sm text-gray-600">Say what you want asked. The AI writes the call plan; nothing is dialed until you approve it.</p>
+          <div className="flex flex-wrap gap-2">
+            <label className="sr-only" htmlFor="call-supplier">Supplier</label>
+            <select id="call-supplier" className={field} value={supplierId} onChange={(e) => setSupplierId(Number(e.target.value))}>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id} disabled={!s.has_phone}>
+                  {s.name}{s.has_phone ? "" : " (no phone on file)"}
+                </option>
+              ))}
+            </select>
+            <label className="sr-only" htmlFor="call-text">What to ask</label>
+            <input
+              id="call-text"
+              className={`${field} min-w-0 flex-1`}
+              value={text}
+              maxLength={1000}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="e.g. ask if they can deliver extra brisket Saturday"
+            />
+            <button className={primary} disabled={busy || text.trim().length < 3 || !supplierId}>
+              {busy ? "Writing..." : "Add request"}
+            </button>
+          </div>
+          <p aria-live="polite" className="text-sm text-gray-700">{message}</p>
+          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        </form>
+      </Fold>
+    </section>
   );
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import OrderPlan from "@/components/OrderPlan";
+import Fold, { Chevron } from "@/components/ui/Fold";
 import { useReducedMotion } from "@/components/ui/useReducedMotion";
 import { useToast } from "@/components/ui/Toaster";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
@@ -19,14 +20,6 @@ const OUT_MS = 200;
 const STILL_MS = 300;
 
 type Stamp = "Done" | "Hidden";
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" className={`shrink-0 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}>
-      <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // One button. The item's first action is the main button; the rest are small links next to it.
 function ActionButton({ action, main, onDone }: { action: Action; main: boolean; onDone: () => void }) {
@@ -144,7 +137,6 @@ export default function AttentionList({ items, showTab = false, limit = 4 }: { i
   const router = useRouter();
   const toast = useToast();
   const reduced = useReducedMotion();
-  const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   // Rows on their way out: the stamp, then the slide. While any is leaving, the list is drawn
@@ -196,20 +188,21 @@ export default function AttentionList({ items, showTab = false, limit = 4 }: { i
   if (visible.length === 0) return <p className="text-sm text-gray-600">Nothing needs a decision right now.</p>;
   return (
     <div>
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
-        className="no-lift flex w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-left text-sm hover:bg-gray-50">
-        {now.length > 0 ? (
-          <span className="flex items-center gap-2 font-medium text-gray-900"><span className={`h-1.5 w-1.5 rounded-full ${DOT.act}`} aria-hidden="true" />{now.length} to do now</span>
-        ) : (
-          <span className="text-gray-600">Nothing to decide right now</span>
-        )}
-        {later.length > 0 && (
-          <span className="flex items-center gap-2 text-gray-600"><span className={`h-1.5 w-1.5 rounded-full ${DOT.watch}`} aria-hidden="true" />{later.length} to keep an eye on</span>
-        )}
-        <span className="ml-auto flex items-center gap-1 text-gray-500">{open ? "Hide" : "Show"} <Chevron open={open} /></span>
-      </button>
-      {open && (
-        <div className="mt-2">
+      <Fold
+        summary={
+          <>
+            {now.length > 0 ? (
+              <span className="flex items-center gap-2 font-medium text-gray-900"><span className={`h-1.5 w-1.5 rounded-full ${DOT.act}`} aria-hidden="true" />{now.length} to do now</span>
+            ) : (
+              <span className="text-gray-600">Nothing to decide right now</span>
+            )}
+            {later.length > 0 && (
+              <span className="flex items-center gap-2 text-gray-600"><span className={`h-1.5 w-1.5 rounded-full ${DOT.watch}`} aria-hidden="true" />{later.length} to keep an eye on</span>
+            )}
+          </>
+        }
+      >
+        <div>
           {now.length > 0 && <ul className="divide-y divide-gray-100">{shown.map(row)}</ul>}
           {now.length > limit && (
             <button onClick={() => setAll(!all)} className="mt-1 px-1 text-sm text-gray-600 hover:underline">
@@ -223,7 +216,7 @@ export default function AttentionList({ items, showTab = false, limit = 4 }: { i
             </>
           )}
         </div>
-      )}
+      </Fold>
     </div>
   );
 }

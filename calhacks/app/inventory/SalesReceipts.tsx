@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import AiThinking from "@/components/ui/AiThinking";
+import Fold from "@/components/ui/Fold";
 import Reveal from "@/components/ui/Reveal";
 import { table, tableWrap, td, th, thead, tr } from "@/components/ui/table";
 import { useToast } from "@/components/ui/Toaster";
@@ -102,95 +103,99 @@ export default function SalesReceipts() {
   const ready = lines.length > 0 && lines.every((l) => l.menu_item_id && Number.isInteger(Number(l.qty)) && Number(l.qty) > 0);
 
   return (
-    <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4">
-      <h2 className="text-lg font-semibold">Customer receipts</h2>
-      <p className="mb-3 text-sm text-gray-600">
-        Scan a receipt and its dishes come off stock right away, using each dish&apos;s recipe. The AI reads it; you check the dishes before it&apos;s added.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && scan(e.target.files[0], e.target.files[0].name)} />
-        <button disabled={!!busy} onClick={() => fileRef.current?.click()} className={primary}>Scan a receipt</button>
-        <button disabled={!!busy} onClick={trySample} className={secondary}>Try the sample receipt</button>
-        <a href="/samples/pho-berkeley-receipt.png" target="_blank" className="self-center text-sm text-gray-600 underline">See the sample</a>
-      </div>
-      {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-
-      {receipt && (
-        <div className="mt-4">
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="font-medium">Receipt {receipt.receipt_number || "(no number)"}</span>
-            <input type="date" value={receipt.date} onChange={(e) => setReceipt({ ...receipt, date: e.target.value })} aria-label="Date" className="rounded-md border border-gray-300 px-2 py-1" />
-            <input type="time" value={receipt.time} onChange={(e) => setReceipt({ ...receipt, time: e.target.value })} aria-label="Time" className="rounded-md border border-gray-300 px-2 py-1" />
-            <select value={receipt.channel} onChange={(e) => setReceipt({ ...receipt, channel: e.target.value as Receipt["channel"] })} aria-label="Dine in or takeout" className="rounded-md border border-gray-300 px-2 py-1">
-              <option value="dine_in">Dine in</option>
-              <option value="takeout">Takeout</option>
-            </select>
+    <section className="mb-8">
+      <h2 className="mb-3 text-lg font-semibold">Customer receipts</h2>
+      <Fold summary={<span className="text-gray-700">Scan a receipt to take its dishes off stock</span>}>
+        <div className="rounded-2xl border border-brand-100 bg-white p-4">
+          <p className="mb-3 text-sm text-gray-600">
+            Scan a receipt and its dishes come off stock right away, using each dish&apos;s recipe. The AI reads it; you check the dishes before it&apos;s added.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && scan(e.target.files[0], e.target.files[0].name)} />
+            <button disabled={!!busy} onClick={() => fileRef.current?.click()} className={primary}>Scan a receipt</button>
+            <button disabled={!!busy} onClick={trySample} className={secondary}>Try the sample receipt</button>
+            <a href="/samples/pho-berkeley-receipt.png" target="_blank" className="self-center text-sm text-gray-600 underline">See the sample</a>
           </div>
-          <div className={`mt-3 ${tableWrap}`}>
-            <table className={table}>
-              <thead className={thead}>
-                <tr>
-                  <th className={th}>As printed</th>
-                  <th className={th}>Dish</th>
-                  <th className={th}>Qty</th>
-                  <th className={th}>Price each</th>
-                  <th className={th} />
-                </tr>
-              </thead>
-              {/* The lines the AI read rise in one after another */}
-              <Reveal as="tbody" initial>
-                {lines.map((l) => (
-                  <tr key={l.key} className={tr}>
-                    <td className={`${td} font-mono text-xs text-gray-600`}>{l.printed}</td>
-                    <td className={td}>
-                      <select value={l.menu_item_id} onChange={(e) => update(l.key, { menu_item_id: Number(e.target.value) })} aria-label="Dish"
-                        className={`rounded-md border px-2 py-1 ${l.menu_item_id ? "border-gray-300" : "border-red-300"}`}>
-                        <option value={0}>Pick a dish</option>
-                        {menu.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                      </select>
-                      {l.menu_item_id > 0 && l.confidence < 0.85 && <span className="ml-2 text-xs text-amber-700">check this</span>}
-                    </td>
-                    <td className={td}><input value={l.qty} onChange={(e) => update(l.key, { qty: e.target.value })} inputMode="numeric" aria-label="Quantity" className="w-14 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
-                    <td className={td}><input value={l.unit_price} onChange={(e) => update(l.key, { unit_price: e.target.value })} inputMode="decimal" aria-label="Price each" className="w-20 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
-                    <td className={td}><button onClick={() => setLines(lines.filter((x) => x.key !== l.key))} className="text-xs text-gray-500 underline">Remove</button></td>
-                  </tr>
+          {busy && (busy.startsWith("Reading") ? <AiThinking label={busy} className="mt-3" /> : <p className="mt-3 text-sm text-gray-500">{busy}</p>)}
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+          {receipt && (
+            <div className="mt-4">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span className="font-medium">Receipt {receipt.receipt_number || "(no number)"}</span>
+                <input type="date" value={receipt.date} onChange={(e) => setReceipt({ ...receipt, date: e.target.value })} aria-label="Date" className="rounded-md border border-gray-300 px-2 py-1" />
+                <input type="time" value={receipt.time} onChange={(e) => setReceipt({ ...receipt, time: e.target.value })} aria-label="Time" className="rounded-md border border-gray-300 px-2 py-1" />
+                <select value={receipt.channel} onChange={(e) => setReceipt({ ...receipt, channel: e.target.value as Receipt["channel"] })} aria-label="Dine in or takeout" className="rounded-md border border-gray-300 px-2 py-1">
+                  <option value="dine_in">Dine in</option>
+                  <option value="takeout">Takeout</option>
+                </select>
+              </div>
+              <div className={`mt-3 ${tableWrap}`}>
+                <table className={table}>
+                  <thead className={thead}>
+                    <tr>
+                      <th className={th}>As printed</th>
+                      <th className={th}>Dish</th>
+                      <th className={th}>Qty</th>
+                      <th className={th}>Price each</th>
+                      <th className={th} />
+                    </tr>
+                  </thead>
+                  {/* The lines the AI read rise in one after another */}
+                  <Reveal as="tbody" initial>
+                    {lines.map((l) => (
+                      <tr key={l.key} className={tr}>
+                        <td className={`${td} font-mono text-xs text-gray-600`}>{l.printed}</td>
+                        <td className={td}>
+                          <select value={l.menu_item_id} onChange={(e) => update(l.key, { menu_item_id: Number(e.target.value) })} aria-label="Dish"
+                            className={`rounded-md border px-2 py-1 ${l.menu_item_id ? "border-gray-300" : "border-red-300"}`}>
+                            <option value={0}>Pick a dish</option>
+                            {menu.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                          </select>
+                          {l.menu_item_id > 0 && l.confidence < 0.85 && <span className="ml-2 text-xs text-amber-700">check this</span>}
+                        </td>
+                        <td className={td}><input value={l.qty} onChange={(e) => update(l.key, { qty: e.target.value })} inputMode="numeric" aria-label="Quantity" className="w-14 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
+                        <td className={td}><input value={l.unit_price} onChange={(e) => update(l.key, { unit_price: e.target.value })} inputMode="decimal" aria-label="Price each" className="w-20 rounded-md border border-gray-300 px-2 py-1 tabular-nums" /></td>
+                        <td className={td}><button onClick={() => setLines(lines.filter((x) => x.key !== l.key))} className="text-xs text-gray-500 underline">Remove</button></td>
+                      </tr>
+                    ))}
+                  </Reveal>
+                </table>
+              </div>
+              <p className="mt-2 text-sm text-gray-600 tabular-nums">Tax ${receipt.tax.toFixed(2)} · Tip ${receipt.tip.toFixed(2)} · Total ${receipt.total.toFixed(2)}</p>
+              {notes.length > 0 && (
+                <ul className="mt-2 list-disc pl-5 text-sm text-amber-800">{notes.map((n) => <li key={n}>{n}</li>)}</ul>
+              )}
+              <div className="mt-3 flex gap-2">
+                <button disabled={!!busy || !ready} onClick={save} className={primary}>Add to sales</button>
+                <button disabled={!!busy} onClick={() => { setReceipt(null); setLines([]); }} className={secondary}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm">
+              <p className="font-medium">Added to sales. Stock used:</p>
+              {result.alerts.length > 0 && (
+                <p className="mt-1 text-red-700">
+                  Now running low: {result.alerts.map((a) => `${a.name} (${fmt(a.after)} ${a.unit} left${a.days_left !== null ? `, about ${fmt(a.days_left)} days` : ""})`).join(", ")}
+                </p>
+              )}
+              <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                {result.impact.map((i) => (
+                  <li key={i.ingredient_id} className="flex justify-between gap-2 tabular-nums">
+                    <span>{i.name}</span>
+                    <span>
+                      {fmt(i.before)} → {fmt(i.after)} {i.unit}
+                      {i.status_after !== "ok" && <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${STATUS[i.status_after]}`}>{i.status_after === "out" ? "Out" : "Low"}</span>}
+                    </span>
+                  </li>
                 ))}
-              </Reveal>
-            </table>
-          </div>
-          <p className="mt-2 text-sm text-gray-600 tabular-nums">Tax ${receipt.tax.toFixed(2)} · Tip ${receipt.tip.toFixed(2)} · Total ${receipt.total.toFixed(2)}</p>
-          {notes.length > 0 && (
-            <ul className="mt-2 list-disc pl-5 text-sm text-amber-800">{notes.map((n) => <li key={n}>{n}</li>)}</ul>
+              </ul>
+            </div>
           )}
-          <div className="mt-3 flex gap-2">
-            <button disabled={!!busy || !ready} onClick={save} className={primary}>Add to sales</button>
-            <button disabled={!!busy} onClick={() => { setReceipt(null); setLines([]); }} className={secondary}>Cancel</button>
-          </div>
         </div>
-      )}
-
-      {result && (
-        <div className="mt-4 rounded-md bg-gray-50 p-3 text-sm">
-          <p className="font-medium">Added to sales. Stock used:</p>
-          {result.alerts.length > 0 && (
-            <p className="mt-1 text-red-700">
-              Now running low: {result.alerts.map((a) => `${a.name} (${fmt(a.after)} ${a.unit} left${a.days_left !== null ? `, about ${fmt(a.days_left)} days` : ""})`).join(", ")}
-            </p>
-          )}
-          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-            {result.impact.map((i) => (
-              <li key={i.ingredient_id} className="flex justify-between gap-2 tabular-nums">
-                <span>{i.name}</span>
-                <span>
-                  {fmt(i.before)} → {fmt(i.after)} {i.unit}
-                  {i.status_after !== "ok" && <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${STATUS[i.status_after]}`}>{i.status_after === "out" ? "Out" : "Low"}</span>}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      </Fold>
     </section>
   );
 }

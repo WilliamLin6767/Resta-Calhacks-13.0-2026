@@ -3,6 +3,7 @@
 import { useState } from "react";
 import OrderPlan from "@/components/OrderPlan";
 import AiThinking from "@/components/ui/AiThinking";
+import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { useAction } from "@/components/useAction";
@@ -45,54 +46,68 @@ export default function PrepPlanner({
         Based on the last {forecast.days_used.length} {forecast.weekday}s ({forecast.days_used.map(shortDate).join(", ")}). Recent weeks count more.
       </p>
 
-      <section className="rounded-2xl border border-brand-100 bg-white p-4">
-        <label htmlFor="note" className="font-medium">Anything different about {forecast.weekday}?</label>
-        <p className="text-sm text-gray-600">An event nearby, the weather, a holiday, a catering order. The AI adjusts the dishes it affects; you see every change.</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <input
-            id="note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Cal home game, crowds after 5pm"
-            maxLength={500}
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <button
-            disabled={ai.loading || !note.trim()}
-            onClick={() =>
-              ai.run("/api/prep/adjust", { date: forecast.date, note }, (data) => setAdjustment(data as unknown as Adjustment), {
-                success: `Forecast adjusted for ${forecast.weekday}`,
-              })
-            }
-            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-          >
-            {ai.loading ? "Thinking..." : "Adjust forecast"}
-          </button>
-        </div>
-        {ai.loading && <AiThinking label="Adjusting the forecast..." className="mt-2" />}
-        {ai.error && <p className="mt-2 text-sm text-red-600">{ai.error}</p>}
-        {adjustment && (
-          <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm">
-            <p>
-              <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
-              {adjustment.summary}
-            </p>
-            {adjustment.adjustments.length > 0 && (
-              <ul className="mt-1 list-disc pl-5 text-gray-700">
-                {adjustment.adjustments.map((a) => {
-                  const dish = forecast.dishes.find((d) => d.id === a.menu_item_id);
-                  const f = clampFactor(a.factor);
-                  return (
-                    <li key={a.menu_item_id}>
-                      {dish?.name}: {f >= 1 ? "+" : ""}{Math.round((f - 1) * 100)}% ({a.reason})
-                    </li>
-                  );
-                })}
-              </ul>
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Anything different about {forecast.weekday}?</h2>
+        {/* Says so on the bar when the AI changed the numbers, so a folded box never hides that */}
+        <Fold
+          summary={
+            adjustment ? (
+              <span className="flex items-center gap-2 font-medium text-gray-900"><span className="h-1.5 w-1.5 rounded-full bg-brand-600" aria-hidden="true" />The AI adjusted this forecast</span>
+            ) : (
+              <span className="text-gray-700">Tell the AI about an event, the weather or a catering order</span>
+            )
+          }
+        >
+          <div className="rounded-2xl border border-brand-100 bg-white p-4">
+            <label htmlFor="note" className="font-medium">What&apos;s happening?</label>
+            <p className="text-sm text-gray-600">An event nearby, the weather, a holiday, a catering order. The AI adjusts the dishes it affects; you see every change.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. Cal home game, crowds after 5pm"
+                maxLength={500}
+                className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+              <button
+                disabled={ai.loading || !note.trim()}
+                onClick={() =>
+                  ai.run("/api/prep/adjust", { date: forecast.date, note }, (data) => setAdjustment(data as unknown as Adjustment), {
+                    success: `Forecast adjusted for ${forecast.weekday}`,
+                  })
+                }
+                className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {ai.loading ? "Thinking..." : "Adjust forecast"}
+              </button>
+            </div>
+            {ai.loading && <AiThinking label="Adjusting the forecast..." className="mt-2" />}
+            {ai.error && <p className="mt-2 text-sm text-red-600">{ai.error}</p>}
+            {adjustment && (
+              <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm">
+                <p>
+                  <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-gray-500">AI</span>
+                  {adjustment.summary}
+                </p>
+                {adjustment.adjustments.length > 0 && (
+                  <ul className="mt-1 list-disc pl-5 text-gray-700">
+                    {adjustment.adjustments.map((a) => {
+                      const dish = forecast.dishes.find((d) => d.id === a.menu_item_id);
+                      const f = clampFactor(a.factor);
+                      return (
+                        <li key={a.menu_item_id}>
+                          {dish?.name}: {f >= 1 ? "+" : ""}{Math.round((f - 1) * 100)}% ({a.reason})
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                <button onClick={() => setAdjustment(null)} className="mt-2 text-xs text-gray-600 underline">Undo the AI changes</button>
+              </div>
             )}
-            <button onClick={() => setAdjustment(null)} className="mt-2 text-xs text-gray-600 underline">Undo the AI changes</button>
           </div>
-        )}
+        </Fold>
       </section>
 
       <section>
@@ -164,33 +179,35 @@ export default function PrepPlanner({
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Dishes expected</h2>
-        <div className={tableWrap}>
-          <table className={table}>
-            <thead className={thead}>
-              <tr>
-                <th className={th}>Dish</th>
-                <th className={thNum}>Expected</th>
-                <th className={thNum}>Range</th>
-                <th className={thNum}>Past {forecast.weekday}s, oldest first</th>
-                <th className={th}>Forecast</th>
-              </tr>
-            </thead>
-            <tbody>
-              {adjusted.dishes.map((d) => (
-                <tr key={d.id} className={tr}>
-                  <td className={td}>{d.name}</td>
-                  <td className={`${tdNum} font-medium`}>
-                    <LiveValue value={String(d.expected)} />
-                    {factors[d.id] && <span className="ml-1 text-xs text-gray-500">(AI)</span>}
-                  </td>
-                  <td className={`${tdNum} text-gray-500`}>{d.low}–{d.high}</td>
-                  <td className={`${tdNum} text-gray-500`}>{d.history.join(", ")}</td>
-                  <td className={`${td} text-gray-600`}>{CONFIDENCE[d.confidence]}</td>
+        <Fold summary={<span className="text-gray-700">About {adjusted.dishes.reduce((n, d) => n + d.expected, 0)} plates across {adjusted.dishes.length} dishes</span>}>
+          <div className={tableWrap}>
+            <table className={table}>
+              <thead className={thead}>
+                <tr>
+                  <th className={th}>Dish</th>
+                  <th className={thNum}>Expected</th>
+                  <th className={thNum}>Range</th>
+                  <th className={thNum}>Past {forecast.weekday}s, oldest first</th>
+                  <th className={th}>Forecast</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {adjusted.dishes.map((d) => (
+                  <tr key={d.id} className={tr}>
+                    <td className={td}>{d.name}</td>
+                    <td className={`${tdNum} font-medium`}>
+                      <LiveValue value={String(d.expected)} />
+                      {factors[d.id] && <span className="ml-1 text-xs text-gray-500">(AI)</span>}
+                    </td>
+                    <td className={`${tdNum} text-gray-500`}>{d.low}–{d.high}</td>
+                    <td className={`${tdNum} text-gray-500`}>{d.history.join(", ")}</td>
+                    <td className={`${td} text-gray-600`}>{CONFIDENCE[d.confidence]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Fold>
       </section>
     </div>
   );
