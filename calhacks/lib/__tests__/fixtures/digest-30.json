@@ -1,0 +1,661 @@
+{
+  "kpis": {
+    "cur": {
+      "labor": 24000,
+      "orders": 2504,
+      "revenue": 64317.9,
+      "food_cost": 14399.4,
+      "open_days": 26,
+      "avg_ticket": 25.69,
+      "est_profit": 12237.79,
+      "fixed_costs": 33150,
+      "food_cost_pct": 22.4,
+      "platform_fees": 4530.71,
+      "est_profit_pct": 19,
+      "prime_cost_pct": 59.7,
+      "revenue_per_open_day": 2473.77
+    },
+    "prev": {
+      "labor": 24000,
+      "orders": 2435,
+      "revenue": 62306.25,
+      "food_cost": 13671.08,
+      "open_days": 25,
+      "avg_ticket": 25.59,
+      "est_profit": 10708.48,
+      "fixed_costs": 33150,
+      "food_cost_pct": 21.9,
+      "platform_fees": 4776.69,
+      "est_profit_pct": 17.2,
+      "prime_cost_pct": 60.5,
+      "revenue_per_open_day": 2492.25
+    }
+  },
+  "menu": [
+    {
+      "name": "Pho Dac Biet (house special)",
+      "class": "star",
+      "price": 17.95,
+      "units": 771,
+      "revenue": 13839.45,
+      "category": "Pho",
+      "prev_units": 733,
+      "unit_margin": 12.33,
+      "gross_profit": 9506.43,
+      "food_cost_pct": 31.3,
+      "unit_food_cost": 5.62,
+      "units_change_pct": 5.2
+    },
+    {
+      "name": "Pho Tai (rare beef)",
+      "class": "star",
+      "price": 15.95,
+      "units": 815,
+      "revenue": 12999.25,
+      "category": "Pho",
+      "prev_units": 807,
+      "unit_margin": 11.28,
+      "gross_profit": 9193.2,
+      "food_cost_pct": 29.3,
+      "unit_food_cost": 4.67,
+      "units_change_pct": 1
+    },
+    {
+      "name": "Com Tam Suon (pork chop rice)",
+      "class": "star",
+      "price": 16.95,
+      "units": 380,
+      "revenue": 6441,
+      "category": "Rice",
+      "prev_units": 347,
+      "unit_margin": 14.55,
+      "gross_profit": 5529,
+      "food_cost_pct": 14.1,
+      "unit_food_cost": 2.4,
+      "units_change_pct": 9.5
+    },
+    {
+      "name": "Pho Ga (chicken)",
+      "class": "star",
+      "price": 15.5,
+      "units": 436,
+      "revenue": 6758,
+      "category": "Pho",
+      "prev_units": 452,
+      "unit_margin": 12.18,
+      "gross_profit": 5310.48,
+      "food_cost_pct": 21.4,
+      "unit_food_cost": 3.32,
+      "units_change_pct": -3.5
+    },
+    {
+      "name": "Bun Thit Nuong (grilled pork)",
+      "class": "star",
+      "price": 15.5,
+      "units": 384,
+      "revenue": 5952,
+      "category": "Noodles",
+      "prev_units": 390,
+      "unit_margin": 13.18,
+      "gross_profit": 5061.12,
+      "food_cost_pct": 15,
+      "unit_food_cost": 2.32,
+      "units_change_pct": -1.5
+    },
+    {
+      "name": "Bun Bo Hue",
+      "class": "star",
+      "price": 16.5,
+      "units": 363,
+      "revenue": 5989.5,
+      "category": "Noodles",
+      "prev_units": 369,
+      "unit_margin": 12.85,
+      "gross_profit": 4664.55,
+      "food_cost_pct": 22.1,
+      "unit_food_cost": 3.65,
+      "units_change_pct": -1.6
+    },
+    {
+      "name": "Cha Gio (4 egg rolls)",
+      "class": "plowhorse",
+      "price": 8.95,
+      "units": 396,
+      "revenue": 3544.2,
+      "category": "Appetizers",
+      "prev_units": 378,
+      "unit_margin": 7.23,
+      "gross_profit": 2863.08,
+      "food_cost_pct": 19.2,
+      "unit_food_cost": 1.72,
+      "units_change_pct": 4.8
+    },
+    {
+      "name": "Banh Mi Thit Nuong",
+      "class": "dog",
+      "price": 10.5,
+      "units": 265,
+      "revenue": 2782.5,
+      "category": "Sandwiches",
+      "prev_units": 210,
+      "unit_margin": 8.74,
+      "gross_profit": 2316.1,
+      "food_cost_pct": 16.7,
+      "unit_food_cost": 1.76,
+      "units_change_pct": 26.2
+    },
+    {
+      "name": "Goi Cuon (2 spring rolls)",
+      "class": "plowhorse",
+      "price": 8.5,
+      "units": 336,
+      "revenue": 2856,
+      "category": "Appetizers",
+      "prev_units": 296,
+      "unit_margin": 6.65,
+      "gross_profit": 2234.4,
+      "food_cost_pct": 21.7,
+      "unit_food_cost": 1.85,
+      "units_change_pct": 13.5
+    },
+    {
+      "name": "Ca Phe Sua Da (iced coffee)",
+      "class": "plowhorse",
+      "price": 6,
+      "units": 357,
+      "revenue": 2142,
+      "category": "Drinks",
+      "prev_units": 378,
+      "unit_margin": 5.4,
+      "gross_profit": 1927.8,
+      "food_cost_pct": 9.9,
+      "unit_food_cost": 0.6,
+      "units_change_pct": -5.6
+    },
+    {
+      "name": "Che Ba Mau (three-color dessert)",
+      "class": "dog",
+      "price": 6.5,
+      "units": 156,
+      "revenue": 1014,
+      "category": "Dessert",
+      "prev_units": 136,
+      "unit_margin": 6.08,
+      "gross_profit": 948.48,
+      "food_cost_pct": 6.5,
+      "unit_food_cost": 0.42,
+      "units_change_pct": 14.7
+    }
+  ],
+  "costs": {
+    "food": 14399.4,
+    "fixed": {
+      "rent": 6500,
+      "labor": 24000,
+      "insurance": 450,
+      "marketing": 300,
+      "utilities": 1900
+    },
+    "platform_fees": 4530.71
+  },
+  "daily": [
+    {
+      "date": "2026-09-23",
+      "open": true,
+      "orders": 87,
+      "revenue": 2337.7
+    },
+    {
+      "date": "2026-09-24",
+      "open": true,
+      "orders": 77,
+      "revenue": 2033.3
+    },
+    {
+      "date": "2026-09-25",
+      "open": true,
+      "orders": 100,
+      "revenue": 2822.1
+    },
+    {
+      "date": "2026-09-26",
+      "open": true,
+      "orders": 111,
+      "revenue": 2808.15
+    },
+    {
+      "date": "2026-09-27",
+      "open": true,
+      "orders": 132,
+      "revenue": 3132.35
+    },
+    {
+      "date": "2026-09-28",
+      "open": true,
+      "orders": 87,
+      "revenue": 2188.85
+    },
+    {
+      "date": "2026-09-29",
+      "open": false,
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "date": "2026-09-30",
+      "open": true,
+      "orders": 77,
+      "revenue": 1925.3
+    },
+    {
+      "date": "2026-10-01",
+      "open": true,
+      "orders": 73,
+      "revenue": 1887.9
+    },
+    {
+      "date": "2026-10-02",
+      "open": true,
+      "orders": 119,
+      "revenue": 3231.3
+    },
+    {
+      "date": "2026-10-03",
+      "open": true,
+      "orders": 117,
+      "revenue": 3045.9
+    },
+    {
+      "date": "2026-10-04",
+      "open": true,
+      "orders": 122,
+      "revenue": 3056.1
+    },
+    {
+      "date": "2026-10-05",
+      "open": true,
+      "orders": 91,
+      "revenue": 2193.45
+    },
+    {
+      "date": "2026-10-06",
+      "open": false,
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "date": "2026-10-07",
+      "open": true,
+      "orders": 85,
+      "revenue": 2381.75
+    },
+    {
+      "date": "2026-10-08",
+      "open": true,
+      "orders": 91,
+      "revenue": 2242.25
+    },
+    {
+      "date": "2026-10-09",
+      "open": true,
+      "orders": 101,
+      "revenue": 2440.65
+    },
+    {
+      "date": "2026-10-10",
+      "open": true,
+      "orders": 132,
+      "revenue": 3516.7
+    },
+    {
+      "date": "2026-10-11",
+      "open": true,
+      "orders": 112,
+      "revenue": 2844.05
+    },
+    {
+      "date": "2026-10-12",
+      "open": true,
+      "orders": 73,
+      "revenue": 2159.35
+    },
+    {
+      "date": "2026-10-13",
+      "open": false,
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "date": "2026-10-14",
+      "open": true,
+      "orders": 79,
+      "revenue": 2047.5
+    },
+    {
+      "date": "2026-10-15",
+      "open": true,
+      "orders": 79,
+      "revenue": 1990.85
+    },
+    {
+      "date": "2026-10-16",
+      "open": true,
+      "orders": 117,
+      "revenue": 2907.9
+    },
+    {
+      "date": "2026-10-17",
+      "open": true,
+      "orders": 120,
+      "revenue": 2968.35
+    },
+    {
+      "date": "2026-10-18",
+      "open": true,
+      "orders": 98,
+      "revenue": 2452.65
+    },
+    {
+      "date": "2026-10-19",
+      "open": true,
+      "orders": 72,
+      "revenue": 1812.75
+    },
+    {
+      "date": "2026-10-20",
+      "open": false,
+      "orders": 0,
+      "revenue": 0
+    },
+    {
+      "date": "2026-10-21",
+      "open": true,
+      "orders": 76,
+      "revenue": 1894.4
+    },
+    {
+      "date": "2026-10-22",
+      "open": true,
+      "orders": 76,
+      "revenue": 1996.35
+    }
+  ],
+  "notes": [
+    "kpis.cur is this period; kpis.prev is the same-length period just before it. A missing prev means there were no orders then.",
+    "Days are restaurant-local (America/Los_Angeles). Today is excluded because it is not over yet.",
+    "Period food cost (kpis and costs) prices each dish at the ingredient prices in effect on the order date, so supplier price increases show up from the day they happened.",
+    "Dish margins (menu) use today's ingredient prices, because that is what each dish earns from now on.",
+    "Fixed costs, including labor, are the average monthly expense per category, prorated to the period length (monthly x days / 30).",
+    "Prime cost = food cost + labor, as a share of revenue.",
+    "Revenue is order subtotals before tax and tips. When open days differ between periods, compare revenue_per_open_day, not total revenue.",
+    "Delivery channel revenue is gross (before platform fees); net_revenue is what the restaurant keeps after fees. Judge channels by net revenue.",
+    "Menu classes follow standard menu engineering: popular = units at least 70% of an equal share; profitable = unit margin at or above the units-weighted average margin. Sides, drinks and desserts are compared with mains, so a cheap side can rank low on margin and still be worth keeping.",
+    "est_period_impact is only set when the supplier is the ingredient's preferred (current) supplier: (new unit cost - old unit cost) x the amount used by dishes sold this period.",
+    "cheapest_supplier is only set when a different supplier currently offers a lower unit cost."
+  ],
+  "period": {
+    "end": "2026-10-22",
+    "days": 30,
+    "start": "2026-09-23",
+    "previous_end": "2026-09-22",
+    "previous_start": "2026-08-24"
+  },
+  "by_hour": [
+    {
+      "hour": 10,
+      "avg_orders": 0.9,
+      "avg_revenue": 24.53
+    },
+    {
+      "hour": 11,
+      "avg_orders": 15.2,
+      "avg_revenue": 391.57
+    },
+    {
+      "hour": 12,
+      "avg_orders": 19.1,
+      "avg_revenue": 489.4
+    },
+    {
+      "hour": 13,
+      "avg_orders": 14.6,
+      "avg_revenue": 380.18
+    },
+    {
+      "hour": 14,
+      "avg_orders": 1.3,
+      "avg_revenue": 28.63
+    },
+    {
+      "hour": 15,
+      "avg_orders": 1.4,
+      "avg_revenue": 32.41
+    },
+    {
+      "hour": 16,
+      "avg_orders": 1.5,
+      "avg_revenue": 40.45
+    },
+    {
+      "hour": 17,
+      "avg_orders": 12.8,
+      "avg_revenue": 326.94
+    },
+    {
+      "hour": 18,
+      "avg_orders": 15.4,
+      "avg_revenue": 392.04
+    },
+    {
+      "hour": 19,
+      "avg_orders": 12.7,
+      "avg_revenue": 334.28
+    },
+    {
+      "hour": 20,
+      "avg_orders": 1.4,
+      "avg_revenue": 33.35
+    }
+  ],
+  "version": 2,
+  "channels": [
+    {
+      "orders": 1303,
+      "channel": "dine_in",
+      "revenue": 33700.6,
+      "net_revenue": 33700.6,
+      "fee_rate_pct": 0,
+      "prev_revenue": 30759.45,
+      "platform_fees": 0,
+      "prev_net_revenue": 30759.45,
+      "revenue_share_pct": 52.4,
+      "net_revenue_change_pct": 9.6
+    },
+    {
+      "orders": 488,
+      "channel": "takeout",
+      "revenue": 12499.8,
+      "net_revenue": 12499.8,
+      "fee_rate_pct": 0,
+      "prev_revenue": 12445.65,
+      "platform_fees": 0,
+      "prev_net_revenue": 12445.65,
+      "revenue_share_pct": 19.4,
+      "net_revenue_change_pct": 0.4
+    },
+    {
+      "orders": 424,
+      "channel": "doordash",
+      "revenue": 10792.9,
+      "net_revenue": 8093.88,
+      "fee_rate_pct": 25,
+      "prev_revenue": 12219.95,
+      "platform_fees": 2699.02,
+      "prev_net_revenue": 9164.14,
+      "revenue_share_pct": 16.8,
+      "net_revenue_change_pct": -11.7
+    },
+    {
+      "orders": 289,
+      "channel": "ubereats",
+      "revenue": 7324.6,
+      "net_revenue": 5492.91,
+      "fee_rate_pct": 25,
+      "prev_revenue": 6881.2,
+      "platform_fees": 1831.69,
+      "prev_net_revenue": 5160.32,
+      "revenue_share_pct": 11.4,
+      "net_revenue_change_pct": 6.4
+    }
+  ],
+  "by_weekday": [
+    {
+      "days": 4,
+      "weekday": "Monday",
+      "avg_orders": 80.8,
+      "avg_revenue": 2088.6
+    },
+    {
+      "days": 5,
+      "weekday": "Wednesday",
+      "avg_orders": 80.8,
+      "avg_revenue": 2117.33
+    },
+    {
+      "days": 5,
+      "weekday": "Thursday",
+      "avg_orders": 79.2,
+      "avg_revenue": 2030.13
+    },
+    {
+      "days": 4,
+      "weekday": "Friday",
+      "avg_orders": 109.3,
+      "avg_revenue": 2850.49
+    },
+    {
+      "days": 4,
+      "weekday": "Saturday",
+      "avg_orders": 120,
+      "avg_revenue": 3084.78
+    },
+    {
+      "days": 4,
+      "weekday": "Sunday",
+      "avg_orders": 116,
+      "avg_revenue": 2871.29
+    }
+  ],
+  "restaurant": "Pho Berkeley",
+  "price_changes": [
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Bun Bo Hue",
+        "Pho Dac Biet (house special)",
+        "Pho Ga (chicken)",
+        "Pho Tai (rare beef)"
+      ],
+      "supplier": "Delta Fresh Produce",
+      "change_pct": 25,
+      "ingredient": "Limes",
+      "current_price": 50,
+      "previous_price": 40,
+      "cheapest_supplier": null,
+      "current_unit_cost": 0.25,
+      "est_period_impact": 119.25,
+      "cheapest_unit_cost": null,
+      "is_current_supplier": true
+    },
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Bun Bo Hue",
+        "Pho Dac Biet (house special)"
+      ],
+      "supplier": "Bay Area Meat Co.",
+      "change_pct": 13.9,
+      "ingredient": "Brisket",
+      "current_price": 94,
+      "previous_price": 82.5,
+      "cheapest_supplier": "Valley Butcher Supply",
+      "current_unit_cost": 6.2667,
+      "est_period_impact": 126.59,
+      "cheapest_unit_cost": 5.6,
+      "is_current_supplier": true
+    },
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Bun Bo Hue",
+        "Pho Dac Biet (house special)",
+        "Pho Tai (rare beef)"
+      ],
+      "supplier": "Bay Area Meat Co.",
+      "change_pct": 10,
+      "ingredient": "Beef bones",
+      "current_price": 57.2,
+      "previous_price": 52,
+      "cheapest_supplier": "Valley Butcher Supply",
+      "current_unit_cost": 1.43,
+      "est_period_impact": 182.95,
+      "cheapest_unit_cost": 1.35,
+      "is_current_supplier": true
+    },
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Pho Dac Biet (house special)",
+        "Pho Tai (rare beef)"
+      ],
+      "supplier": "Bay Area Meat Co.",
+      "change_pct": 7.9,
+      "ingredient": "Eye of round (rare beef)",
+      "current_price": 150,
+      "previous_price": 139,
+      "cheapest_supplier": "Valley Butcher Supply",
+      "current_unit_cost": 7.5,
+      "est_period_impact": 162.95,
+      "cheapest_unit_cost": 7.05,
+      "is_current_supplier": true
+    },
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Pho Ga (chicken)"
+      ],
+      "supplier": "Pacific Poultry",
+      "change_pct": 5.6,
+      "ingredient": "Whole chicken",
+      "current_price": 76,
+      "previous_price": 72,
+      "cheapest_supplier": null,
+      "current_unit_cost": 1.9,
+      "est_period_impact": 39.24,
+      "cheapest_unit_cost": null,
+      "is_current_supplier": true
+    },
+    {
+      "since": "2026-10-09",
+      "dishes": [
+        "Banh Mi Thit Nuong",
+        "Bun Thit Nuong (grilled pork)",
+        "Goi Cuon (2 spring rolls)"
+      ],
+      "supplier": "Bay Area Meat Co.",
+      "change_pct": 4.9,
+      "ingredient": "Pork shoulder",
+      "current_price": 64,
+      "previous_price": 61,
+      "cheapest_supplier": null,
+      "current_unit_cost": 3.2,
+      "est_period_impact": 29.26,
+      "cheapest_unit_cost": null,
+      "is_current_supplier": true
+    }
+  ],
+  "menu_thresholds": {
+    "margin_threshold": 10.64,
+    "popularity_threshold": 296.5
+  }
+}
