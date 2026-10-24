@@ -5,8 +5,8 @@ import { useState } from "react";
 import type { Plan } from "@/lib/purchasing/plan";
 import type { PlanExplanation } from "@/lib/purchasing/planAi";
 
-const primary = "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
-const secondary = "rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
+const primary = "inline-flex min-h-11 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const secondary = "inline-flex min-h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 
 function money(n: number) {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -54,8 +54,8 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
 
   if (!data) {
     return (
-      <div className="text-right">
-        <button disabled={!!busy} onClick={plan} className={primary}>{busy || label}</button>
+      <div>
+        <button disabled={!!busy} onClick={plan} className={`${primary} w-full sm:w-auto`}>{busy || label}</button>
         {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
       </div>
     );
