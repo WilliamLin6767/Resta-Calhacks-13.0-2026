@@ -3,6 +3,7 @@
 
 // Simple line icons (24x24, drawn with the text color).
 export const ICONS = {
+  chat: "M4 5h16v11H9l-5 4z M8 9h8 M8 12h5",
   home: "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   box: "M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10",
   clipboard: "M9 3h6v3H9z M8 4.5H5V21h14V4.5h-3 M8 11h8 M8 15h8 M8 19h5",
@@ -25,6 +26,7 @@ export type Section = {
 };
 
 export const SECTIONS: Section[] = [
+  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-500/20 text-chat-200" },
   { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-500/20 text-overview-200" },
   { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-500/20 text-inventory-200" },
   { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-500/20 text-prep-200" },

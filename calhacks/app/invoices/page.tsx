@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
 import { CallBadge } from "@/components/calls/CallControls";
-import CallRequests from "@/components/calls/CallRequests";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import { pendingCounts } from "@/lib/calls/service";
@@ -10,10 +9,8 @@ import { formatMoney } from "@/lib/format";
 import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
 import { loadOrders } from "@/lib/purchasing/service";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
-import { OrderButtons } from "./OrderActions";
+import { PurchaseOrderCard } from "./OrderActions";
 import ScanInvoice from "./ScanInvoice";
-
-const STATUS_LABEL: Record<string, string> = { draft: "Waiting for your approval", approved: "Approved, not sent yet", sent: "Sent, waiting for delivery" };
 
 async function PurchaseOrders() {
   let orders;
@@ -27,42 +24,7 @@ async function PurchaseOrders() {
     <section id="orders" className="mb-8">
       <h2 className="mb-3 text-lg font-semibold">Purchase orders</h2>
       <div className="grid gap-3">
-        {orders.map((o) => (
-          <div key={o.id} className={`rounded-2xl border bg-white p-4 ${o.status === "draft" ? "border-amber-300" : "border-gray-200"}`}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="font-medium">
-                {o.supplier}
-                {o.created_by === "ai" && <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-normal text-gray-600">suggested by the app</span>}
-              </p>
-              <p className="text-sm text-gray-600">{STATUS_LABEL[o.status] ?? o.status}</p>
-            </div>
-            {o.reason && <p className="mt-1 text-sm text-gray-700">{o.reason}</p>}
-            <ul className="mt-2 text-sm">
-              {o.lines.map((l, i) => (
-                <li key={i} className="tabular-nums">
-                  {l.qty} x {l.ingredient}{l.pack_desc ? ` (${l.pack_desc})` : ""}
-                  {l.est_unit_price !== null && <span className="text-gray-500"> at {formatMoney(l.est_unit_price)}</span>}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-1 text-sm">
-              About <span className="font-medium">{formatMoney(o.total)}</span> · {o.status === "sent" ? "expected" : "can arrive"} {o.delivery_date}
-              {o.below_minimum > 0 && o.status !== "sent" && (
-                <span className="ml-2 text-amber-700">
-                  {formatMoney(o.below_minimum)} below this supplier&apos;s {formatMoney(o.min_order_amount)} minimum
-                </span>
-              )}
-            </p>
-            {o.status !== "sent" && <p className="mt-2 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">&quot;{o.message}&quot;</p>}
-            <div className="mt-3">
-              <OrderButtons orderId={o.id} status={o.status} message={o.message} contact={o.contact} />
-            </div>
-            {/* The purchase order view: calls placing or checking this order. Hidden when there are none. */}
-            <div className="mt-3">
-              <CallRequests contextType="purchase_order" contextId={o.id} title="Calls about this order" hideWhenEmpty />
-            </div>
-          </div>
-        ))}
+        {orders.map((order) => <PurchaseOrderCard key={order.id} order={order} />)}
       </div>
     </section>
   );
@@ -158,16 +120,24 @@ async function InvoicesTable() {
 
 export default function InvoicesPage() {
   return (
-    <div>
+    <div className="flex flex-col">
       <PageHeader title="Invoices and buying" description="Scan invoices, match lines to ingredients, and approve purchase orders." />
-      <AttentionBar tab="invoices" />
-      <ScanInvoice />
-      <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
-        <PurchaseOrders />
-      </Suspense>
-      <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
-        <InvoicesTable />
-      </Suspense>
+      <div className="order-3 md:order-none">
+        <AttentionBar tab="invoices" />
+      </div>
+      <div className="order-4 md:order-none">
+        <ScanInvoice />
+      </div>
+      <div className="order-2 md:order-none">
+        <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+          <PurchaseOrders />
+        </Suspense>
+      </div>
+      <div className="order-5 md:order-none">
+        <Suspense fallback={<p className="text-sm text-gray-400">Loading...</p>}>
+          <InvoicesTable />
+        </Suspense>
+      </div>
     </div>
   );
 }

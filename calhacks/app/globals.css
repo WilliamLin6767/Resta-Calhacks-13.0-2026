@@ -38,6 +38,13 @@
 /* Each section's palette: deep, muted tones. Static so every variable is emitted, since the
    per-section rules below read them even where no class uses them. */
 @theme static {
+  --color-chat-50: #edf3f8; /* harbor blue */
+  --color-chat-100: #d6e4ef;
+  --color-chat-200: #afc9de;
+  --color-chat-500: #3d6f93;
+  --color-chat-600: #2f5a7a;
+  --color-chat-700: #254862;
+
   --color-overview-50: #eef2f8;
   --color-overview-100: #dbe3ef;
   --color-overview-200: #bccbe0;
@@ -104,6 +111,15 @@
 
 /* The page panel carries data-section (components/SectionMain.tsx); inside it, brand-* and the
    progress accent become that section's color. */
+[data-section="chat"] {
+  --color-brand-50: var(--color-chat-50);
+  --color-brand-100: var(--color-chat-100);
+  --color-brand-200: var(--color-chat-200);
+  --color-brand-500: var(--color-chat-500);
+  --color-brand-600: var(--color-chat-600);
+  --color-brand-700: var(--color-chat-700);
+  --color-accent: var(--color-chat-500);
+}
 [data-section="overview"] {
   --color-brand-50: var(--color-overview-50);
   --color-brand-100: var(--color-overview-100);
