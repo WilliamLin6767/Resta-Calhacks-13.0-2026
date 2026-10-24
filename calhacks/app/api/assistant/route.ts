@@ -16,6 +16,7 @@ import {
   type AssistantChart,
   type AssistantResponse,
 } from "@/lib/assistant";
+import { createOwnerRequest } from "@/lib/calls/service";
 import {
   BREAKDOWNS,
   BREAKDOWN_IDS,
@@ -28,6 +29,7 @@ import {
   type MetricId,
 } from "@/lib/compare";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
+import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
 // Change this one line to try a different Claude model.
 const AI_MODEL = "claude-sonnet-5-5";
@@ -114,6 +116,10 @@ export async function POST(request: Request) {
 
   const compareInput = z.object({ metric: z.enum(METRIC_IDS), breakdown: z.enum(BREAKDOWN_IDS) });
 
+  // Supplier calls the assistant proposed in this answer. It never dials: only the owner's
+  // "Approve and call" on the request does (lib/calls/service.ts decideCall).
+  let proposedCalls = 0;
+
   const tools = [
     betaZodTool({
       name: "get_dashboard_summary",
@@ -148,6 +154,34 @@ export async function POST(request: Request) {
           note: shown ? "The owner can see this chart." : `Not shown: already showing ${MAX_CHARTS} charts.`,
           rows: result.rows,
         });
+      },
+    }),
+    betaZodTool({
+      name: "propose_call",
+      description:
+        "Propose a phone call to one of the restaurant's suppliers, when the owner asks for one (for example 'call Valley Butcher and ask if they can deliver Saturday'). " +
+        "This only adds a request that the owner must review and approve on the Suppliers page; it does not call anyone. Tell the owner that. At most one per answer.",
+      inputSchema: z.object({
+        supplier_name: z.string().describe("The supplier's name as the owner said it"),
+        request: z.string().describe("What to ask or arrange on the call, in the owner's words"),
+      }),
+      run: async (input) => {
+        if (proposedCalls >= 1) return "Error: already proposed a call in this answer.";
+        const db = await getSupabase();
+        const { data: suppliers, error } = await db.from("suppliers").select("id, name").eq("restaurant_id", RESTAURANT_ID);
+        if (error) return `Error: ${error.message}`;
+        const wanted = input.supplier_name.trim().toLowerCase();
+        const matches = (suppliers ?? []).filter((s) => s.name.toLowerCase().includes(wanted) || wanted.includes(s.name.toLowerCase()));
+        if (!wanted || matches.length !== 1) {
+          return `Error: ${matches.length > 1 ? "more than one" : "no"} supplier matches "${input.supplier_name}". Suppliers: ${(suppliers ?? []).map((s) => s.name).join(", ")}. Ask the owner which one.`;
+        }
+        try {
+          const made = await createOwnerRequest(db, { supplier_id: matches[0].id, text: input.request.slice(0, 1000) }, "ai");
+          proposedCalls += 1;
+          return `Added a call request "${made.title}" for ${matches[0].name}. It waits for the owner's approval on the Suppliers page; nothing has been dialed.`;
+        } catch (err) {
+          return `Error: ${err instanceof Error ? err.message : String(err)}`;
+        }
       },
     }),
   ];

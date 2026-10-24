@@ -42,7 +42,7 @@ export default function PrepPlanner({
         Based on the last {forecast.days_used.length} {forecast.weekday}s ({forecast.days_used.map(shortDate).join(", ")}). Recent weeks count more.
       </p>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
+      <section className="rounded-2xl border border-brand-100 bg-white p-4">
         <label htmlFor="note" className="font-medium">Anything different about {forecast.weekday}?</label>
         <p className="text-sm text-gray-600">An event nearby, the weather, a holiday, a catering order. The AI adjusts the dishes it affects; you see every change.</p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -57,7 +57,7 @@ export default function PrepPlanner({
           <button
             disabled={ai.loading || !note.trim()}
             onClick={() => ai.run("/api/prep/adjust", { date: forecast.date, note }, (data) => setAdjustment(data as unknown as Adjustment))}
-            className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {ai.loading ? "Thinking..." : "Adjust forecast"}
           </button>
@@ -104,9 +104,9 @@ export default function PrepPlanner({
             />
           )}
         </div>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-brand-50 text-brand-700">
               <tr>
                 <th className="px-4 py-2 font-medium">Ingredient</th>
                 <th className="px-4 py-2 text-right font-medium">Prep</th>
@@ -155,9 +155,9 @@ export default function PrepPlanner({
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Dishes expected</h2>
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-brand-100 bg-white">
           <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-brand-50 text-brand-700">
               <tr>
                 <th className="px-4 py-2 font-medium">Dish</th>
                 <th className="px-4 py-2 text-right font-medium">Expected</th>

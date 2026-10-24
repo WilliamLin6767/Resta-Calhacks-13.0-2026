@@ -36,14 +36,14 @@ export default function ScanInvoice() {
   }
 
   return (
-    <div className="mb-8 rounded-lg border border-gray-200 bg-white p-5">
+    <div className="mb-8 rounded-2xl border border-brand-100 bg-white p-5">
       <h2 className="font-semibold">Scan a supplier invoice</h2>
       <p className="mb-4 text-sm text-gray-600">
         Take a photo or upload a PDF. The AI reads every line, then we match it to your ingredients, check the math
         and prices, and update your food costs.
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <label className={`cursor-pointer rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 ${loading ? "pointer-events-none opacity-50" : ""}`}>
+        <label className={`cursor-pointer rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 ${loading ? "pointer-events-none opacity-50" : ""}`}>
           {loading ? "Reading the invoice... (about 20 seconds)" : "Upload or take a photo"}
           <input
             type="file"

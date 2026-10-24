@@ -5,7 +5,7 @@ import { useAction } from "@/components/useAction";
 import { looksLikeEmail, mailtoLink } from "@/lib/purchasing/disputes";
 import type { Dispute } from "@/lib/purchasing/disputeService";
 
-const primary = "rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const primary = "lift rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50";
 const secondary = "rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
 
 function money(n: number) {
@@ -137,7 +137,7 @@ export default function DisputePanel({ invoiceId, dispute, billedWrong, supplier
   }
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 text-sm">
+    <section className="rounded-2xl border border-brand-100 bg-white p-4 text-sm">
       {dispute.status === "credited" ? (
         <p><span className="font-medium text-green-700">Credit of {money(dispute.amount_credited ?? 0)} received</span> from {supplier}{dispute.closed_at ? ` on ${when(dispute.closed_at)}` : ""}.</p>
       ) : (
