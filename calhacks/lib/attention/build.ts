@@ -22,6 +22,26 @@ function shortDate(date: string) {
   return new Date(`${date.slice(0, 10)}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+// Whole dollars once amounts are big enough that cents are noise: $1,257 but $46.50
+const cash = (n: number) => (Math.abs(n) >= 100 ? `$${Math.round(n).toLocaleString("en-US")}` : money(n));
+// "in less than a day", "in about a day", "in about 3 days"
+function runsOut(days: number | null) {
+  if (days === null) return "soon";
+  if (days < 1) return "in less than a day";
+  if (days < 2) return "in about a day";
+  return `in about ${Math.floor(days)} days`;
+}
+// "A, B and 3 more"
+function listShort(names: string[], show = 2) {
+  if (names.length <= show) return names.join(" and ");
+  return `${names.slice(0, show).join(", ")} and ${names.length - show} more`;
+}
+// What kind of billing mistake, in a few words
+const BILLING_PHRASE: Record<string, string> = {
+  math: "a math error", short: "a charge for something not delivered", overcharge: "a price above what you agreed",
+  duplicate: "a duplicate invoice", total_mismatch: "lines that don't add up to the total",
+};
+
 export type Built = { items: Item[]; facts: TabFacts };
 
 // ---------- Inventory: what's running out, and restock orders to approve and send ----------
@@ -34,7 +54,7 @@ async function inventory(db: Db): Promise<Built> {
   for (const l of out) {
     items.push({
       key: `out:${l.id}`, fingerprint: "out", tab: "inventory", level: "act", dismissable: true,
-      title: `Out of ${l.name}`, detail: `Uses about ${fmt(l.daily_use)} ${l.unit} a day.`,
+      title: `You're out of ${l.name.toLowerCase()}`, detail: `You use about ${fmt(l.daily_use)} ${l.unit} a day.`,
       actions: [{ kind: "plan", label: "Plan a restock order", request: { kind: "low" } }],
     });
   }
@@ -42,8 +62,8 @@ async function inventory(db: Db): Promise<Built> {
     items.push({
       key: "low", fingerprint: low.map((l) => l.id).join(","), tab: "inventory", dismissable: true,
       level: low.some((l) => (l.days_left ?? 99) < 1) ? "act" : "watch",
-      title: `${low.length} ${low.length === 1 ? "item is" : "items are"} running low`,
-      detail: low.slice(0, 5).map((l) => `${l.name} (${l.days_left === null ? `${fmt(l.estimated)} ${l.unit} left` : `about ${fmt(l.days_left)} ${l.days_left === 1 ? "day" : "days"}`})`).join(", ") + (low.length > 5 ? ", ..." : ""),
+      title: low.length === 1 ? `Order more ${low[0].name.toLowerCase()}` : `Order more of ${low.length} items`,
+      detail: `${low[0].name} runs out ${runsOut(low[0].days_left)}${low.length > 1 ? `, ${listShort(low.slice(1).map((l) => l.name.toLowerCase()), 2)} soon after` : ""}.`,
       actions: [{ kind: "plan", label: "Plan restock orders", request: { kind: "low" } }],
     });
   }
@@ -52,8 +72,8 @@ async function inventory(db: Db): Promise<Built> {
     if (o.status === "draft") {
       items.push({
         key: `order:${o.id}`, fingerprint: o.status, tab: "inventory", level: "act",
-        title: `Approve restock order: ${o.supplier}, ${money(o.total)}`,
-        detail: `${list}.${o.below_minimum > 0 ? ` ${money(o.below_minimum)} under their minimum.` : ""}`,
+        title: `Approve the order to ${o.supplier} (${cash(o.total)})`,
+        detail: `${list}.${o.below_minimum > 0 ? ` That's ${cash(o.below_minimum)} under their minimum, so they may refuse it.` : ""}`,
         actions: [
           { kind: "post", label: "Approve", path: `/api/purchase-orders/${o.id}/status`, body: { status: "approved" }, primary: true },
           { kind: "post", label: "Deny", path: `/api/purchase-orders/${o.id}/status`, body: { status: "cancelled" } },
@@ -62,7 +82,7 @@ async function inventory(db: Db): Promise<Built> {
     } else if (o.status === "approved") {
       items.push({
         key: `send:${o.id}`, fingerprint: o.status, tab: "inventory", level: "act",
-        title: `Send the order to ${o.supplier}`, detail: `"${o.message}"`,
+        title: `Send your order to ${o.supplier}`, detail: `${list}. The message is written for you.`,
         actions: [
           o.contact.href ? { kind: "open", label: o.contact.label, href: o.contact.href } : { kind: "copy", label: o.contact.label, text: o.message },
           { kind: "post", label: "Mark as sent", path: `/api/purchase-orders/${o.id}/status`, body: { status: "sent" } },
@@ -77,8 +97,8 @@ async function inventory(db: Db): Promise<Built> {
     if (!gap.notable) continue;
     items.push({
       key: `gap:${e.id}`, fingerprint: "1", tab: "inventory", level: "watch", dismissable: true,
-      title: `${e.ingredients?.name}: counted ${fmt(-gap.change)} ${e.ingredients?.unit} less than expected`,
-      detail: `Worth ${money(-gap.change * Number(e.unit_cost ?? 0))}. Unlogged waste, heavy portions, or missing stock.`,
+      title: `${e.ingredients?.name} came up ${fmt(-gap.change)} ${e.ingredients?.unit} short (${cash(-gap.change * Number(e.unit_cost ?? 0))})`,
+      detail: "Check for waste that wasn't logged, or portions that are too big.",
       actions: [],
     });
   }
@@ -110,8 +130,8 @@ async function prep(db: Db): Promise<Built> {
   if (short.length) {
     items.push({
       key: `short:${p.date}`, fingerprint: short.map((n) => n.ingredient_id).join(","), tab: "prep", level: "act", dismissable: true,
-      title: `${day} is short on ${short.length} ${short.length === 1 ? "item" : "items"}`,
-      detail: short.map((n) => `${n.name} (${fmt(n.short)} ${n.unit})`).join(", "),
+      title: `Order ${listShort(short.map((n) => n.name.toLowerCase()), 2)} for ${p.forecast.weekday}`,
+      detail: `You'll be short about ${short.slice(0, 2).map((n) => `${fmt(n.short)} ${n.unit} of ${n.name.toLowerCase()}`).join(" and ")} if it's busy.`,
       actions: [
         { kind: "plan", label: "Plan orders", request: { kind: "prep", date: p.date, factors: {} } },
         { kind: "link", label: "See the prep list", href: `/prep?date=${p.date}` },
@@ -121,14 +141,14 @@ async function prep(db: Db): Promise<Built> {
   if (tight.length) {
     items.push({
       key: `tight:${p.date}`, fingerprint: tight.map((n) => n.ingredient_id).join(","), tab: "prep", level: "info", dismissable: true,
-      title: `Tight if ${p.forecast.weekday} is busy`, detail: tight.map((n) => n.name).join(", "), actions: [],
+      title: `${listShort(tight.map((n) => n.name), 2)} could run tight if ${p.forecast.weekday} is busy`, actions: [],
     });
   }
   const unsure = p.forecast.dishes.filter((d) => d.confidence === "low");
   if (unsure.length) {
     items.push({
       key: `unsure:${p.date}`, fingerprint: unsure.map((d) => d.id).join(","), tab: "prep", level: "info", dismissable: true,
-      title: `Hard to forecast: ${unsure.map((d) => d.name).join(", ")}`, detail: "Recent weeks were very different. Add a note about the day if you know something.",
+      title: `${listShort(unsure.map((d) => d.name), 2)}: hard to predict for ${p.forecast.weekday}`, detail: "Sales swung a lot in recent weeks. Add a note if you know something about the day.",
       actions: [{ kind: "link", label: "Add a note", href: `/prep?date=${p.date}` }],
     });
   }
@@ -171,19 +191,20 @@ async function invoices(db: Db): Promise<Built> {
     if (wrong > 0 && !dispute) {
       items.push({
         key: `wrong:${inv.id}`, fingerprint: wrong.toFixed(2), tab: "invoices", level: "act", dismissable: true,
-        title: `${supplier} billed ${money(wrong)} wrong on ${name}`, detail: open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).map((f) => f.message).join(" "),
+        title: `${supplier} overcharged you ${cash(wrong)}`,
+        detail: `Invoice ${name} has ${listShort([...new Set(open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).map((f) => BILLING_PHRASE[f.kind] ?? "a billing error"))], 2)}.`,
         actions: [{ kind: "link", label: "Draft a dispute email", href }],
       });
     } else if (dispute?.status === "draft") {
       items.push({
         key: `dispute-draft:${inv.id}`, fingerprint: "draft", tab: "invoices", level: "act",
-        title: `Dispute email to ${supplier} is ready to send`, detail: `Asks for ${money(dispute.amount_claimed)} on ${name}.`,
+        title: `Send the dispute email to ${supplier}`, detail: `It asks for a ${cash(dispute.amount_claimed)} credit on ${name}. It's written; just check it.`,
         actions: [{ kind: "link", label: "Review and send", href }],
       });
     } else if (dispute?.status === "sent" && dispute.sent_at && Date.now() - Date.parse(dispute.sent_at) > 5 * 86400_000) {
       items.push({
         key: `dispute-wait:${inv.id}`, fingerprint: dispute.sent_at, tab: "invoices", level: "watch", dismissable: true,
-        title: `No credit yet from ${supplier}`, detail: `${money(dispute.amount_claimed)} disputed on ${name}, sent ${shortDate(dispute.sent_at)}. Consider following up.`,
+        title: `${supplier} hasn't sent your ${cash(dispute.amount_claimed)} credit yet`, detail: `You emailed them ${shortDate(dispute.sent_at)}. Time for a follow-up call.`,
         actions: [{ kind: "link", label: "Open the invoice", href }],
       });
     }
@@ -191,7 +212,7 @@ async function invoices(db: Db): Promise<Built> {
     if (review) {
       items.push({
         key: `review:${inv.id}`, fingerprint: String(review), tab: "invoices", level: "watch",
-        title: `Confirm ${review} ${review === 1 ? "line" : "lines"} on ${name}`, detail: "The app wasn't sure which ingredient these are, so they're not in stock or prices yet.",
+        title: `Check ${review} ${review === 1 ? "item" : "items"} on invoice ${name}`, detail: "The app wasn't sure what it is, so it's not counted in stock yet.",
         actions: [{ kind: "link", label: "Confirm", href }],
       });
     }
@@ -199,7 +220,7 @@ async function invoices(db: Db): Promise<Built> {
       savings += Number(f.money_impact ?? 0);
       items.push({
         key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.money_impact), tab: "invoices", level: "info", dismissable: true,
-        title: f.message.split(":")[0] + `: could save ${money(Number(f.money_impact ?? 0))}`, detail: f.message, actions: [{ kind: "link", label: "See the invoice", href }],
+        title: `${f.message.split(":")[0]}: save ${cash(Number(f.money_impact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
       });
     }
   }
@@ -210,23 +231,39 @@ async function invoices(db: Db): Promise<Built> {
 async function menu(db: Db): Promise<Built> {
   const { suggestions, delivery, changes } = await loadPricing(db);
   const items: Item[] = [];
-  for (const s of suggestions) {
-    if (s.action === "ok" || !s.new_price) continue;
+  // Price raises: one item for all of them, so the bar isn't a wall of near-identical rows
+  const raises = suggestions.filter((s) => s.action === "raise" && s.new_price);
+  if (raises.length) {
+    const why = (s: (typeof raises)[number]) =>
+      s.cost_change_pct !== null && s.cost_change_pct >= 3 ? `ingredients up ${Math.round(s.cost_change_pct)}%` : "food cost over 30%";
     items.push({
-      key: `price:${s.dish.id}`, fingerprint: s.new_price.toFixed(2), tab: "menu", dismissable: true,
-      level: s.action === "raise" ? "act" : "watch",
-      title: s.action === "raise" ? `Raise ${s.dish.name} to ${money(s.new_price)}` : `Look at ${s.dish.name}: the numbers say ${money(s.new_price)}`,
-      detail: `${s.reasons[0] ?? ""}${s.action === "raise" ? ` About ${money(s.extra_profit)} more a month.` : ""}`,
-      actions: s.action === "raise"
-        ? [{ kind: "post", label: `Approve ${money(s.new_price)}`, path: `/api/menu-items/${s.dish.id}/price`, body: { price: s.new_price, reason: s.reasons[0] ?? "" }, primary: true }]
-        : [{ kind: "link", label: "Open menu pricing", href: "/menu" }],
+      key: "raises", fingerprint: raises.map((s) => `${s.dish.id}:${s.new_price}`).join(","), tab: "menu", level: "act", dismissable: true,
+      title: raises.length === 1
+        ? `Raise ${raises[0].dish.name} to ${money(raises[0].new_price!)} (now ${money(raises[0].dish.price)})`
+        : `Raise prices on ${raises.length} dishes (about ${cash(raises.reduce((t, s) => t + s.extra_profit, 0))} more a month)`,
+      detail: raises.map((s) => `${s.dish.name.replace(/ \(.*\)$/, "")} ${money(s.dish.price)} → ${money(s.new_price!)} (${why(s)})`).join(" · "),
+      actions: [
+        {
+          kind: "posts", label: raises.length === 1 ? `Approve ${money(raises[0].new_price!)}` : `Approve all ${raises.length}`,
+          calls: raises.map((s) => ({ path: `/api/menu-items/${s.dish.id}/price`, body: { price: s.new_price, reason: s.reasons[0] ?? "" } })),
+        },
+        { kind: "link", label: "Change one", href: "/menu" },
+      ],
+    });
+  }
+  for (const s of suggestions.filter((x) => x.action === "review" && x.new_price)) {
+    items.push({
+      key: `price:${s.dish.id}`, fingerprint: s.new_price!.toFixed(2), tab: "menu", level: "watch", dismissable: true,
+      title: `${s.dish.name} costs more to make, but it doesn't sell much`,
+      detail: "Raising the price may not help. Look at the recipe or portion first.",
+      actions: [{ kind: "link", label: "Open menu pricing", href: "/menu" }],
     });
   }
   if (delivery.prices.length) {
     items.push({
       key: "delivery-prices", fingerprint: delivery.prices.map((p) => `${p.menu_item_id}:${p.new_delivery_price}`).join(","), tab: "menu", level: "watch", dismissable: true,
-      title: `Set delivery app prices for ${delivery.prices.length} dishes`,
-      detail: `Apps keep ${delivery.fee_pct}% and your app prices match the menu. About ${money(delivery.extra_profit)} more a month.`,
+      title: `Charge more on DoorDash and Uber Eats (${delivery.prices.length} dishes)`,
+      detail: `The apps keep ${delivery.fee_pct}% of each order. About ${cash(delivery.extra_profit)} more a month.`,
       actions: [{ kind: "post", label: "Approve", path: "/api/menu/delivery-prices", primary: true }, { kind: "link", label: "See the prices", href: "/menu" }],
     });
   }
@@ -234,8 +271,8 @@ async function menu(db: Db): Promise<Built> {
   if (pending.length) {
     items.push({
       key: "sync", fingerprint: pending.map((c) => c.id).join(","), tab: "menu", level: "act",
-      title: `${pending.length} price ${pending.length === 1 ? "change isn't" : "changes aren't"} in the POS or delivery apps yet`,
-      detail: pending.slice(0, 4).map((c) => c.menu_items?.name).join(", "), actions: [{ kind: "link", label: "Tick them off", href: "/menu" }],
+      title: `Update ${pending.length} ${pending.length === 1 ? "price" : "prices"} in your POS and delivery apps`,
+      detail: `${listShort(pending.map((c) => c.menu_items?.name ?? "a dish"), 2)} changed here but not there yet.`, actions: [{ kind: "link", label: "Tick them off", href: "/menu" }],
     });
   }
   return {
@@ -257,22 +294,25 @@ async function accounting(db: Db): Promise<Built> {
   for (const c of checks.filter((x) => x.status === "short" || x.status === "missing")) {
     items.push({
       key: `payout:${c.platform}:${c.period_start}`, fingerprint: c.difference.toFixed(2), tab: "accounting", level: "act", dismissable: true,
-      title: `${PLATFORMS[c.platform]} ${c.status === "missing" ? "didn't pay" : "paid less"} for the week of ${shortDate(c.period_start)}: ${money(-c.difference)}`,
-      detail: c.message, actions: [{ kind: "copy", label: "Copy note to their support", text: payoutDispute(c, restaurant) }],
+      title: `${PLATFORMS[c.platform]} owes you ${cash(-c.difference)}`,
+      detail: c.status === "missing"
+        ? `They never paid for the week of ${shortDate(c.period_start)}.`
+        : `They paid short for the week of ${shortDate(c.period_start)}${c.payout?.note ? ` ("${c.payout.note}")` : ""}.`,
+      actions: [{ kind: "copy", label: "Copy a note for their support", text: payoutDispute(c, restaurant) }],
     });
   }
   for (const b of bills.overdue) {
     items.push({
       key: `overdue:${b.id}`, fingerprint: b.status, tab: "accounting", level: "act",
-      title: `Overdue: ${b.supplier} ${money(amountToPay(b.total, b.dispute))}`, detail: `${b.invoice_number ?? ""} was due ${b.due_date ? shortDate(b.due_date) : "?"}.`,
+      title: `Pay ${b.supplier} ${cash(amountToPay(b.total, b.dispute))}: it's overdue`, detail: `It was due ${b.due_date ? shortDate(b.due_date) : "already"}.`,
       actions: [{ kind: "post", label: "Mark paid", path: `/api/invoices/${b.id}/paid`, primary: true }, { kind: "link", label: "Open the invoice", href: `/invoices/${b.id}` }],
     });
   }
   if (bills.due_soon.length) {
     items.push({
       key: "due-soon", fingerprint: bills.due_soon.map((b) => b.id).join(","), tab: "accounting", level: "info", dismissable: true,
-      title: `${bills.due_soon.length} ${bills.due_soon.length === 1 ? "bill" : "bills"} due this week: ${money(bills.due_soon.reduce((s, b) => s + amountToPay(b.total, b.dispute), 0))}`,
-      detail: bills.due_soon.map((b) => `${b.supplier} (${b.due_date ? shortDate(b.due_date) : "?"})`).join(", "), actions: [{ kind: "link", label: "See bills", href: "/accounting" }],
+      title: `${bills.due_soon.length} ${bills.due_soon.length === 1 ? "bill" : "bills"} due this week (${cash(bills.due_soon.reduce((s, b) => s + amountToPay(b.total, b.dispute), 0))})`,
+      detail: listShort(bills.due_soon.map((b) => `${b.supplier} on ${b.due_date ? shortDate(b.due_date) : "?"}`), 2) + ".", actions: [{ kind: "link", label: "See bills", href: "/accounting" }],
     });
   }
   return {
