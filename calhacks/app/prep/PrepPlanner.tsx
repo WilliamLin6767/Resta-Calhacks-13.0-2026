@@ -3,6 +3,7 @@
 import { useState } from "react";
 import OrderPlan from "@/components/OrderPlan";
 import AiThinking from "@/components/ui/AiThinking";
+import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
 import { useAction } from "@/components/useAction";
@@ -164,33 +165,35 @@ export default function PrepPlanner({
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Dishes expected</h2>
-        <div className={tableWrap}>
-          <table className={table}>
-            <thead className={thead}>
-              <tr>
-                <th className={th}>Dish</th>
-                <th className={thNum}>Expected</th>
-                <th className={thNum}>Range</th>
-                <th className={thNum}>Past {forecast.weekday}s, oldest first</th>
-                <th className={th}>Forecast</th>
-              </tr>
-            </thead>
-            <tbody>
-              {adjusted.dishes.map((d) => (
-                <tr key={d.id} className={tr}>
-                  <td className={td}>{d.name}</td>
-                  <td className={`${tdNum} font-medium`}>
-                    <LiveValue value={String(d.expected)} />
-                    {factors[d.id] && <span className="ml-1 text-xs text-gray-500">(AI)</span>}
-                  </td>
-                  <td className={`${tdNum} text-gray-500`}>{d.low}–{d.high}</td>
-                  <td className={`${tdNum} text-gray-500`}>{d.history.join(", ")}</td>
-                  <td className={`${td} text-gray-600`}>{CONFIDENCE[d.confidence]}</td>
+        <Fold summary={<span className="text-gray-700">About {adjusted.dishes.reduce((n, d) => n + d.expected, 0)} plates across {adjusted.dishes.length} dishes</span>}>
+          <div className={tableWrap}>
+            <table className={table}>
+              <thead className={thead}>
+                <tr>
+                  <th className={th}>Dish</th>
+                  <th className={thNum}>Expected</th>
+                  <th className={thNum}>Range</th>
+                  <th className={thNum}>Past {forecast.weekday}s, oldest first</th>
+                  <th className={th}>Forecast</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {adjusted.dishes.map((d) => (
+                  <tr key={d.id} className={tr}>
+                    <td className={td}>{d.name}</td>
+                    <td className={`${tdNum} font-medium`}>
+                      <LiveValue value={String(d.expected)} />
+                      {factors[d.id] && <span className="ml-1 text-xs text-gray-500">(AI)</span>}
+                    </td>
+                    <td className={`${tdNum} text-gray-500`}>{d.low}–{d.high}</td>
+                    <td className={`${tdNum} text-gray-500`}>{d.history.join(", ")}</td>
+                    <td className={`${td} text-gray-600`}>{CONFIDENCE[d.confidence]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Fold>
       </section>
     </div>
   );

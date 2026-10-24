@@ -7,6 +7,7 @@ import ErrorMessage from "@/components/ErrorMessage";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import EmptyState from "@/components/ui/EmptyState";
+import Fold from "@/components/ui/Fold";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import FindSuppliersButton from "@/components/suppliers/FindSuppliersButton";
 import JumpCard from "@/components/suppliers/JumpCard";
@@ -55,39 +56,42 @@ async function SuppliersTable() {
     pendingCounts(supabase).catch(() => null),
   ]);
   if (error) return <ErrorMessage message={error.message} />;
+  const n = data?.length ?? 0;
 
   return (
-    <SimpleTable
-      empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
-      columns={[
-        { key: "name", label: "Supplier" },
-        { key: "category", label: "Category" },
-        { key: "contact_name", label: "Contact" },
-        { key: "phone", label: "Phone" },
-        { key: "preferred_channel", label: "Order by" },
-        { key: "lead_time_days", label: "Lead time (days)" },
-        { key: "delivery_days", label: "Delivers" },
-      ]}
-      rows={(data ?? []).map((row) => {
-        const phone = normalizePhone(row.phone);
-        return {
-          ...row,
-          name: (
-            <>
-              {row.name}
-              <CallBadge count={counts?.bySupplier[row.id]} />
-            </>
-          ),
-          phone: phone ? (
-            <a href={telHref(phone)} className="font-medium text-gray-900 underline">
-              {formatPhone(phone)}
-            </a>
-          ) : (
-            <span className="text-gray-400">none on file</span>
-          ),
-        };
-      })}
-    />
+    <Fold summary={<span className="text-gray-700">{n} {n === 1 ? "supplier" : "suppliers"} on file, with phone numbers and delivery days</span>}>
+      <SimpleTable
+        empty={<EmptyState title="No suppliers on file yet." icon="truck" />}
+        columns={[
+          { key: "name", label: "Supplier" },
+          { key: "category", label: "Category" },
+          { key: "contact_name", label: "Contact" },
+          { key: "phone", label: "Phone" },
+          { key: "preferred_channel", label: "Order by" },
+          { key: "lead_time_days", label: "Lead time (days)" },
+          { key: "delivery_days", label: "Delivers" },
+        ]}
+        rows={(data ?? []).map((row) => {
+          const phone = normalizePhone(row.phone);
+          return {
+            ...row,
+            name: (
+              <>
+                {row.name}
+                <CallBadge count={counts?.bySupplier[row.id]} />
+              </>
+            ),
+            phone: phone ? (
+              <a href={telHref(phone)} className="font-medium text-gray-900 underline">
+                {formatPhone(phone)}
+              </a>
+            ) : (
+              <span className="text-gray-400">none on file</span>
+            ),
+          };
+        })}
+      />
+    </Fold>
   );
 }
 
