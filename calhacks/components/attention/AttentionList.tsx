@@ -6,31 +6,29 @@ import { useState } from "react";
 import OrderPlan from "@/components/OrderPlan";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
 
-const LEVEL = {
-  act: { label: "Needs you", stripe: "border-l-red-500", tag: "bg-red-50 text-red-700" },
-  watch: { label: "Watch", stripe: "border-l-amber-400", tag: "bg-amber-50 text-amber-800" },
-  info: { label: "FYI", stripe: "border-l-gray-300", tag: "bg-gray-100 text-gray-600" },
-};
-const primaryClass = "rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-700 disabled:opacity-50";
-const buttonClass = "rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-50";
+const DOT = { act: "bg-red-500", watch: "bg-amber-400", info: "bg-gray-300" };
+const mainClass = "rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50";
+const linkClass = "text-sm text-gray-600 underline-offset-2 hover:text-gray-900 hover:underline disabled:opacity-50";
 
-function ActionButton({ action, onDone }: { action: Action; onDone: () => void }) {
+// One button. The item's first action is the main button; the rest are small links next to it.
+function ActionButton({ action, main, onDone }: { action: Action; main: boolean; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
-  if (action.kind === "link") return <Link href={action.href} className={buttonClass}>{action.label}</Link>;
-  // Opens the owner's own Messages / phone / email app with the message filled in
-  if (action.kind === "open") return <a href={action.href} className={primaryClass}>{action.label}</a>;
+  const cls = main ? mainClass : linkClass;
+  if (action.kind === "link") return <Link href={action.href} className={main ? `${mainClass} inline-block` : linkClass}>{action.label}</Link>;
+  // Opens the owner's own Messages / phone / email app with the message filled in; they press send there
+  if (action.kind === "open") return <a href={action.href} className={main ? `${mainClass} inline-block` : linkClass}>{action.label}</a>;
   if (action.kind === "plan") return <OrderPlan request={action.request} label={action.label} />;
   if (action.kind === "copy") {
     return (
       <button
-        className={buttonClass}
+        className={cls}
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(action.text);
-            setNote("Copied");
+            setNote("Copied. Paste it into their support chat.");
           } catch {
-            setNote("Couldn't copy");
+            setNote("Couldn't copy.");
           }
         }}
       >
@@ -42,14 +40,17 @@ function ActionButton({ action, onDone }: { action: Action; onDone: () => void }
     <span className="inline-flex items-center gap-2">
       <button
         disabled={busy}
-        className={action.primary ? primaryClass : buttonClass}
+        className={cls}
         onClick={async () => {
           setBusy(true);
           setNote("");
           try {
-            const res = await fetch(action.path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action.body ?? {}) });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+            const calls = action.kind === "posts" ? action.calls : [{ path: action.path, body: action.body }];
+            for (const c of calls) {
+              const res = await fetch(c.path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c.body ?? {}) });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+            }
             onDone();
           } catch (e) {
             setNote(e instanceof Error ? e.message : String(e));
@@ -58,20 +59,53 @@ function ActionButton({ action, onDone }: { action: Action; onDone: () => void }
           }
         }}
       >
-        {busy ? "..." : action.label}
+        {busy ? "Saving..." : action.label}
       </button>
       {note && <span className="text-xs text-red-600">{note}</span>}
     </span>
   );
 }
 
-// The to-do items with their buttons. `showTab` labels each item with its tab (for Overview).
-export default function AttentionList({ items, showTab = false, limit = 5 }: { items: Item[]; showTab?: boolean; limit?: number }) {
+function Row({ item, showTab, onDismiss }: { item: Item; showTab: boolean; onDismiss: (i: Item) => void }) {
+  const router = useRouter();
+  return (
+    <li className="flex gap-3 py-3">
+      <span className={`mt-2 h-2 w-2 shrink-0 rounded-full ${DOT[item.level]}`} aria-hidden="true" />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900">
+          {item.title}
+          {showTab && (
+            <Link href={TAB_LABELS[item.tab].href} className="ml-2 whitespace-nowrap text-xs font-normal text-gray-500 hover:underline">
+              {TAB_LABELS[item.tab].label} →
+            </Link>
+          )}
+        </p>
+        {item.detail && <p className="text-sm text-gray-600">{item.detail}</p>}
+        {(item.actions.length > 0 || item.dismissable) && (
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {item.actions.map((a, i) => <ActionButton key={i} action={a} main={i === 0} onDone={() => router.refresh()} />)}
+            {item.dismissable && (
+              <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700" title="Hide this until something changes">
+                Not now
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+// Decisions first ("To do now"); everything else folded under "Keep an eye on".
+// `showTab` links each item to its tab (for Overview).
+export default function AttentionList({ items, showTab = false, limit = 4 }: { items: Item[]; showTab?: boolean; limit?: number }) {
   const router = useRouter();
   const [all, setAll] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const visible = items.filter((i) => !hidden.has(i.key));
-  const shown = all ? visible : visible.slice(0, limit);
+  const now = visible.filter((i) => i.level === "act");
+  const later = visible.filter((i) => i.level !== "act");
+  const shown = all ? now : now.slice(0, limit);
 
   async function dismiss(item: Item) {
     setHidden(new Set(hidden).add(item.key));
@@ -79,35 +113,28 @@ export default function AttentionList({ items, showTab = false, limit = 5 }: { i
     router.refresh();
   }
 
-  if (!visible.length) return <p className="text-sm text-gray-500">Nothing needs you here right now.</p>;
   return (
-    <div className="grid gap-2">
-      {shown.map((item) => (
-        <div key={item.key} className={`rounded-md border border-l-4 border-gray-200 bg-white px-3 py-2.5 ${LEVEL[item.level].stripe}`}>
-          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium">
-                <span className={`mr-2 rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${LEVEL[item.level].tag}`}>{LEVEL[item.level].label}</span>
-                {showTab && <Link href={TAB_LABELS[item.tab].href} className="mr-2 text-xs font-normal text-gray-500 underline">{TAB_LABELS[item.tab].label}</Link>}
-                {item.title}
-              </p>
-              {item.detail && <p className="mt-0.5 text-sm text-gray-600">{item.detail}</p>}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {item.actions.map((a, i) => <ActionButton key={i} action={a} onDone={() => router.refresh()} />)}
-              {item.dismissable && (
-                <button onClick={() => dismiss(item)} className="text-xs text-gray-500 underline hover:text-gray-800" title="Hide until this changes">
-                  Dismiss
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-      {visible.length > limit && (
-        <button onClick={() => setAll(!all)} className="justify-self-start text-sm text-gray-600 underline">
-          {all ? "Show fewer" : `Show ${visible.length - limit} more`}
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{now.length ? `To do now (${now.length})` : "To do now"}</p>
+      {now.length === 0 ? (
+        <p className="py-3 text-sm text-gray-600">Nothing needs a decision right now.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {shown.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
+        </ul>
+      )}
+      {now.length > limit && (
+        <button onClick={() => setAll(!all)} className="text-sm text-gray-600 hover:underline">
+          {all ? "Show fewer" : `Show ${now.length - limit} more`}
         </button>
+      )}
+      {later.length > 0 && (
+        <details className="mt-2 border-t border-gray-100 pt-2">
+          <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-900">Keep an eye on ({later.length})</summary>
+          <ul className="divide-y divide-gray-100">
+            {later.map((item) => <Row key={item.key} item={item} showTab={showTab} onDismiss={dismiss} />)}
+          </ul>
+        </details>
       )}
     </div>
   );
