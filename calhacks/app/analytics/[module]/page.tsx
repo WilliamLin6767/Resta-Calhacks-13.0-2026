@@ -302,6 +302,9 @@ function ModuleCharts({ id, digest, note }: { id: ModuleId; digest: Digest; note
               dishes: p.dishes.join(", "),
             }))}
           />
+          <Link href="/suppliers" className="mt-3 inline-block text-sm font-medium text-gray-700 hover:text-gray-900 hover:underline">
+            Compare with USDA market prices and find other suppliers →
+          </Link>
         </ChartCard>
       );
   }
