@@ -7,6 +7,7 @@ import { countGap } from "@/lib/inventory/stock";
 import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
 import ReorderButton from "./ReorderButton";
+import SalesReceipts from "./SalesReceipts";
 
 const STATUS = {
   out: { label: "Out", className: "bg-red-50 text-red-700" },
@@ -61,6 +62,8 @@ async function Inventory() {
           <p className="text-sm text-gray-600">Counted less than expected (recent counts)</p>
         </div>
       </div>
+
+      <SalesReceipts />
 
       <Capture ingredients={lines.map((l) => ({ id: l.id, name: l.name, unit: l.unit }))} />
 
