@@ -2,6 +2,7 @@
 //   loadPrep        - the forecast for a day, stock expected by then, and where each ingredient comes from
 //   orderShortfalls - draft purchase orders for everything the day is short on
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { countDays, stockLines, usageByDay, type LastCount } from "@/lib/inventory/stock";
 import { draftOrders, loadSources, type Source } from "@/lib/purchasing/sources";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import {
@@ -40,12 +41,13 @@ export function addDays(date: string, n: number) {
 
 export async function loadPrep(db: Db, date: string): Promise<Prep> {
   const today = todayLocal();
-  const [sales, menu, recipes, ingredients, orders] = await Promise.all([
+  const [sales, menu, recipes, ingredients, orders, counts] = await Promise.all([
     db.rpc("dish_sales_by_day", { p_restaurant_id: RESTAURANT_ID, p_days: 56 }),
     db.from("menu_items").select("id, name").eq("restaurant_id", RESTAURANT_ID).eq("active", true).order("id"),
     db.from("recipe_items").select("menu_item_id, ingredient_id, qty"),
     db.from("ingredients").select("id, name, unit, category, current_qty, preferred_supplier_id").eq("restaurant_id", RESTAURANT_ID),
     db.from("purchase_orders").select("supplier_id, purchase_order_lines(ingredient_id, qty)").eq("restaurant_id", RESTAURANT_ID).in("status", ["draft", "approved", "sent"]),
+    db.from("inventory_counts").select("ingredient_id, counted_at").order("counted_at", { ascending: false }).limit(1000),
   ]);
   const salesRows = (must(sales, "load past sales (has supabase/06_prep.sql been run?)") as SalesRow[]).map((r) => ({ ...r, units: Number(r.units) }));
   const dishes = must(menu, "load the menu") as { id: number; name: string }[];
@@ -67,10 +69,16 @@ export async function loadPrep(db: Db, date: string): Promise<Prep> {
     }
   }
 
-  // Stock at the start of the day: today's count minus what the days in between should use
+  // Stock at the start of the day: stock now minus what the days in between should use
   const daysBefore: Forecast[] = [];
   for (let d = addDays(today, 1); d < date; d = addDays(d, 1)) daysBefore.push(forecastDay(salesRows, dishes, d));
-  const projected = projectStock(new Map(ingredientRows.map((i) => [i.id, Number(i.current_qty)])), recipeRows, daysBefore);
+  // Starting point: the last count minus what sales used since (see lib/inventory/stock.ts)
+  const lastCounted = new Map<number, LastCount>();
+  for (const c of must(counts, "load counts") as { ingredient_id: number; counted_at: string }[]) {
+    if (!lastCounted.has(c.ingredient_id)) lastCounted.set(c.ingredient_id, countDays(c.counted_at));
+  }
+  const now = stockLines(ingredientRows.map((i) => ({ ...i, par_level: null, reorder_point: null })), lastCounted, usageByDay(salesRows, recipeRows));
+  const projected = projectStock(new Map(now.map((l) => [l.id, l.estimated])), recipeRows, daysBefore);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(today, i + 1);

@@ -2,10 +2,12 @@
 //   saveScannedInvoice - a freshly read invoice -> match, check, save, record new prices
 //   recheckInvoice     - re-run matching (incl. AI for unmatched lines) and checks on a saved invoice
 //   confirmLine        - a person says what a line is; remembered for next time
+//   (each of these also adds the delivered, matched lines to stock: lib/inventory/service.ts)
 //   orderFromFlag      - turn a "cheaper elsewhere" flag into a draft purchase order
 //   loadOrders         - open purchase orders, with the message to send each supplier
 //   setOrderStatus     - approve, send, receive or cancel an order
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addInvoiceToStock } from "@/lib/inventory/service";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { matchLines, type ReadInvoice } from "./ai";
 import { checkInvoice, type CheckLine, type PricePoint } from "./checks";
@@ -219,6 +221,7 @@ export async function saveScannedInvoice(db: Db, read: ReadInvoice, source: "pho
   // Check against the price history BEFORE adding this invoice's prices to it
   await runChecks(db, invoice.id);
   await recordPrices(db, invoice.id);
+  await addInvoiceToStock(db, invoice.id); // the invoice is the delivery record (A2)
   return invoice.id;
 }
 
@@ -255,6 +258,7 @@ export async function recheckInvoice(db: Db, invoiceId: number) {
       if (ing) update.pack_qty = packQty(m.description, m.pack_desc, m.sold_by, ing.unit) ?? undefined;
       must(await db.from("invoice_lines").update(update).eq("id", open[i].id), "save the match");
     }
+    await addInvoiceToStock(db, invoiceId);
   }
   return runChecks(db, invoiceId);
 }
@@ -281,6 +285,7 @@ export async function confirmLine(db: Db, lineId: number, choice: { ingredient_i
   );
   await runChecks(db, line.invoice_id);
   await recordPrices(db, line.invoice_id, lineId);
+  await addInvoiceToStock(db, line.invoice_id);
   return line.invoice_id;
 }
 
