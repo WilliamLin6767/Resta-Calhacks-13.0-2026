@@ -307,7 +307,7 @@ async function accounting(db: Db): Promise<Built> {
         title: c.status === "bank_short"
           ? `${PLATFORMS[c.week.platform]} says it paid ${cash(reported)}, but your bank got ${cash(c.deposit?.amount ?? 0)}`
           : `${PLATFORMS[c.week.platform]}'s ${cash(reported)} payout never reached your bank`,
-        detail: `Week of ${shortDate(c.week.period_start)}. Your orders, their statement and your bank were checked separately.`,
+        detail: `${cash(reported - (c.deposit?.amount ?? 0))} missing, week of ${shortDate(c.week.period_start)}. Your orders, their statement and your bank were checked separately.`,
         actions: [{ kind: "copy", label: "Copy a note for their support", text: bankNote(c, restaurant, bank.account.last4) }],
       });
     }
