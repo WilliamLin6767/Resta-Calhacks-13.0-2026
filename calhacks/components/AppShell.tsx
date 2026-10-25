@@ -83,7 +83,8 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
       </div>
 
       {/* .rail: the menu's width, which collapses to its icons (globals.css) */}
-      <aside className="rail sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
+      {/* z-40: when the collapsed rail opens over the page, it covers page content (the Chat composer is z-30) */}
+      <aside className="rail sticky top-0 z-40 hidden h-dvh shrink-0 md:block">
         <Sidebar restaurant={restaurant} collapsible />
       </aside>
       {/* Keeps running supplier calls moving when no calls panel on this page shows them (Convex only) */}
