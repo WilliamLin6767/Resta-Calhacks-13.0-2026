@@ -73,10 +73,10 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         />
       )}
 
-      {/* Phone menu only. h-dvh is the visible screen, and the bottom padding keeps Profile above
-          Safari's floating toolbar and the home indicator (the same room the page leaves for the bottom bar). */}
+      {/* Phone menu only. h-dvh is the visible screen, and the bottom padding (the home indicator's
+          safe area plus a little) keeps Profile just above Safari's floating toolbar. */}
       <div className={`${open ? "fixed top-0 left-0 z-50 flex h-dvh" : "hidden"} md:hidden`}>
-        <div className="flex h-full flex-col bg-white pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-xl">
+        <div className="flex h-full flex-col bg-white pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl">
           <div className="flex justify-end border-b border-gray-200">
             <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-gray-600">
               Close
