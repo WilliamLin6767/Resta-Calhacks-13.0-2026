@@ -1,24 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Resta app
 
-## Getting Started
+The Next.js app behind https://resta-calhacks.vercel.app. What it does: [the main README](../README.md).
 
-First, run the development server:
+## Run it
+
+Needs Node 20 or newer.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. `npm run dev:phone` serves it on your network so a phone on the same
+Wi-Fi can open it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm test` | Unit tests (Vitest, `lib/__tests__/`) |
+| `npm run lint` | ESLint |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
+
+Put these in `.env.local` (and in Vercel for the live site). Keys are server only unless the name
+starts with `NEXT_PUBLIC_`.
+
+| Variable | Used for |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SECRET_KEY` | The database and photo storage. The secret key stays on the server. |
+| `ANTHROPIC_API_KEY` | Claude: chat, agent tools, invoice reading, summaries, drafts |
+| `NESSIE_API_KEY` | Capital One Nessie bank account (Accounting) |
+| `WAJO_API_KEY`, `DEMO_CALL_OVERRIDE_NUMBER` | Supplier phone calls. Every call goes to the override number. |
+| `CARTESIA_API_KEY` | Voice in Chat |
+| `BRAVE_SEARCH_API_KEY` | Dish photos for Marketing |
+| `BUFFER_API_KEY`, `BUFFER_CHANNEL_ID` | Publishing posts to Instagram |
+| `APIFY_TOKEN` | Trends (Yelp, Instagram, TikTok) |
+| `INBOUND_EMAIL_SECRET`, `GMAIL_CHECK_URL`, `RESTAURANT_EMAIL` | The Gmail inbox ([integrations/gmail](integrations/gmail/README.md)) |
+| `PAYOUT_SUPPORT_EMAIL_DOORDASH`, `PAYOUT_SUPPORT_EMAIL_UBEREATS` | Where payout claim emails go |
+| `NEXT_PUBLIC_CONVEX_URL`, `LIVE_SYNC_SECRET` | Live updates (below) |
+| `CRON_SECRET` | Protects the daily loop (`/api/loop/tick`, scheduled in `vercel.json`) |
+| `REQUIRE_LOGIN`, `OWNER_PASSWORD`, `SESSION_SECRET` | Optional login. Off unless `REQUIRE_LOGIN=1`. |
+
+## Database
+
+Supabase holds every table. The demo database is already filled with Pho Berkeley's data.
+[`supabase/README.md`](supabase/README.md) describes each table. The numbered SQL files in
+`supabase/` add features on top of it and are run in order in the Supabase SQL editor.
+
+## Code layout
+
+| Path | What's there |
+| --- | --- |
+| `app/` | Pages (one folder per section) and API routes (`app/api/`) |
+| `components/` | Shared UI |
+| `lib/` | Server logic per area (`inventory`, `purchasing`, `bank`, `marketing`, `calls`, `agent`, ...) and the tests |
+| `lib/agent/` | The action log and approval gate: an action is proposed, approved by the owner, then run once |
+| `convex/` | Convex functions for live updates |
+| `integrations/gmail/` | The Gmail Apps Script |
+| `docs/DEMO.md` | The demo script |
 
 ## Live updates (Convex)
 
@@ -27,43 +67,14 @@ so a stock count on the phone shows up on the laptop without a manual refresh.
 
 | | Supabase | Convex |
 |---|---|---|
-| Holds | every table: SQL, storage, history, analytics, finance | `liveCalls` (status, progress, question, outcome of supplier calls), `liveCounts` (the call badges), `liveTopics` (a version number per page) |
-| Written by | the app's API routes, as before | the same routes, right after their Supabase write (`lib/live/signal.ts`), from the server only |
+| Holds | every table: SQL, storage, history, analytics, finance | `liveCalls` (status, progress, question, outcome of supplier calls), `liveCounts` (the call badges), `liveActions` (action status), `liveTopics` (a version number per page) |
+| Written by | the app's API routes | the same routes, right after their Supabase write (`lib/live/signal.ts`), from the server only |
 | Read by | server-rendered pages | the browser: `<LiveRefresh>` reloads a page when its topic goes up, the sidebar badges, the calls panels |
 
 No transcripts, briefs, phone numbers or money tables go to Convex. Which route wakes which page
-is in `lib/live/routeTopics.ts`; the functions are in `convex/`.
+is in `lib/live/routeTopics.ts`.
 
-**Env** (`.env.local`):
-
-| | |
-|---|---|
-| `NEXT_PUBLIC_CONVEX_URL` | the deployment URL, written by `npx convex dev` |
-| `LIVE_SYNC_SECRET` | server only, never `NEXT_PUBLIC_`. Also set it in the Convex deployment (`npx convex env set LIVE_SYNC_SECRET ...`): every Convex mutation checks it |
-
-Run `npx convex dev` next to `npm run dev` (it pushes `convex/` on save).
-
-**Resync:** `POST /api/live/resync` copies the last 7 days of supplier calls (plus any still open)
-and the counts from Supabase to Convex, and reloads every open screen. Use it after Convex was off
-or missed something. Rate limited.
-
-**Convex off:** without either env var nothing is signalled, the Convex provider isn't mounted,
-and the app works as before: the calls panel polls every 3 seconds, the badges fetch
-`/api/calls/counts`, and pages update only in the tab that made the change. Signalling is best
-effort either way: if Convex fails or takes over 2 seconds, the server logs one `[live] ...` line
-and the route still answers as usual.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `LIVE_SYNC_SECRET` must also be set in the Convex deployment (`npx convex env set LIVE_SYNC_SECRET ...`): every Convex mutation checks it.
+- Run `npx convex dev` next to `npm run dev` (it pushes `convex/` on save). After changing `convex/`, push it to the deployment the live site uses (`npx convex dev --once` for a dev deployment).
+- **Resync:** `POST /api/live/resync` copies the last 7 days of supplier calls (plus any still open) and the counts from Supabase to Convex, and reloads every open screen. Rate limited.
+- **Convex off:** without the env vars nothing is signalled and the app works as before: the calls panel polls every 3 seconds and pages update only in the tab that made the change. If Convex fails or takes over 2 seconds, the server logs one `[live] ...` line and the route still answers.
