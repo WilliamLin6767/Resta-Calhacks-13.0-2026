@@ -16,6 +16,7 @@ export const ICONS = {
   megaphone: "M4 10v4h3l5 4V6L7 10z M16 9a4 4 0 0 1 0 6 M18.5 7a7 7 0 0 1 0 10",
   user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
   check: "M4 4h16v16H4z M8 12l3 3 5-6",
+  spark: "M12 3v4 M12 17v4 M3 12h4 M17 12h4 M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M6 6l2 2 M16 16l2 2 M18 6l-2 2 M8 16l-2 2",
 };
 
 export type Section = {
@@ -29,7 +30,7 @@ export type Section = {
 };
 
 export type NavGroup = {
-  label?: string; // omitted for the bare links at the top (Overview, Chat, Actions)
+  label?: string; // omitted for the bare links at the top (Overview, Intelligence, Chat, Actions)
   sections: Section[];
 };
 
@@ -38,6 +39,7 @@ export const NAV: NavGroup[] = [
   {
     sections: [
       { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-100 text-overview-700" },
+      { href: "/intelligence", label: "Intelligence", icon: "spark", theme: "intelligence", solid: "bg-intelligence-500", soft: "bg-intelligence-100 text-intelligence-700" },
       { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-100 text-chat-700" },
       { href: "/actions", label: "Actions", icon: "check", theme: "actions", solid: "bg-actions-500", soft: "bg-actions-100 text-actions-700" },
     ],

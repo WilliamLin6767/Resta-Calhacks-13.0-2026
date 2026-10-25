@@ -39,10 +39,12 @@ async function proposeAction(
       evidence: [...(p.evidence ?? []), ...(ctx.loop.evidence ?? [])].slice(0, 8),
     };
   }
+  // Opened from a cross-department discovery: say so, so the Actions page files it under Mixed
+  if (ctx.discovery) p = { ...p, evidence: [...(p.evidence ?? []), { label: "From discovery", value: ctx.discovery, href: `/intelligence#${ctx.discovery}` }].slice(-8) };
   try {
     const row = await propose(supabaseActions(ctx.db), { tool, ...p, source: ctx.surface === "loop" ? "loop" : "agent", surface: ctx.surface, case_id: ctx.loop?.caseId ?? null }, KNOWN);
     ctx.proposals.push({ action_id: row.id, tool, title: row.title, summary: row.summary });
-    return json({ ok: true, proposed: { action_id: row.id, title: row.title, summary: row.summary }, facts, note: "Waiting for the owner to tap Approve on the card. Nothing has happened yet." });
+    return json({ ok: true, proposed: { action_id: row.id, title: row.title, summary: row.summary }, facts, note: "Waiting for the owner to approve it on the Actions page. Nothing has happened yet." });
   } catch (err) {
     if (err instanceof ActionTableMissing) return `Error: approvals aren't set up yet (supabase/18_agent_actions.sql hasn't been run), so this can't be proposed. The owner can do it on its page.`;
     throw err;
@@ -361,23 +363,23 @@ export const commitTools = [
   defineTool({
     name: "bank_reserve",
     ...commit("analytics"),
-    description: "Propose a new cash reserve for the simulated bank account (the amount the cash plan keeps aside).",
+    description: "Propose a new cash reserve for the bank account (the amount the cash plan keeps aside).",
     input: z.object({ amount: z.number().positive() }),
     run: async ({ amount }, ctx) => {
       const limit = checkMoneyMove(amount);
       if (!limit.ok) return `Error: ${limit.reason}`;
-      return proposeAction(ctx, "bank_reserve", { title: `Set the cash reserve to ${money(amount)}`, summary: `Keep ${money(amount)} aside in the (simulated) operating account; the cash plan warns below it.`, args: { amount } });
+      return proposeAction(ctx, "bank_reserve", { title: `Set the cash reserve to ${money(amount)}`, summary: `Keep ${money(amount)} aside in the operating account; the cash plan warns below it.`, args: { amount } });
     },
   }),
   defineTool({
     name: "bank_savings",
     ...commit("analytics"),
-    description: "Propose moving money from the simulated operating account to savings. Check get_cash_plan first; it suggests a safe amount.",
+    description: "Propose moving money from the operating account to savings. Check get_cash_plan first; it suggests a safe amount.",
     input: z.object({ amount: z.number().positive() }),
     run: async ({ amount }, ctx) => {
       const limit = checkMoneyMove(amount);
       if (!limit.ok) return `Error: ${limit.reason}`;
-      return proposeAction(ctx, "bank_savings", { title: `Move ${money(amount)} to savings`, summary: `Move ${money(amount)} from the operating account to savings (simulated Capital One Nessie accounts).`, args: { amount }, impact: { amount_usd: amount, per: "once", basis: "The amount moved." } });
+      return proposeAction(ctx, "bank_savings", { title: `Move ${money(amount)} to savings`, summary: `Move ${money(amount)} from the operating account to savings (Capital One Nessie accounts).`, args: { amount }, impact: { amount_usd: amount, per: "once", basis: "The amount moved." } });
     },
   }),
 ];

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
 import PageHeader from "@/components/PageHeader";
@@ -12,7 +13,6 @@ import { formatMoney } from "@/lib/format";
 import { DELIVERY_MARKUP, TARGET_FOOD_COST } from "@/lib/pricing/pricing";
 import { loadPricing } from "@/lib/pricing/service";
 import { getSupabase } from "@/lib/supabase";
-import { ApplyDeliveryPrices } from "./MenuActions";
 import { ChangeRow, copyFirst, formatWholeMoney, pending, SuggestionCard } from "./parts";
 import LiveRefresh from "@/components/live/LiveRefresh";
 
@@ -108,7 +108,7 @@ async function Pricing() {
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-gray-500">About {formatWholeMoney(delivery.extra_profit)} more a month if the same number of app orders come in.</p>
-                <ApplyDeliveryPrices count={delivery.prices.length} />
+                <Link href="/actions#menu" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Decide in Actions</Link>
               </div>
             </div>
           </Fold>

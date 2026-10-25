@@ -60,6 +60,7 @@ export type AgentCtx = {
   proposals: Proposal[]; // collected: Commit actions waiting for approval
   order: DraftedOrder | null; // a purchase order draft_restock made, for the chat's Approve button
   loop?: LoopCtx; // the loop surface: the case being investigated (lib/loop/engine.ts)
+  discovery?: string; // the cross-department discovery the owner opened this chat from (lib/intelligence), if any
 };
 
 // What the loop's agent ends with (submit_proposal): checked in code against the playbook.

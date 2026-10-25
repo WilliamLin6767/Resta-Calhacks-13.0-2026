@@ -70,7 +70,7 @@ export async function publishPost(db: SupabaseClient, id: number, edit?: PostEdi
   const restaurant = await db.from("restaurants").select("name").eq("id", RESTAURANT_ID).maybeSingle();
   let jpeg: Buffer;
   try {
-    const photo = await loadPostPhoto(db, id, post.dish_name);
+    const photo = await loadPostPhoto(db, id);
     jpeg = await renderPostJpeg(
       { layout: post.layout as PostLayout, restaurant: restaurant.data?.name ?? "Pho Berkeley", dishName: post.dish_name, headline: post.headline, subhead: post.subhead },
       photo,

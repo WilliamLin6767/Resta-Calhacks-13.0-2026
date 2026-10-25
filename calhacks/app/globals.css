@@ -124,6 +124,13 @@
   --color-marketing-600: #8c6110;
   --color-marketing-700: #6e4b0c;
 
+  --color-intelligence-50: #eef1fb; /* deep iris */
+  --color-intelligence-100: #dde2f6;
+  --color-intelligence-200: #bcc5ec;
+  --color-intelligence-500: #4f5fb8;
+  --color-intelligence-600: #404e9e;
+  --color-intelligence-700: #333f80;
+
   --color-actions-50: #f1f3f5; /* graphite */
   --color-actions-100: #e1e5ea;
   --color-actions-200: #c3cbd5;
@@ -232,6 +239,15 @@
   --color-brand-600: var(--color-marketing-600);
   --color-brand-700: var(--color-marketing-700);
   --color-accent: var(--color-marketing-500);
+}
+[data-section="intelligence"] {
+  --color-brand-50: var(--color-intelligence-50);
+  --color-brand-100: var(--color-intelligence-100);
+  --color-brand-200: var(--color-intelligence-200);
+  --color-brand-500: var(--color-intelligence-500);
+  --color-brand-600: var(--color-intelligence-600);
+  --color-brand-700: var(--color-intelligence-700);
+  --color-accent: var(--color-intelligence-500);
 }
 [data-section="actions"] {
   --color-brand-50: var(--color-actions-50);
@@ -398,6 +414,36 @@
     animation: reveal-in var(--duration-enter) var(--ease-out-soft) backwards;
   }
 
+  /* The assistant panel (components/assistant/AssistantPanel.tsx) glides in from the right edge
+     on a long, soft curve, and on close slides back out to the right, picking up speed. These are
+     transitions, not keyframes, so reopening halfway through a close just turns it around. Its
+     header, conversation and question box follow it in, one after another. */
+  .assistant-panel {
+    transition:
+      translate 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 300ms ease;
+  }
+  @starting-style {
+    .assistant-panel {
+      translate: calc(100% + 2rem) 0;
+      opacity: 0.6;
+    }
+  }
+  .assistant-panel[data-closing] {
+    translate: calc(100% + 2rem) 0;
+    opacity: 0.6;
+    transition:
+      translate 300ms cubic-bezier(0.5, 0, 0.75, 0),
+      opacity 300ms ease-in;
+  }
+  .assistant-panel:not([data-closing]) > * {
+    animation: assistant-part-in 360ms var(--ease-out-soft) backwards;
+  }
+  .assistant-panel > :nth-child(1) { animation-delay: 90ms; }
+  .assistant-panel > :nth-child(2) { animation-delay: 130ms; }
+  .assistant-panel > :nth-child(3) { animation-delay: 170ms; }
+  .assistant-panel > :nth-child(4) { animation-delay: 210ms; }
+
   /* The command palette (components/CommandPalette.tsx) opens with a small fade and grow. */
   .palette-in {
     animation: palette-in var(--duration-enter) var(--ease-out-soft) backwards;
@@ -505,6 +551,12 @@
   from {
     opacity: 0;
     translate: 0 6px;
+  }
+}
+@keyframes assistant-part-in {
+  from {
+    opacity: 0;
+    translate: 16px 0;
   }
 }
 @keyframes palette-in {
@@ -750,3 +802,216 @@ html[data-nav="collapsed"] .rail-label-close {
 }
 
 
+
+/* The desktop menu (components/Sidebar.tsx, inside AppShell's .rail). "Collapse menu" puts
+   data-nav="collapsed" on <html> (remembered; the head script in app/layout.tsx sets it before
+   the first paint): the menu shrinks to its icons, and hovering it, or tabbing into it, slides
+   the full menu out over the page without moving the page. Right after the owner collapses it
+   (data-hold), it stays shut until the pointer leaves, so the click visibly does something. */
+.rail {
+  width: 18rem;
+}
+.rail-nav {
+  width: 18rem;
+}
+.rail-dot {
+  display: none;
+}
+.rail-word {
+  max-width: 8rem;
+}
+html[data-nav="collapsed"] .rail {
+  width: 76px;
+}
+html[data-nav="collapsed"] .rail .rail-nav {
+  width: 76px;
+}
+html[data-nav="collapsed"] .rail .rail-fade {
+  opacity: 0;
+}
+html[data-nav="collapsed"] .rail .rail-word {
+  max-width: 0;
+  padding-left: 0;
+  opacity: 0;
+}
+html[data-nav="collapsed"] .rail .rail-dot {
+  display: block;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-nav {
+  width: 18rem;
+  box-shadow: 0 12px 40px rgb(16 24 40 / 0.16);
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-fade {
+  opacity: 1;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-word {
+  max-width: 8rem;
+  padding-left: 0.5rem;
+  opacity: 1;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-dot {
+  display: none;
+}
+.rail-toggle-icon {
+  rotate: 0deg;
+}
+html[data-nav="collapsed"] .rail-toggle-icon {
+  rotate: 180deg;
+}
+.rail-label-open {
+  display: none;
+}
+html[data-nav="collapsed"] .rail-label-open {
+  display: inline;
+}
+html[data-nav="collapsed"] .rail-label-close {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Collapsing eases the page over; the hover slide-out waits a beat so passing the pointer over
+     the icons on the way somewhere else doesn't fling it open. */
+  html.nav-ready .rail {
+    transition: width 280ms var(--ease-out-soft);
+  }
+  html.nav-ready .rail-nav {
+    transition:
+      width 260ms var(--ease-out-soft),
+      box-shadow 260ms ease;
+  }
+  html.nav-ready .rail-fade {
+    transition: opacity 180ms ease;
+  }
+  .rail-toggle-icon {
+    transition: rotate 280ms var(--ease-out-soft);
+  }
+  /* The word fades in only once the menu has finished opening, and goes at once when it closes. */
+  html.nav-ready .rail-word {
+    transition:
+      opacity 200ms ease 240ms,
+      max-width 200ms var(--ease-out-soft),
+      padding-left 200ms var(--ease-out-soft);
+  }
+  html.nav-ready[data-nav="collapsed"] .rail-word {
+    transition:
+      opacity 120ms ease,
+      max-width 200ms var(--ease-out-soft),
+      padding-left 200ms var(--ease-out-soft);
+  }
+  html.nav-ready[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-word {
+    transition:
+      opacity 200ms ease 360ms,
+      max-width 200ms var(--ease-out-soft) 120ms,
+      padding-left 200ms var(--ease-out-soft) 120ms;
+  }
+  html[data-nav="collapsed"] .rail:not([data-hold]):hover .rail-nav {
+    transition-delay: 120ms;
+  }
+  html[data-nav="collapsed"] .rail:not([data-hold]):hover .rail-fade {
+    transition-delay: 160ms;
+  }
+}
+
+/* Dark mode, continued: the status colors (alerts, badges, warnings) and the rest of the grays.
+   Pale status backgrounds become a dark tint of their color, and dark status text becomes a light
+   shade of it, so red/amber/green/blue stay recognizable and readable on the dark surface. */
+html.dark [class~="bg-red-50"], html.dark [class~="bg-red-50/60"], html.dark [class~="bg-red-100"] {
+  background-color: color-mix(in srgb, #ef4444 16%, #1b1e27);
+}
+html.dark [class~="bg-amber-50"], html.dark [class~="bg-amber-100"] {
+  background-color: color-mix(in srgb, #f59e0b 14%, #1b1e27);
+}
+html.dark [class~="bg-green-50"], html.dark [class~="bg-green-50/60"], html.dark [class~="bg-green-100"] {
+  background-color: color-mix(in srgb, #22c55e 13%, #1b1e27);
+}
+html.dark [class~="bg-blue-50"] {
+  background-color: color-mix(in srgb, #3b82f6 15%, #1b1e27);
+}
+html.dark [class~="border-red-200"], html.dark [class~="border-red-300"], html.dark [class~="ring-red-300"] {
+  border-color: color-mix(in srgb, #ef4444 45%, #343a4a);
+  --tw-ring-color: color-mix(in srgb, #ef4444 45%, #343a4a);
+}
+html.dark [class~="border-amber-200"], html.dark [class~="border-amber-300"] {
+  border-color: color-mix(in srgb, #f59e0b 45%, #343a4a);
+}
+html.dark [class~="border-green-200"] {
+  border-color: color-mix(in srgb, #22c55e 40%, #343a4a);
+}
+html.dark [class~="border-blue-200"] {
+  border-color: color-mix(in srgb, #3b82f6 45%, #343a4a);
+}
+html.dark [class~="text-red-600"], html.dark [class~="text-red-700"] {
+  color: #f87171;
+}
+html.dark [class~="text-red-800"], html.dark [class~="text-red-900"] {
+  color: #fca5a5;
+}
+html.dark [class~="text-amber-700"] {
+  color: #fbbf24;
+}
+html.dark [class~="text-amber-800"], html.dark [class~="text-amber-900"] {
+  color: #fcd34d;
+}
+html.dark [class~="text-green-700"] {
+  color: #4ade80;
+}
+html.dark [class~="text-green-800"], html.dark [class~="text-green-900"] {
+  color: #86efac;
+}
+html.dark [class~="text-blue-800"], html.dark [class~="text-blue-900"] {
+  color: #93c5fd;
+}
+/* Section-colored text and links: the brand's dark shades become a light tint of it */
+html.dark [class~="text-brand-500"], html.dark [class~="text-brand-600"], html.dark [class~="text-brand-700"] {
+  color: color-mix(in srgb, var(--color-brand-500) 45%, #ffffff);
+}
+html.dark [class~="bg-brand-100"], html.dark [class~="hover:bg-brand-50"]:hover, html.dark [class~="hover:bg-brand-50/60"]:hover {
+  background-color: color-mix(in srgb, var(--color-brand-500) 30%, #1b1e27);
+}
+html.dark [class~="hover:border-brand-200"]:hover {
+  border-color: color-mix(in srgb, var(--color-brand-500) 55%, #343a4a);
+}
+html.dark [class~="ring-brand-100"] {
+  --tw-ring-color: color-mix(in srgb, var(--color-brand-500) 40%, #343a4a);
+}
+/* The rest of the grays */
+html.dark [class~="hover:bg-gray-100"]:hover {
+  background-color: #2a3040;
+}
+html.dark [class~="bg-gray-200"] {
+  background-color: #343a4a;
+}
+html.dark [class~="bg-gray-300"] {
+  background-color: #454c60;
+}
+html.dark [class~="text-gray-400"] {
+  color: #7b8496;
+}
+html.dark [class~="hover:border-gray-400"]:hover, html.dark [class~="hover:border-gray-500"]:hover {
+  border-color: #5a6175;
+}
+html.dark [class~="decoration-gray-300"] {
+  text-decoration-color: #5a6175;
+}
+html.dark [class~="hover:text-gray-900"]:hover, html.dark [class~="group-hover:text-gray-900"] {
+  color: #f4f6fb;
+}
+html.dark [class~="hover:text-gray-700"]:hover {
+  color: #e6e8ef;
+}
+html.dark [class~="outline-gray-900"], html.dark [class~="focus:border-gray-900"]:focus {
+  outline-color: #e6e8ef;
+  border-color: #e6e8ef;
+}
+
+/* Chart colors (Recharts reads these through var() in fill/stroke) */
+:root {
+  --chart-axis: #52514e;
+  --chart-grid: #e5e7eb;
+  --chart-cursor: #f3f4f6;
+}
+html.dark {
+  --chart-axis: #aeb6c4;
+  --chart-grid: #2f3442;
+  --chart-cursor: #2a3040;
+}

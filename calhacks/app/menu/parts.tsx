@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Suggestion } from "@/lib/pricing/pricing";
 import { formatMoney } from "@/lib/format";
 import { SYSTEMS, type PriceChange, type System } from "@/lib/pricing/service";
@@ -34,7 +35,9 @@ export function copyFirst(changes: PriceChange[]): PriceChange[] {
   return [...changes].sort((a, b) => Number(pending(a).length === 0) - Number(pending(b).length === 0));
 }
 
-export function SuggestionCard({ s }: { s: Suggestion }) {
+// approveHere: the Actions page, where suggested prices are approved (or changed) with every other
+// approval; elsewhere the card links there.
+export function SuggestionCard({ s, approveHere = false }: { s: Suggestion; approveHere?: boolean }) {
   return (
     <div className="rounded-2xl border border-brand-100 bg-white p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -53,7 +56,11 @@ export function SuggestionCard({ s }: { s: Suggestion }) {
         <p className="text-xs text-gray-500">
           {s.action === "review" ? "Your call: this one needs a look first." : `About ${formatWholeMoney(s.extra_profit)} more a month if the same number sell.`}
         </p>
-        <ApprovePrice menuItemId={s.dish.id} suggested={s.new_price ?? s.dish.price} reason={s.reasons[0] ?? ""} />
+        {approveHere ? (
+          <ApprovePrice menuItemId={s.dish.id} suggested={s.new_price ?? s.dish.price} reason={s.reasons[0] ?? ""} />
+        ) : (
+          <Link href="/actions#menu" className="rounded-md bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700">Decide in Actions</Link>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
+import { NessieBadge, NessieBanner } from "@/components/NessieBrand";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
@@ -8,14 +9,17 @@ import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
-import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
+import { bankClaim, claimStates, payoutClaim, type ClaimDraft, type ClaimState } from "@/lib/accounting/claims";
+import { addDays, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
 import { formatMoney } from "@/lib/format";
 import { amountToPay } from "@/lib/purchasing/disputes";
 import { bankNote, type BankCheck } from "@/lib/bank/match";
 import { loadBank, type Bank } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
-import { CopyNote, MarkPaid, QuickbooksExport } from "./AccountingActions";
+import { canSendFromGmail } from "@/lib/email/send";
+import { MarkPaid, QuickbooksExport } from "./AccountingActions";
+import ClaimEmail from "./ClaimEmail";
 import { ReserveInput, SetupBank } from "./BankActions";
 import CashPlan from "./CashPlan";
 
@@ -55,15 +59,18 @@ const BANK_STATUS: Record<BankCheck["status"], { label: string; className: strin
 };
 
 // The simulated bank: cash after upcoming bills, and payouts that didn't fully reach the bank
-function BankSection({ bank }: { bank: Bank | { error: string } }) {
+function BankSection({ bank, claims }: { bank: Bank | { error: string }; claims: Claims }) {
   if ("error" in bank) return <ErrorMessage message={`Bank check: ${bank.error}`} />;
   if (!bank.connected) {
     return (
       <section className="mb-8 rounded-2xl border border-dashed border-brand-100 bg-white p-4">
-        <h2 className="font-semibold">Bank check</h2>
-        <p className="mb-3 text-sm text-gray-600">
-          Connect a bank account to check that delivery payouts actually arrived, and to see the cash left after upcoming bills. For the demo this
-          is a simulated account from Capital One&apos;s Nessie API, with no real money.
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Bank check</h2>
+          <NessieBadge />
+        </div>
+        <p className="mb-3 mt-1 text-sm text-gray-600">
+          Connect the restaurant&apos;s bank account through Capital One&apos;s Nessie banking API to check that delivery payouts actually arrived, and
+          to see the cash left after upcoming bills.
         </p>
         <SetupBank />
       </section>
@@ -72,10 +79,11 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
   const { cash, account, problems, restaurant } = bank;
   return (
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Bank check</h2>
-        <p className="text-xs text-gray-500">Simulated account from Capital One Nessie · {account.nickname}{account.last4 ? ` ····${account.last4}` : ""} · not real money</p>
+        <p className="text-xs text-gray-500">{account.nickname.replace(/\s*\(simulated\)/i, "")}</p>
       </div>
+      <NessieBanner last4={account.last4} deposits={bank.checks.filter((c) => c.deposit).length} />
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div>
           <p className="text-xl font-semibold tabular-nums"><LiveValue value={formatMoney(cash.balance)} /></p>
@@ -99,12 +107,25 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
                 <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-red-700">{BANK_STATUS[c.status].label}</span>
                 <span className="font-medium">{PLATFORMS[c.week.platform]}, week of {c.week.period_start}.</span> {c.message}
               </p>
-              <CopyNote text={bankNote(c, restaurant, account.last4)} />
+              <Claim draft={bankClaim(c, bankNote(c, restaurant, account.last4))} claims={claims} />
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+// Payout claims (lib/accounting/claims.ts): the drafted email, and what the owner already did with it
+type Claims = { states: Record<string, ClaimState>; canSend: boolean };
+
+function Claim({ draft, claims }: { draft: ClaimDraft; claims: Claims }) {
+  return (
+    <ClaimEmail
+      draft={{ key: draft.key, title: draft.title, to: draft.to, subject: draft.subject, body: draft.body, appName: PLATFORMS[draft.platform] }}
+      state={claims.states[draft.key] ?? null}
+      canSend={claims.canSend}
+    />
   );
 }
 
@@ -115,12 +136,19 @@ function sum(bills: Bill[]) {
 async function Accounting() {
   let data;
   let bank: Bank | { error: string };
+  let claims: Claims;
   try {
     const db = await getSupabase();
     [data, bank] = await Promise.all([
       loadAccounting(db),
       loadBank(db).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
+    // Every claim this page can draft, so it can show which were already sent or rejected
+    const keys = [
+      ...data.checks.filter((c) => c.status === "short" || c.status === "missing").map((c) => `payout:${c.platform}:${c.period_start}`),
+      ...("connected" in bank && bank.connected ? bank.problems.map((c) => `bank:${c.week.platform}:${c.week.period_start}`) : []),
+    ];
+    claims = { states: await claimStates(db, keys), canSend: canSendFromGmail() };
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
@@ -145,7 +173,7 @@ async function Accounting() {
         </div>
       </div>
 
-      <BankSection bank={bank} />
+      <BankSection bank={bank} claims={claims} />
       {"connected" in bank && bank.connected && <CashPlan />}
 
       <section className="mb-8">
@@ -166,7 +194,7 @@ async function Accounting() {
                 <span className="font-medium">{PLATFORMS[c.platform]}, week of {c.period_start}.</span> {c.message}
                 <span className="ml-1 font-semibold">{formatMoney(-c.difference)}</span>
               </p>
-              <CopyNote text={payoutDispute(c, restaurant)} />
+              <Claim draft={payoutClaim(c, restaurant)} claims={claims} />
             </div>
           ))}
         </div>
@@ -182,7 +210,7 @@ async function Accounting() {
                   <th className={thNum}>Should pay</th>
                   <th className={thNum}>Paid</th>
                   <th className={th}>Check</th>
-                  {inBank.size > 0 && <th className={thNum}>Bank got</th>}
+                  {inBank.size > 0 && <th className={thNum} title="Deposits in the Capital One Nessie account">Bank got (Nessie)</th>}
                 </tr>
               </thead>
               <tbody>

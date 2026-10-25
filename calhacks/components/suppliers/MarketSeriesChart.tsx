@@ -9,9 +9,9 @@ export default function MarketSeriesChart({ rows }: { rows: { date: string; pric
   return (
     <ResponsiveContainer width="100%" height={180}>
       <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 0, left: 8 }}>
-        <CartesianGrid stroke="#e5e7eb" vertical={false} />
-        <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#52514e" }} tickFormatter={(date: string) => date.slice(5)} minTickGap={24} />
-        <YAxis tick={{ fontSize: 12, fill: "#52514e" }} width={48} />
+        <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+        <XAxis dataKey="date" tick={{ fontSize: 12, fill: "var(--chart-axis)" }} tickFormatter={(date: string) => date.slice(5)} minTickGap={24} />
+        <YAxis tick={{ fontSize: 12, fill: "var(--chart-axis)" }} width={48} />
         <Tooltip />
         <Line type="monotone" dataKey="price" name="USDA price" stroke="#2a78d6" strokeWidth={2} dot={false} isAnimationActive={animate} />
       </LineChart>

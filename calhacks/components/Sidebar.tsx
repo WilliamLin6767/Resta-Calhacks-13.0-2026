@@ -76,6 +76,75 @@ function CollapseButton() {
   );
 }
 
+// Collapsed or not lives on <html data-nav> (styled in globals.css, set before the first paint by
+// app/layout.tsx), and is remembered on this browser.
+export const NAV_KEY = "resta-nav";
+const NAV_EVENT = "resta-nav-change";
+
+function isCollapsed() {
+  return document.documentElement.dataset.nav === "collapsed";
+}
+
+function setCollapsed(collapsed: boolean) {
+  if (collapsed) document.documentElement.dataset.nav = "collapsed";
+  else delete document.documentElement.dataset.nav;
+  try {
+    localStorage.setItem(NAV_KEY, collapsed ? "collapsed" : "open");
+  } catch {
+    // Storage blocked: it still collapses, just isn't remembered.
+  }
+  window.dispatchEvent(new Event(NAV_EVENT));
+}
+
+function subscribe(onChange: () => void) {
+  window.addEventListener(NAV_EVENT, onChange);
+  return () => window.removeEventListener(NAV_EVENT, onChange);
+}
+
+function useCollapsed() {
+  return useSyncExternalStore(subscribe, isCollapsed, () => false);
+}
+
+// Only after the first paint may the menu animate, so a remembered collapse doesn't slide on load.
+function useNavReady() {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => document.documentElement.classList.add("nav-ready"));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+}
+
+// "Collapse menu" / "Keep menu open", under the logo at the top of the desktop menu. After
+// collapsing, the menu holds shut until the pointer leaves (data-hold on the .rail), or the hover
+// would reopen it at once.
+function CollapseButton() {
+  const collapsed = useCollapsed();
+  useNavReady();
+  return (
+    <button
+      type="button"
+      aria-pressed={collapsed}
+      title={collapsed ? "Keep menu open" : "Collapse menu"}
+      onClick={(e) => {
+        const next = !isCollapsed();
+        setCollapsed(next);
+        const rail = e.currentTarget.closest<HTMLElement>(".rail");
+        if (next && rail) {
+          rail.dataset.hold = "";
+          rail.addEventListener("pointerleave", () => delete rail.dataset.hold, { once: true });
+        }
+      }}
+      className="ml-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+    >
+      <svg className="rail-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 17l-5-5 5-5" />
+        <path d="M18 17l-5-5 5-5" />
+      </svg>
+      <span className="rail-label-close sr-only">Collapse menu</span>
+      <span className="rail-label-open sr-only">Keep menu open</span>
+    </button>
+  );
+}
+
 // A thin bar in the section's color while that link's page is loading.
 function PendingBar({ color }: { color: string }) {
   const { pending } = useLinkStatus();

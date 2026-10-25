@@ -35,23 +35,6 @@ export function ApprovePrice({ menuItemId, suggested, reason }: { menuItemId: nu
   );
 }
 
-// Set every delivery-app price that's too low
-export function ApplyDeliveryPrices({ count }: { count: number }) {
-  const { run, loading, error } = useAction();
-  return (
-    <div>
-      <button
-        disabled={loading}
-        onClick={() => run("/api/menu/delivery-prices", undefined, undefined, { success: `${count} app ${count === 1 ? "price" : "prices"} set` })}
-        className="rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-      >
-        {loading ? "Saving..." : `Set ${count} app ${count === 1 ? "price" : "prices"}`}
-      </button>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
-  );
-}
-
 // One checkbox: "I changed this price in DoorDash too"
 export function MarkUpdated({ changeId, system, label, done }: { changeId: number; system: string; label: string; done: boolean }) {
   const { run, loading, error } = useAction();

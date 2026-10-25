@@ -9,8 +9,8 @@ export function SetupBank() {
   const { run, loading, error } = useAction();
   return (
     <div>
-      <button disabled={loading} onClick={() => run("/api/bank/setup", undefined, undefined, { success: "Simulated bank account connected" })} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
-        {loading ? "Setting up the simulated account..." : "Connect a simulated bank account"}
+      <button disabled={loading} onClick={() => run("/api/bank/setup", undefined, undefined, { success: "Capital One Nessie account connected" })} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50">
+        {loading ? "Opening the Nessie account..." : "Connect a Capital One Nessie account"}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>

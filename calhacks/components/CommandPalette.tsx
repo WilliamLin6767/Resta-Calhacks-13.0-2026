@@ -10,6 +10,7 @@ import { PROFILE, SECTIONS } from "@/lib/nav";
 // Extra words that find a section, besides its name.
 const KEYWORDS: Record<string, string[]> = {
   "/": ["home", "dashboard", "today", "needs"],
+  "/intelligence": ["mission control", "discoveries", "insights", "operating picture", "context"],
   "/chat": ["talk", "voice", "restock", "message"],
   "/actions": ["approve", "approval", "proposal", "log", "case", "run now"],
   "/inventory": ["stock", "count", "waste", "delivery", "shelf", "receipt"],
@@ -241,10 +242,13 @@ export default function CommandPalette() {
 // after mount (the server can't know the platform), so the first paint says "Ctrl".
 export function SearchButton() {
   const [mod, setMod] = useState("Ctrl");
+  const { open: assistantOpen } = useAssistant();
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (/Mac|iPhone|iPad/.test(navigator.platform)) setMod("⌘");
   }, []);
+  // The assistant panel covers this corner (its × sits here), so step aside while it's open.
+  if (assistantOpen) return null;
   return (
     <button
       type="button"

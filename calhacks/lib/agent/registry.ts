@@ -13,6 +13,7 @@ import { callTools } from "./tools/calls";
 import { loopTools } from "./tools/loop";
 import { commitTools } from "./tools/commit";
 import { findingTools } from "./tools/findings";
+import { intelligenceTools } from "./tools/intelligence";
 import { inventoryTools } from "./tools/inventory";
 import { invoiceTools } from "./tools/invoices";
 import { marketingTools } from "./tools/marketing";
@@ -27,6 +28,7 @@ import { errorText, type AgentCtx, type AgentTool, type Change, type Surface, ty
 export const AGENT_TOOLS: AgentTool[] = [
   ...analyticsTools,
   ...findingTools,
+  ...intelligenceTools, // the operating picture (layer 2) and past outcomes (layer 3)
   ...inventoryTools,
   ...prepTools,
   ...invoiceTools,
@@ -53,7 +55,7 @@ export function toolsFor(surface: Surface): AgentTool[] {
   return AGENT_TOOLS.filter((t) => SURFACE_TIERS[surface].includes(t.tier) && (!t.surfaces || t.surfaces.includes(surface)));
 }
 
-export function createCtx(input: { db: SupabaseClient; surface: Surface; identity: string; days?: number; history?: Change[]; digest?: AgentCtx["digest"]; loop?: AgentCtx["loop"] }): AgentCtx {
+export function createCtx(input: { db: SupabaseClient; surface: Surface; identity: string; days?: number; history?: Change[]; digest?: AgentCtx["digest"]; loop?: AgentCtx["loop"]; discovery?: string }): AgentCtx {
   return {
     db: input.db,
     surface: input.surface,
@@ -68,6 +70,7 @@ export function createCtx(input: { db: SupabaseClient; surface: Surface; identit
     proposals: [],
     order: null,
     loop: input.loop,
+    discovery: input.discovery,
   };
 }
 

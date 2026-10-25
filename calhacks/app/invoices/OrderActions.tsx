@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import CallRequests from "@/components/calls/CallRequests";
 import { useAction } from "@/components/useAction";
@@ -28,10 +29,11 @@ export function OrderButtons({
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+      {/* A draft waits for the owner's OK, which is given on the Actions page with every other approval */}
       {showPrimary && status === "draft" && (
-        <button disabled={loading} onClick={() => setStatus("approved")} className={primaryClass}>
-          Approve
-        </button>
+        <Link href="/actions#purchasing" className={primaryClass}>
+          Approve in Actions
+        </Link>
       )}
       {showPrimary && status === "approved" && (
         contact.href ? (

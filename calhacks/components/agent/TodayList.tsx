@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Badge, { type BadgeTone } from "@/components/Badge";
 import { ActionButton } from "@/components/attention/AttentionList";
+import { isApprovalAction, itemSection } from "@/lib/approvals/sections";
 import type { Confidence, Item } from "@/lib/attention/types";
 
 const CONFIDENCE: Record<Confidence, { label: string; tone: BadgeTone }> = {
@@ -41,7 +42,11 @@ export default function TodayList({ items }: { items: Item[] }) {
               <Link href={`/chat?ask=${encodeURIComponent(`Tell me about: ${item.key}`)}`} className="text-sm font-medium text-brand-700 underline-offset-2 hover:underline">
                 Ask Resta
               </Link>
-              {main && <ActionButton action={main} main={false} onDone={() => router.refresh()} />}
+              {main && isApprovalAction(main) ? (
+                <Link href={`/actions#${itemSection(item)}`} className="text-sm font-medium text-gray-700 underline-offset-2 hover:underline">Decide in Actions</Link>
+              ) : (
+                main && <ActionButton action={main} main={false} onDone={() => router.refresh()} />
+              )}
             </div>
           </li>
         );
