@@ -6,6 +6,9 @@
  * /api/inbound/email in the same JSON shape Postmark uses. The app then reads supplier
  * invoices and customer orders exactly as it does for Postmark.
  *
+ * Deployed as a web app it also does two things the app asks for: "Check email now" (doGet) and
+ * sending an email the owner approved, such as a payout claim to DoorDash (doPost).
+ *
  * Setup (see README.md): paste this file into a new project at script.google.com, add the
  * script property WEBHOOK_URL, then run setup() once and allow access.
  */
@@ -44,12 +47,52 @@ function resendLastHour() {
  * It only answers with the same secret the app uses (the token in WEBHOOK_URL).
  */
 function doGet(e) {
-  var url = PropertiesService.getScriptProperties().getProperty('WEBHOOK_URL') || '';
-  var secret = (/[?&]token=([^&]+)/.exec(url) || [])[1];
-  var json = function (o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); };
-  if (!secret || !e || !e.parameter || e.parameter.token !== decodeURIComponent(secret)) return json({ ok: false, error: 'Not allowed.' });
+  if (!allowed(e && e.parameter && e.parameter.token)) return json({ ok: false, error: 'Not allowed.' });
   var sent = checkInbox();
   return json({ ok: true, sent: sent === null ? 0 : sent, busy: sent === null });
+}
+
+/**
+ * Sending an email the owner approved in the app (lib/email/send.ts), from this Gmail account.
+ * The app posts { token, action: "send", to, subject, body, name } as text and gets { ok } back.
+ * Plain text only, one recipient. Same secret as doGet, so someone who finds the URL can't send mail.
+ */
+function doPost(e) {
+  var req;
+  try {
+    req = JSON.parse((e && e.postData && e.postData.contents) || '');
+  } catch (err) {
+    return json({ ok: false, error: 'The app sent something that isn\'t JSON.' });
+  }
+  if (!allowed(req.token)) return json({ ok: false, error: 'Not allowed.' });
+  if (req.action !== 'send') return json({ ok: false, error: 'Unknown action "' + req.action + '".' });
+  var to = String(req.to || '').trim();
+  var subject = String(req.subject || '').trim();
+  var body = String(req.body || '');
+  if (!/^[^@\s<>",;]+@[^@\s<>",;]+\.[^@\s<>",;]+$/.test(to)) return json({ ok: false, error: 'That isn\'t one email address: "' + to + '".' });
+  if (!subject || !body.trim()) return json({ ok: false, error: 'The email needs a subject and a message.' });
+  if (subject.length > 250 || body.length > 20000) return json({ ok: false, error: 'The email is too long to send.' });
+  try {
+    var options = {};
+    if (req.name) options.name = String(req.name).slice(0, 100);
+    GmailApp.sendEmail(to, subject, body, options);
+  } catch (err) {
+    // Most often Gmail's daily sending limit, or access that needs approving again (see README.md)
+    return json({ ok: false, error: 'Gmail couldn\'t send it: ' + (err && err.message ? err.message : err) });
+  }
+  Logger.log('Sent "' + subject + '" to ' + to + '.');
+  return json({ ok: true });
+}
+
+// The secret is the token in WEBHOOK_URL, the same one the app uses (INBOUND_EMAIL_SECRET).
+function allowed(token) {
+  var url = PropertiesService.getScriptProperties().getProperty('WEBHOOK_URL') || '';
+  var secret = (/[?&]token=([^&]+)/.exec(url) || [])[1];
+  return !!secret && !!token && token === decodeURIComponent(secret);
+}
+
+function json(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /** Run to stop sending mail to the app. */

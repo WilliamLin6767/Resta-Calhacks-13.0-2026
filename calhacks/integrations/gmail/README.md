@@ -37,6 +37,22 @@ A **Check email now** button then shows in the Email inbox. It only works with t
 someone who finds the URL can't use it. After changing `Code.gs` later, use **Deploy → Manage deployments → Edit →
 Version: New version** so the web app runs the new code.
 
+## Sending emails the owner approved (payout claims)
+
+On the Accounting tab, a payout problem drafts an email to DoorDash or Uber Eats support. With the web app set up
+(the three steps above), **Approve and send** sends it from the restaurant's Gmail, and it shows in Gmail's Sent folder.
+Without it, the button opens the email in the owner's own mail app instead.
+
+1. Use a `Code.gs` that has `doPost` (this one does), then **Deploy → Manage deployments → Edit → Version: New
+   version → Deploy**. The URL stays the same, so `GMAIL_CHECK_URL` doesn't change.
+2. If Google asks to allow access again, allow it the same way as in step 6 of the setup.
+3. Optional, **Vercel:** `PAYOUT_SUPPORT_EMAIL_DOORDASH` and `PAYOUT_SUPPORT_EMAIL_UBEREATS` fill in the To box.
+   For a demo, use your own or a teammate's address, not the apps' real support addresses.
+
+It sends one plain-text email to one address, and only with the same secret as the webhook. Gmail limits a script to
+about 100 emails a day on a regular account. If sending fails, the app shows Gmail's reason, and each try is under
+**Executions**.
+
 ## Try it
 
 From another email account, send the restaurant's Gmail something like "2 Pho Ga for pickup at 7pm
