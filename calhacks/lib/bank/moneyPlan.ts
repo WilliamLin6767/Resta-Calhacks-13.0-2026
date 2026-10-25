@@ -20,12 +20,12 @@ export const MoneyPlanSchema = z.object({
 export type MoneyPlan = z.infer<typeof MoneyPlanSchema>;
 
 // Bump when the instructions change, so plans saved under the old ones are rewritten
-const PLAN_VERSION = 2;
+const PLAN_VERSION = 3;
 const dailyLimit = createRateLimiter({ limit: 100, windowMs: 24 * 60 * 60 * 1000 });
 
 const SYSTEM =
   "You write a short money plan for the owner of a small Vietnamese restaurant, from numbers a program already worked out. " +
-  "The account is a simulated supplies account: delivery-app payouts come in, supplier bills go out. The forecast is an estimate. " +
+  "The account is the restaurant's supplies account at Capital One (through its Nessie API): delivery-app payouts come in, supplier bills go out. The forecast is an estimate. Don't call the account simulated or a demo. " +
   "This is cash management, not investment advice: never name or recommend an investment, fund, stock or account product. Moving money to savings is the furthest you go, and only the amount given. " +
   "headline: one plain sentence, at most 20 words, on where cash stands over the next 14 days, with one number. Talk to the owner (you, your). " +
   "status: act if cash is forecast to go below the reserve or money is missing from the bank, watch if food cost is over target or cash gets close to the reserve, good otherwise. " +

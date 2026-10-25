@@ -784,3 +784,107 @@ html[data-nav="collapsed"] .rail-label-close {
     transition-delay: 160ms;
   }
 }
+
+/* Dark mode, continued: the status colors (alerts, badges, warnings) and the rest of the grays.
+   Pale status backgrounds become a dark tint of their color, and dark status text becomes a light
+   shade of it, so red/amber/green/blue stay recognizable and readable on the dark surface. */
+html.dark [class~="bg-red-50"], html.dark [class~="bg-red-50/60"], html.dark [class~="bg-red-100"] {
+  background-color: color-mix(in srgb, #ef4444 16%, #1b1e27);
+}
+html.dark [class~="bg-amber-50"], html.dark [class~="bg-amber-100"] {
+  background-color: color-mix(in srgb, #f59e0b 14%, #1b1e27);
+}
+html.dark [class~="bg-green-50"], html.dark [class~="bg-green-50/60"], html.dark [class~="bg-green-100"] {
+  background-color: color-mix(in srgb, #22c55e 13%, #1b1e27);
+}
+html.dark [class~="bg-blue-50"] {
+  background-color: color-mix(in srgb, #3b82f6 15%, #1b1e27);
+}
+html.dark [class~="border-red-200"], html.dark [class~="border-red-300"], html.dark [class~="ring-red-300"] {
+  border-color: color-mix(in srgb, #ef4444 45%, #343a4a);
+  --tw-ring-color: color-mix(in srgb, #ef4444 45%, #343a4a);
+}
+html.dark [class~="border-amber-200"], html.dark [class~="border-amber-300"] {
+  border-color: color-mix(in srgb, #f59e0b 45%, #343a4a);
+}
+html.dark [class~="border-green-200"] {
+  border-color: color-mix(in srgb, #22c55e 40%, #343a4a);
+}
+html.dark [class~="border-blue-200"] {
+  border-color: color-mix(in srgb, #3b82f6 45%, #343a4a);
+}
+html.dark [class~="text-red-600"], html.dark [class~="text-red-700"] {
+  color: #f87171;
+}
+html.dark [class~="text-red-800"], html.dark [class~="text-red-900"] {
+  color: #fca5a5;
+}
+html.dark [class~="text-amber-700"] {
+  color: #fbbf24;
+}
+html.dark [class~="text-amber-800"], html.dark [class~="text-amber-900"] {
+  color: #fcd34d;
+}
+html.dark [class~="text-green-700"] {
+  color: #4ade80;
+}
+html.dark [class~="text-green-800"], html.dark [class~="text-green-900"] {
+  color: #86efac;
+}
+html.dark [class~="text-blue-800"], html.dark [class~="text-blue-900"] {
+  color: #93c5fd;
+}
+/* Section-colored text and links: the brand's dark shades become a light tint of it */
+html.dark [class~="text-brand-500"], html.dark [class~="text-brand-600"], html.dark [class~="text-brand-700"] {
+  color: color-mix(in srgb, var(--color-brand-500) 45%, #ffffff);
+}
+html.dark [class~="bg-brand-100"], html.dark [class~="hover:bg-brand-50"]:hover, html.dark [class~="hover:bg-brand-50/60"]:hover {
+  background-color: color-mix(in srgb, var(--color-brand-500) 30%, #1b1e27);
+}
+html.dark [class~="hover:border-brand-200"]:hover {
+  border-color: color-mix(in srgb, var(--color-brand-500) 55%, #343a4a);
+}
+html.dark [class~="ring-brand-100"] {
+  --tw-ring-color: color-mix(in srgb, var(--color-brand-500) 40%, #343a4a);
+}
+/* The rest of the grays */
+html.dark [class~="hover:bg-gray-100"]:hover {
+  background-color: #2a3040;
+}
+html.dark [class~="bg-gray-200"] {
+  background-color: #343a4a;
+}
+html.dark [class~="bg-gray-300"] {
+  background-color: #454c60;
+}
+html.dark [class~="text-gray-400"] {
+  color: #7b8496;
+}
+html.dark [class~="hover:border-gray-400"]:hover, html.dark [class~="hover:border-gray-500"]:hover {
+  border-color: #5a6175;
+}
+html.dark [class~="decoration-gray-300"] {
+  text-decoration-color: #5a6175;
+}
+html.dark [class~="hover:text-gray-900"]:hover, html.dark [class~="group-hover:text-gray-900"] {
+  color: #f4f6fb;
+}
+html.dark [class~="hover:text-gray-700"]:hover {
+  color: #e6e8ef;
+}
+html.dark [class~="outline-gray-900"], html.dark [class~="focus:border-gray-900"]:focus {
+  outline-color: #e6e8ef;
+  border-color: #e6e8ef;
+}
+
+/* Chart colors (Recharts reads these through var() in fill/stroke) */
+:root {
+  --chart-axis: #52514e;
+  --chart-grid: #e5e7eb;
+  --chart-cursor: #f3f4f6;
+}
+html.dark {
+  --chart-axis: #aeb6c4;
+  --chart-grid: #2f3442;
+  --chart-cursor: #2a3040;
+}

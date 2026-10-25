@@ -109,7 +109,7 @@ export const analyticsTools = [
     name: "get_cash_plan",
     tier: "read",
     area: "analytics",
-    description: "Bills to pay (overdue, due soon, later), what the delivery apps still owe, the bank balance (simulated), and the cash plan for the next two weeks.",
+    description: "Bills to pay (overdue, due soon, later), what the delivery apps still owe, the bank balance (Capital One Nessie), and the cash plan for the next two weeks.",
     input: z.object({}),
     run: async (_input, ctx) => {
       const accounting = await loadAccounting(ctx.db);
@@ -127,7 +127,7 @@ export const analyticsTools = [
         today: accounting.today,
         bills,
         delivery_apps_owe: round2(accounting.owed),
-        bank: "error" in bank ? { error: bank.error } : bank.connected ? { balance: bank.account.balance, savings: bank.savings, cash: bank.cash, simulated: true } : { connected: false },
+        bank: "error" in bank ? { error: bank.error } : bank.connected ? { balance: bank.account.balance, savings: bank.savings, cash: bank.cash, bank: "Capital One Nessie" } : { connected: false },
         cash_plan: money ? { forecast: money.forecast, suggested_move_to_savings: money.move, food_budget: money.budget } : null,
       });
     },
