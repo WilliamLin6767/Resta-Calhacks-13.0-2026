@@ -1,6 +1,12 @@
+<p align="center">
+  <a href="../README.md">
+    <img src="../assets/resta-logo.png" alt="Resta" width="180" />
+  </a>
+</p>
+
 # Resta app
 
-The Next.js app behind https://resta-calhacks.vercel.app. What it does: [the main README](../README.md).
+The Next.js app behind [resta-calhacks.vercel.app](https://resta-calhacks.vercel.app). What it does, and the logo, are in [the main README](../README.md).
 
 ## Run it
 
