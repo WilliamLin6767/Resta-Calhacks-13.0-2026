@@ -1,126 +1,196 @@
+import type Anthropic from "@anthropic-ai/sdk";
 import sharp from "sharp";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { dishPhotoPath, dishPhotoUrl, ownPhotoPath } from "@/lib/marketing/photoPath";
+import { z } from "zod";
+import { ask } from "@/lib/purchasing/ai";
+import { ownPhotoPath } from "@/lib/marketing/photoPath";
 
-type Hit = { title?: string; url?: string; width?: number };
+// Brave Image Search. Needs BRAVE_SEARCH_API_KEY from the Search plan at api-dashboard.search.brave.com.
+export const BRAVE_IMAGE_SETUP = "Brave image search is not set up. Add BRAVE_SEARCH_API_KEY to .env.";
+export const BRAVE_IMAGE_REJECTED = "Brave image search rejected the request. Check BRAVE_SEARCH_API_KEY.";
 
-function words(value: string): string[] {
-  return value
-    .toLowerCase()
+const RESULT_COUNT = 20;
+const MAX_CANDIDATES = 6;
+
+export type SearchHit = { url: string; title: string; width: number };
+
+export type PhotoSearch = {
+  dish: string;
+  cuisine: string | null;
+  usedUrls: string[];
+  search: (query: string) => Promise<SearchHit[]>;
+  download: (url: string) => Promise<Buffer | null>;
+  writeQuery: (dish: string, cuisine: string | null) => Promise<string>;
+  judge: (dish: string, photos: Buffer[]) => Promise<number>;
+};
+
+export function braveImageConfig(): { key: string } | { error: string } {
+  const key = process.env.BRAVE_SEARCH_API_KEY?.trim();
+  if (!key) return { error: BRAVE_IMAGE_SETUP };
+  return { key };
+}
+
+// Used when Claude cannot write a query. Keeps the words in the dish name, including the note in parentheses.
+export function fallbackQuery(dish: string): string {
+  const words = dish
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 2);
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `${words || "restaurant dish"} food photo`;
 }
 
-function rank(title: string, dish: string): number {
-  const wanted = new Set(words(dish));
-  return words(title).filter((word) => wanted.has(word)).length;
+// Drops pictures this dish already used, duplicates, and images already known to be small.
+export function unusedHits(hits: SearchHit[], usedUrls: string[]): SearchHit[] {
+  const used = new Set(usedUrls);
+  const seen = new Set<string>();
+  return hits.filter((hit) => {
+    if (!hit.url || used.has(hit.url) || seen.has(hit.url)) return false;
+    if (hit.width > 0 && hit.width < 500) return false;
+    seen.add(hit.url);
+    return true;
+  });
 }
 
-async function search(query: string): Promise<Hit[]> {
-  const url = new URL("https://api.openverse.org/v1/images/");
+// Vision answers with a 1-based photo number. 0, or a number past the list, means none of them.
+export function chosenPhoto<T>(index: number, photos: T[]): T | null {
+  if (!Number.isInteger(index) || index < 1 || index > photos.length) return null;
+  return photos[index - 1] ?? null;
+}
+
+const QuerySchema = z.object({ query: z.string() });
+const PickSchema = z.object({ index: z.number().int() });
+
+const QUERY_SYSTEM =
+  "You write one image search query for a photograph of a restaurant dish. " +
+  "Use plain English words a photographer would use. Name the dish and how it is served, such as bowl, plate, noodles, or soup. " +
+  "No quotes, no site filters, no hashtags. At most 8 words.";
+
+const PICK_SYSTEM =
+  "You pick a photograph for a restaurant Instagram post. " +
+  "Choose the one photo that is a real photograph of the named dish, with the food as the subject, close enough to crop square. " +
+  "Reject logos, menus, collages, illustrations, screenshots, and photos of a different dish. " +
+  "index is the photo number (1, 2, 3...). Use 0 if none qualify.";
+
+async function writeQuery(dish: string, cuisine: string | null): Promise<string> {
+  try {
+    const parsed = await ask(QUERY_SYSTEM, `Dish: ${dish}\nCuisine: ${cuisine ?? "unknown"}`, QuerySchema, "low");
+    const query = parsed.query.replace(/["']/g, "").replace(/\s+/g, " ").trim().slice(0, 120);
+    if (query.length >= 3) return query;
+  } catch {
+    // The dish name is enough to search with.
+  }
+  return fallbackQuery(dish);
+}
+
+async function judge(dish: string, photos: Buffer[]): Promise<number> {
+  const content: Anthropic.Beta.Messages.BetaContentBlockParam[] = [];
+  for (let i = 0; i < photos.length; i++) {
+    const small = await sharp(photos[i]).rotate().resize(384, 384, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 70 }).toBuffer();
+    content.push({ type: "text", text: `Photo ${i + 1}` });
+    content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: small.toString("base64") } });
+  }
+  content.push({ type: "text", text: `Which photo shows ${dish}? Reply with its number, or 0 if none do.` });
+  const parsed = await ask(PICK_SYSTEM, content, PickSchema, "low");
+  return parsed.index;
+}
+
+type BraveImage = { title?: string; properties?: { url?: string; width?: number } };
+
+// One result list. Brave image search has no page offset; properties.url is the file, not the web page.
+async function searchBrave(query: string): Promise<SearchHit[]> {
+  const config = braveImageConfig();
+  if ("error" in config) throw new Error(config.error);
+  const url = new URL("https://api.search.brave.com/res/v1/images/search");
   url.searchParams.set("q", query);
-  // Licenses that allow a restaurant to crop the photo and put type on it.
-  url.searchParams.set("license", "cc0,pdm,by,by-sa");
-  url.searchParams.set("page_size", "10");
-  const response = await fetch(url, {
-    headers: { "User-Agent": "RestaCalhacks/1.0 (restaurant marketing demo)" },
-    signal: AbortSignal.timeout(12_000),
-  });
+  url.searchParams.set("count", String(RESULT_COUNT));
+  url.searchParams.set("safesearch", "strict");
+  url.searchParams.set("country", "ALL");
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: { Accept: "application/json", "X-Subscription-Token": config.key },
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch {
+    return [];
+  }
+  if (response.status === 401 || response.status === 403) throw new Error(BRAVE_IMAGE_REJECTED);
   if (!response.ok) return [];
-  const body = (await response.json()) as { results?: Hit[] };
-  return body.results ?? [];
+  const body = (await response.json()) as { results?: BraveImage[] };
+  return (body.results ?? []).flatMap((item) => {
+    const photo = item.properties?.url;
+    if (!photo) return [];
+    return [{ url: photo, title: item.title ?? "", width: item.properties?.width ?? 0 }];
+  });
 }
 
-async function download(url: string): Promise<Buffer | null> {
-  const response = await fetch(url, {
-    headers: { "User-Agent": "RestaCalhacks/1.0 (restaurant marketing demo)" },
-    signal: AbortSignal.timeout(12_000),
-  });
+// Many photo hosts refuse a server fetch. Those come back empty and the next hit is tried.
+async function downloadImage(url: string): Promise<Buffer | null> {
+  if (!/^https?:\/\//i.test(url)) return null;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/apng,image/jpeg,image/png,image/*,*/*;q=0.8",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(12_000),
+    });
+  } catch {
+    return null;
+  }
   if (!response.ok) return null;
-  const type = response.headers.get("content-type") ?? "";
-  if (!type.startsWith("image/")) return null;
+  const type = (response.headers.get("content-type") ?? "").toLowerCase();
+  if (type.startsWith("text/") || type.includes("html") || type.includes("json") || type.includes("xml")) return null;
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length < 8_000) return null;
   try {
-    await sharp(bytes).metadata();
+    const meta = await sharp(bytes).metadata();
+    if (!meta.width || !meta.height) return null;
   } catch {
     return null;
   }
   return bytes;
 }
 
-async function firstPhoto(query: string, dish: string, requireMatch: boolean): Promise<Buffer | null> {
-  let hits: Hit[] = [];
+// One search. If vision rejects the first photos, or their hosts block the download, keep walking the same list.
+export async function chooseDishPhoto(input: PhotoSearch): Promise<{ bytes: Buffer; sourceUrl: string } | null> {
+  let query = fallbackQuery(input.dish);
   try {
-    hits = await search(query);
+    const written = (await input.writeQuery(input.dish, input.cuisine)).trim();
+    if (written) query = written;
   } catch {
-    return null;
+    query = fallbackQuery(input.dish);
   }
-  const ranked = hits
-    .filter((hit) => hit.url && (hit.width ?? 0) >= 500)
-    .sort((a, b) => rank(b.title ?? "", dish) - rank(a.title ?? "", dish));
-  for (const hit of ranked) {
-    if (requireMatch && rank(hit.title ?? "", dish) === 0) continue;
-    try {
-      const bytes = await download(hit.url!);
-      if (bytes) return bytes;
-    } catch {
-      continue;
+
+  const hits = unusedHits(await input.search(query), input.usedUrls);
+  for (let offset = 0; offset < hits.length; offset += MAX_CANDIDATES) {
+    const downloaded: { bytes: Buffer; sourceUrl: string }[] = [];
+    for (const hit of hits.slice(offset, offset + MAX_CANDIDATES)) {
+      try {
+        const bytes = await input.download(hit.url);
+        if (bytes) downloaded.push({ bytes, sourceUrl: hit.url });
+      } catch {
+        continue;
+      }
     }
+    if (downloaded.length === 0) continue;
+    let index = 0;
+    try {
+      index = await input.judge(
+        input.dish,
+        downloaded.map((item) => item.bytes),
+      );
+    } catch {
+      index = 0;
+    }
+    const pick = chosenPhoto(index, downloaded);
+    if (pick) return pick;
   }
   return null;
-}
-
-function rotate<T>(items: T[], by: number): T[] {
-  if (items.length === 0) return items;
-  const shift = ((by % items.length) + items.length) % items.length;
-  return [...items.slice(shift), ...items.slice(0, shift)];
-}
-
-// A food photo for the dish. `salt` starts at a different search result so a new draft is not the same picture.
-export async function findDishPhoto(dish: string, salt = 0): Promise<Buffer | null> {
-  const queries = rotate([`${dish} food`, `${dish} bowl`, `${dish} restaurant`, dish], salt);
-  const hits: Hit[] = [];
-  for (const query of queries.slice(0, 2)) {
-    try {
-      hits.push(...(await search(query)));
-    } catch {
-      // try the next wording
-    }
-  }
-  const seen = new Set<string>();
-  const usable = hits.filter((hit) => {
-    if (!hit.url || (hit.width ?? 0) < 500 || seen.has(hit.url)) return false;
-    seen.add(hit.url);
-    return true;
-  });
-  const ranked = [...usable.filter((hit) => rank(hit.title ?? "", dish) > 0), ...usable.filter((hit) => rank(hit.title ?? "", dish) === 0)];
-  const order = rotate(ranked, salt);
-  for (const hit of order) {
-    try {
-      const bytes = await download(hit.url!);
-      if (bytes) return bytes;
-    } catch {
-      continue;
-    }
-  }
-  return firstPhoto("vietnamese food bowl", dish, false);
-}
-
-// Saves the dish photo in the public marketing bucket and returns its URL. Reuses a photo already saved for that dish.
-export async function ensureDishPhoto(supabase: SupabaseClient, dish: string): Promise<string | null> {
-  const path = dishPhotoPath(dish);
-  const existing = await supabase.storage.from("marketing").download(path);
-  if (!existing.error && existing.data) return dishPhotoUrl(dish);
-
-  const source = await findDishPhoto(dish);
-  if (!source) return null;
-  const jpeg = await sharp(source).rotate().resize(1080, 1080, { fit: "cover", position: "centre" }).jpeg({ quality: 86 }).toBuffer();
-  const uploaded = await supabase.storage.from("marketing").upload(path, jpeg, { contentType: "image/jpeg", upsert: true });
-  if (uploaded.error) return null;
-  return dishPhotoUrl(dish);
 }
 
 async function storedPhoto(supabase: SupabaseClient, path: string): Promise<Buffer | undefined> {
@@ -129,24 +199,17 @@ async function storedPhoto(supabase: SupabaseClient, path: string): Promise<Buff
   return Buffer.from(await file.data.arrayBuffer());
 }
 
-const CROPS = ["attention", "centre", "entropy", "north"] as const;
-
-// A new picture for this draft, stored on the post so the next draft can choose a different one.
-export async function saveFreshPhoto(supabase: SupabaseClient, id: number, dish: string, salt: number): Promise<void> {
-  const source = await findDishPhoto(dish, salt).catch(() => null);
-  const bytes = source ?? (await ensureDishPhoto(supabase, dish).then(() => storedPhoto(supabase, dishPhotoPath(dish))));
-  if (!bytes) return;
-  const crop = CROPS[((salt % CROPS.length) + CROPS.length) % CROPS.length];
-  const jpeg = await sharp(bytes).rotate().resize(1080, 1080, { fit: "cover", position: crop }).jpeg({ quality: 88 }).toBuffer();
-  await supabase.storage.from("marketing").upload(ownPhotoPath(id), jpeg, { contentType: "image/jpeg", upsert: true });
+// A new picture for this draft, stored on the post. The source URL is remembered so the next draft skips it.
+export async function saveFreshPhoto(supabase: SupabaseClient, id: number, dish: string, cuisine: string | null, usedUrls: string[]): Promise<void> {
+  const found = await chooseDishPhoto({ dish, cuisine, usedUrls, search: searchBrave, download: downloadImage, writeQuery, judge });
+  if (!found) return;
+  const jpeg = await sharp(found.bytes).rotate().resize(1080, 1080, { fit: "cover", position: "attention" }).jpeg({ quality: 88 }).toBuffer();
+  const uploaded = await supabase.storage.from("marketing").upload(ownPhotoPath(id), jpeg, { contentType: "image/jpeg", upsert: true });
+  if (uploaded.error) return;
+  await supabase.from("marketing_used_photos").upsert({ source_url: found.sourceUrl, dish_name: dish, used_at: new Date().toISOString() }, { onConflict: "source_url" });
 }
 
-// The owner's upload if they added one, otherwise the dish photo.
-export async function loadPostPhoto(supabase: SupabaseClient, id: number, dish: string): Promise<Buffer | undefined> {
-  const own = await storedPhoto(supabase, ownPhotoPath(id));
-  if (own) return own;
-  const saved = await storedPhoto(supabase, dishPhotoPath(dish));
-  if (saved) return saved;
-  await ensureDishPhoto(supabase, dish).catch(() => null);
-  return storedPhoto(supabase, dishPhotoPath(dish));
+// The JPEG stored for this post. A missing file means the card stays a text frame.
+export async function loadPostPhoto(supabase: SupabaseClient, id: number): Promise<Buffer | undefined> {
+  return storedPhoto(supabase, ownPhotoPath(id));
 }

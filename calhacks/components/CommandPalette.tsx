@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useAssistant } from "@/components/assistant/AssistantProvider";
 import NavIcon from "@/components/NavIcon";
 import { MODULES } from "@/lib/analyticsSections";
-import { SECTIONS } from "@/lib/nav";
+import { PROFILE, SECTIONS } from "@/lib/nav";
 
 // Extra words that find a section, besides its name.
 const KEYWORDS: Record<string, string[]> = {
@@ -20,6 +20,7 @@ const KEYWORDS: Record<string, string[]> = {
   "/analytics": ["report", "numbers", "kpi", "charts"],
   "/trends": ["trend", "social"],
   "/marketing": ["instagram", "post", "agency", "caption", "buffer"],
+  "/profile": ["account", "theme", "dark", "light", "appearance", "settings"],
 };
 
 // Opening the palette from anywhere else (e.g. the "Search" button in the page panel).
@@ -43,6 +44,18 @@ const PAGES: Item[] = [
     ),
     words: KEYWORDS[s.href] ?? [],
   })),
+  {
+    kind: "page" as const,
+    id: PROFILE.href,
+    label: PROFILE.label,
+    href: PROFILE.href,
+    icon: (
+      <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-white ${PROFILE.solid}`}>
+        <NavIcon icon={PROFILE.icon} size={16} />
+      </span>
+    ),
+    words: KEYWORDS[PROFILE.href] ?? [],
+  },
   ...MODULES.map((m) => ({
     kind: "page" as const,
     id: `/analytics/${m.id}`,

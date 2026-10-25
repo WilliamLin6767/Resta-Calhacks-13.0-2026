@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { OPEN_PALETTE } from "@/components/CommandPalette";
 import CallDriver from "@/components/live/CallDriver";
-import NavWheel from "@/components/NavWheel";
 import SectionMain from "@/components/SectionMain";
 import Sidebar from "@/components/Sidebar";
 
@@ -20,8 +19,8 @@ function isActive(pathname: string, href: string) {
   return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
 }
 
-// Phone: top bar, full-screen menu, and a bottom bar.
-// Desktop: the menu wheel at the left edge (NavWheel), with no top or bottom bar.
+// Phone: top bar, a drawer menu, and a bottom bar.
+// Desktop: the section list stays open on the left. The logo at its top opens Overview.
 export default function AppShell({ restaurant, children }: { restaurant: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   // The page the menu was opened on: going to another page closes it.
@@ -31,29 +30,29 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <header className="sticky top-0 z-30 flex items-center gap-3 bg-gray-950 px-4 py-2 text-white md:hidden">
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-2 text-gray-900 md:hidden">
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open menu"
-          className="flex h-11 w-11 items-center justify-center rounded-md border border-white/15"
+          className="flex h-11 w-11 items-center justify-center rounded-md border border-gray-300 text-gray-900"
         >
           <span aria-hidden className="flex flex-col gap-1">
-            <span className="block h-0.5 w-4 bg-white" />
-            <span className="block h-0.5 w-4 bg-white" />
-            <span className="block h-0.5 w-4 bg-white" />
+            <span className="block h-0.5 w-4 bg-current" />
+            <span className="block h-0.5 w-4 bg-current" />
+            <span className="block h-0.5 w-4 bg-current" />
           </span>
         </button>
         <div className="min-w-0">
           <p className="text-sm font-semibold">Back of House</p>
-          <p className="truncate text-xs text-white/60">{restaurant}</p>
+          <p className="truncate text-xs text-gray-500">{restaurant}</p>
         </div>
         {/* Phones have no Ctrl+K: this opens the command palette */}
         <button
           type="button"
           onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE))}
           aria-label="Search"
-          className="ml-auto flex h-11 w-11 items-center justify-center rounded-md border border-white/15"
+          className="ml-auto flex h-11 w-11 items-center justify-center rounded-md border border-gray-300"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
             <circle cx="11" cy="11" r="7" />
@@ -72,9 +71,9 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
       )}
 
       <div className={`${open ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:hidden`}>
-        <div className="flex h-full flex-col bg-gray-950 shadow-xl">
-          <div className="flex justify-end border-b border-white/10">
-            <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-white/70">
+        <div className="flex h-full flex-col bg-white shadow-xl">
+          <div className="flex justify-end border-b border-gray-200">
+            <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-gray-600">
               Close
             </button>
           </div>
@@ -82,7 +81,9 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         </div>
       </div>
 
-      <NavWheel />
+      <aside className="sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
+        <Sidebar restaurant={restaurant} />
+      </aside>
       {/* Keeps running supplier calls moving when no calls panel on this page shows them (Convex only) */}
       <CallDriver />
 

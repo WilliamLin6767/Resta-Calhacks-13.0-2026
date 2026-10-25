@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
   let jpeg: Buffer;
   try {
-    const photo = await loadPostPhoto(supabase, id, edit.dishName);
+    const photo = await loadPostPhoto(supabase, id);
     jpeg = await renderPostJpeg(
       {
         layout: post.layout as PostLayout,

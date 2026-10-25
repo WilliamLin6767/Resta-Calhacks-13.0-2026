@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Badge from "@/components/Badge";
 import PostFrame from "@/lib/marketing/frame";
 import type { PostLayout } from "@/lib/marketing/copy";
-import { dishPhotoUrl, ownPhotoUrl } from "@/lib/marketing/photoPath";
+import { ownPhotoUrl } from "@/lib/marketing/photoPath";
 
 const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 disabled:bg-gray-50";
 
@@ -21,7 +21,7 @@ export default function PostCard({
   status,
   error,
   externalLink,
-  ownPhoto = false,
+  photoSrc = null,
 }: {
   id: number;
   layout: PostLayout;
@@ -34,7 +34,7 @@ export default function PostCard({
   status: "draft" | "posted" | "failed";
   error: string | null;
   externalLink: string | null;
-  ownPhoto?: boolean;
+  photoSrc?: string | null;
 }) {
   const router = useRouter();
   const [dish, setDish] = useState(dishName);
@@ -46,7 +46,7 @@ export default function PostCard({
   const [message, setMessage] = useState<string | null>(error);
   const [saved, setSaved] = useState(false);
   const [showPhoto, setShowPhoto] = useState(true);
-  const [mine, setMine] = useState<string | null>(ownPhoto ? ownPhotoUrl(id) : null);
+  const [mine, setMine] = useState<string | null>(photoSrc);
   const [uploading, setUploading] = useState(false);
   const locked = status === "posted" || loading !== null || uploading;
 
@@ -115,10 +115,10 @@ export default function PostCard({
             headline={title}
             subhead={line}
             size={320}
-            photoUrl={showPhoto ? (mine ?? dishPhotoUrl(dish)) : undefined}
+            photoUrl={showPhoto && mine ? mine : undefined}
             onPhotoError={() => {
-              if (mine) setMine(null);
-              else setShowPhoto(false);
+              setMine(null);
+              setShowPhoto(false);
             }}
           />
         </div>

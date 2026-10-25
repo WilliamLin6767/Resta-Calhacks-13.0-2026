@@ -14,6 +14,7 @@ export const ICONS = {
   chart: "M3 20h18 M5 20V11 M11 20V5 M17 20v-7",
   trend: "M3 17l6-6 4 4 8-8 M15 7h6v6",
   megaphone: "M4 10v4h3l5 4V6L7 10z M16 9a4 4 0 0 1 0 6 M18.5 7a7 7 0 0 1 0 10",
+  user: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0",
 };
 
 export type Section = {
@@ -23,24 +24,34 @@ export type Section = {
   calls?: "inventory" | "invoices" | "suppliers"; // which pending supplier-call count shows (see /api/calls/counts)
   theme: string; // the section's palette in app/globals.css; its page uses it as brand-*
   solid: string; // tile when it's the current page (white icon on it)
-  soft: string; // tile otherwise, on the dark sidebar
+  soft: string; // tile otherwise
 };
 
 export const SECTIONS: Section[] = [
-  { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-500/20 text-overview-200" },
-  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-500/20 text-chat-200" },
-  { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-500/20 text-inventory-200" },
-  { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-500/20 text-prep-200" },
-  { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-500/20 text-invoices-200" },
-  { href: "/suppliers", label: "Suppliers", icon: "truck", calls: "suppliers", theme: "suppliers", solid: "bg-suppliers-500", soft: "bg-suppliers-500/20 text-suppliers-200" },
-  { href: "/menu", label: "Menu and pricing", icon: "tag", theme: "menu", solid: "bg-menu-500", soft: "bg-menu-500/20 text-menu-200" },
-  { href: "/accounting", label: "Accounting", icon: "dollar", theme: "accounting", solid: "bg-accounting-500", soft: "bg-accounting-500/20 text-accounting-200" },
-  { href: "/analytics", label: "Analytics", icon: "chart", theme: "analytics", solid: "bg-analytics-500", soft: "bg-analytics-500/20 text-analytics-200" },
-  { href: "/trends", label: "Trends", icon: "trend", theme: "trends", solid: "bg-trends-500", soft: "bg-trends-500/20 text-trends-200" },
-  { href: "/marketing", label: "Marketing", icon: "megaphone", theme: "marketing", solid: "bg-marketing-500", soft: "bg-marketing-500/20 text-marketing-200" },
+  { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-100 text-overview-700" },
+  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-100 text-chat-700" },
+  { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-100 text-inventory-700" },
+  { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-100 text-prep-700" },
+  { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-100 text-invoices-700" },
+  { href: "/suppliers", label: "Suppliers", icon: "truck", calls: "suppliers", theme: "suppliers", solid: "bg-suppliers-500", soft: "bg-suppliers-100 text-suppliers-700" },
+  { href: "/menu", label: "Menu and pricing", icon: "tag", theme: "menu", solid: "bg-menu-500", soft: "bg-menu-100 text-menu-700" },
+  { href: "/accounting", label: "Accounting", icon: "dollar", theme: "accounting", solid: "bg-accounting-500", soft: "bg-accounting-100 text-accounting-700" },
+  { href: "/analytics", label: "Analytics", icon: "chart", theme: "analytics", solid: "bg-analytics-500", soft: "bg-analytics-100 text-analytics-700" },
+  { href: "/trends", label: "Trends", icon: "trend", theme: "trends", solid: "bg-trends-500", soft: "bg-trends-100 text-trends-700" },
+  { href: "/marketing", label: "Marketing", icon: "megaphone", theme: "marketing", solid: "bg-marketing-500", soft: "bg-marketing-100 text-marketing-700" },
 ];
+
+// Pinned under the section list. Same shape so the sidebar and the command palette can share it.
+export const PROFILE: Section = {
+  href: "/profile",
+  label: "Profile",
+  icon: "user",
+  theme: "overview",
+  solid: "bg-overview-500",
+  soft: "bg-overview-100 text-overview-700",
+};
 
 // The section a path belongs to: "/invoices/12" -> Invoices and buying.
 export function sectionFor(pathname: string): Section | undefined {
-  return SECTIONS.find((s) => (s.href === "/" ? pathname === "/" : pathname === s.href || pathname.startsWith(s.href + "/")));
+  return [...SECTIONS, PROFILE].find((s) => (s.href === "/" ? pathname === "/" : pathname === s.href || pathname.startsWith(s.href + "/")));
 }
