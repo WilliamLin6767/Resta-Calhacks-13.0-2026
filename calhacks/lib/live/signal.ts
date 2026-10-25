@@ -177,6 +177,7 @@ const ACTION_LABELS: Record<string, string> = {
   set_menu_price: "Change a menu price", set_delivery_prices: "Change delivery prices", mark_delivery_price_updated: "Record a price update",
   place_call: "Supplier call", reject_call: "Turn down a call", apply_call_result: "Apply a call result", send_dispute: "Send a dispute",
   publish_post: "Instagram post", start_promotion: "Promotion", bank_reserve: "Cash reserve", bank_savings: "Move to savings",
+  send_payout_claim: "Email a delivery app",
 };
 
 export type LiveActionSource = { id: number; restaurant_id: number; tool: string; status: string };

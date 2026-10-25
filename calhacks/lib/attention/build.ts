@@ -453,7 +453,7 @@ async function accounting(db: Db): Promise<Built> {
           ? `${PLATFORMS[c.week.platform]} says it paid ${cash(reported)}, but your bank got ${cash(c.deposit?.amount ?? 0)}`
           : `${PLATFORMS[c.week.platform]}'s ${cash(reported)} payout never reached your bank`,
         detail: `${cash(reported - (c.deposit?.amount ?? 0))} missing, week of ${shortDate(c.week.period_start)}. Your orders, their statement and your bank were checked separately.`,
-        actions: [{ kind: "copy", label: "Copy a note for their support", text: bankNote(c, restaurant, bank.account.last4) }],
+        actions: [{ kind: "link", label: "Review the drafted email", href: "/accounting" }],
         ...payoutImpact(reported - (c.deposit?.amount ?? 0)),
       });
     }
@@ -502,7 +502,7 @@ async function accounting(db: Db): Promise<Built> {
       detail: c.status === "missing"
         ? `They never paid for the week of ${shortDate(c.period_start)}.`
         : `They paid short for the week of ${shortDate(c.period_start)}${c.payout?.note ? ` ("${c.payout.note}")` : ""}.`,
-      actions: [{ kind: "copy", label: "Copy a note for their support", text: payoutDispute(c, restaurant) }],
+      actions: [{ kind: "link", label: "Review the drafted email", href: "/accounting" }],
     });
   }
   for (const b of bills.overdue) {

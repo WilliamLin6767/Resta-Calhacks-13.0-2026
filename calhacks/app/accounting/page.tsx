@@ -9,14 +9,17 @@ import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
 import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { table, tableWrap, td, tdNum, th, thead, thNum, tr } from "@/components/ui/table";
-import { addDays, payoutDispute, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
+import { bankClaim, claimStates, payoutClaim, type ClaimDraft, type ClaimState } from "@/lib/accounting/claims";
+import { addDays, PLATFORMS, type Bill, type BillGroup } from "@/lib/accounting/reconcile";
 import { loadAccounting } from "@/lib/accounting/service";
 import { formatMoney } from "@/lib/format";
 import { amountToPay } from "@/lib/purchasing/disputes";
 import { bankNote, type BankCheck } from "@/lib/bank/match";
 import { loadBank, type Bank } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
-import { CopyNote, MarkPaid, QuickbooksExport } from "./AccountingActions";
+import { canSendFromGmail } from "@/lib/email/send";
+import { MarkPaid, QuickbooksExport } from "./AccountingActions";
+import ClaimEmail from "./ClaimEmail";
 import { ReserveInput, SetupBank } from "./BankActions";
 import CashPlan from "./CashPlan";
 
@@ -56,7 +59,7 @@ const BANK_STATUS: Record<BankCheck["status"], { label: string; className: strin
 };
 
 // The simulated bank: cash after upcoming bills, and payouts that didn't fully reach the bank
-function BankSection({ bank }: { bank: Bank | { error: string } }) {
+function BankSection({ bank, claims }: { bank: Bank | { error: string }; claims: Claims }) {
   if ("error" in bank) return <ErrorMessage message={`Bank check: ${bank.error}`} />;
   if (!bank.connected) {
     return (
@@ -104,12 +107,25 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
                 <span className="mr-2 text-xs font-semibold uppercase tracking-wide text-red-700">{BANK_STATUS[c.status].label}</span>
                 <span className="font-medium">{PLATFORMS[c.week.platform]}, week of {c.week.period_start}.</span> {c.message}
               </p>
-              <CopyNote text={bankNote(c, restaurant, account.last4)} />
+              <Claim draft={bankClaim(c, bankNote(c, restaurant, account.last4))} claims={claims} />
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+// Payout claims (lib/accounting/claims.ts): the drafted email, and what the owner already did with it
+type Claims = { states: Record<string, ClaimState>; canSend: boolean };
+
+function Claim({ draft, claims }: { draft: ClaimDraft; claims: Claims }) {
+  return (
+    <ClaimEmail
+      draft={{ key: draft.key, title: draft.title, to: draft.to, subject: draft.subject, body: draft.body, appName: PLATFORMS[draft.platform] }}
+      state={claims.states[draft.key] ?? null}
+      canSend={claims.canSend}
+    />
   );
 }
 
@@ -120,12 +136,19 @@ function sum(bills: Bill[]) {
 async function Accounting() {
   let data;
   let bank: Bank | { error: string };
+  let claims: Claims;
   try {
     const db = await getSupabase();
     [data, bank] = await Promise.all([
       loadAccounting(db),
       loadBank(db).catch((e: unknown) => ({ error: e instanceof Error ? e.message : String(e) })),
     ]);
+    // Every claim this page can draft, so it can show which were already sent or rejected
+    const keys = [
+      ...data.checks.filter((c) => c.status === "short" || c.status === "missing").map((c) => `payout:${c.platform}:${c.period_start}`),
+      ...("connected" in bank && bank.connected ? bank.problems.map((c) => `bank:${c.week.platform}:${c.week.period_start}`) : []),
+    ];
+    claims = { states: await claimStates(db, keys), canSend: canSendFromGmail() };
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
@@ -150,7 +173,7 @@ async function Accounting() {
         </div>
       </div>
 
-      <BankSection bank={bank} />
+      <BankSection bank={bank} claims={claims} />
       {"connected" in bank && bank.connected && <CashPlan />}
 
       <section className="mb-8">
@@ -171,7 +194,7 @@ async function Accounting() {
                 <span className="font-medium">{PLATFORMS[c.platform]}, week of {c.period_start}.</span> {c.message}
                 <span className="ml-1 font-semibold">{formatMoney(-c.difference)}</span>
               </p>
-              <CopyNote text={payoutDispute(c, restaurant)} />
+              <Claim draft={payoutClaim(c, restaurant)} claims={claims} />
             </div>
           ))}
         </div>

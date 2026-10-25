@@ -8,6 +8,7 @@ import { moveToSavings } from "@/lib/bank/cashPlan";
 import { setReserve } from "@/lib/bank/service";
 import { applyAction, decideCall, supabaseStore } from "@/lib/calls/service";
 import { BriefSchema } from "@/lib/calls/types";
+import { canSendFromGmail, EMAIL_RE, mailto, sendFromGmail } from "@/lib/email/send";
 import { signalAfter, syncCallsAfter } from "@/lib/live/signal";
 import type { PostEdit } from "@/lib/marketing/edit";
 import { publishPost } from "@/lib/marketing/publish";
@@ -164,6 +165,18 @@ export function executorsFor(db: SupabaseClient): Record<string, Executor> {
       const id = num(row, "post_id");
       const result = await publishPost(db, id, row.args.edit as PostEdit | undefined);
       return { ...result, href: "/marketing" };
+    },
+
+    // A payout claim the owner approved: sent from the restaurant's Gmail, or (without the Gmail
+    // script) opened in the owner's mail app. lib/accounting/claims.ts drafts it.
+    async send_payout_claim(row) {
+      const email = { to: str(row, "to").trim(), subject: str(row, "subject").trim(), body: str(row, "body").trim(), fromName: str(row, "from_name") };
+      if (!EMAIL_RE.test(email.to)) throw new LimitError("Add the support address to send it to.");
+      if (!email.subject || !email.body) throw new LimitError("The email needs a subject and a message.");
+      if (email.subject.length > 200 || email.body.length > 5000) throw new LimitError("The email is too long.");
+      if (!canSendFromGmail()) return { sent: false, mailto: mailto(email), to: email.to, href: "/accounting" };
+      await sendFromGmail(email);
+      return { sent: true, to: email.to, href: "/accounting" };
     },
 
     async bank_reserve(row) {
