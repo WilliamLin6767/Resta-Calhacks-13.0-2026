@@ -16,6 +16,8 @@ type Db = SupabaseClient;
 export type StockEvent = {
   id: number; ingredient_id: number; kind: "delivery" | "count" | "waste"; change: number; qty_after: number;
   reason: string | null; unit_cost: number | null; source: string | null; created_at: string; ingredients: { name: string; unit: string } | null;
+  // A delivery's invoice line, so the list can link to the invoice and say if it came by email
+  invoice_lines?: { invoice_id: number; invoices: { source: string | null } | null } | null;
 };
 
 function must<T>(res: { data: T | null; error: { message: string } | null }, what: string): T {
@@ -36,7 +38,7 @@ export async function loadInventory(db: Db) {
     db.rpc("dish_sales_today", { p_restaurant_id: RESTAURANT_ID }), // receipts scanned today (09)
     db.from("recipe_items").select("menu_item_id, ingredient_id, qty"),
     db.from("stock_events")
-      .select("id, ingredient_id, kind, change, qty_after, reason, unit_cost, source, created_at, ingredients(name, unit)")
+      .select("id, ingredient_id, kind, change, qty_after, reason, unit_cost, source, created_at, ingredients(name, unit), invoice_lines(invoice_id, invoices(source))")
       .eq("restaurant_id", RESTAURANT_ID)
       .order("created_at", { ascending: false })
       .limit(40),

@@ -10,8 +10,8 @@ import { CheckEmailNow, InboxButtons, SampleEmails, type InboxAction } from "./I
 // "Check email now" only when the Gmail script is deployed as a web app (integrations/gmail)
 const canCheckNow = () => !!process.env.GMAIL_CHECK_URL;
 
-export const INBOX_HREF = "/invoices/inbox";
-// How many emails the Invoices tab shows; the rest are on /invoices/inbox
+export const INBOX_HREF = "/inbox";
+// How many emails each tab's preview shows; the full list is on /inbox
 const PREVIEW = 3;
 
 const STATUS: Record<InboxRow["status"], { label: string; className: string }> = {
@@ -87,7 +87,7 @@ function StatusChip({ e }: { e: InboxRow }) {
   );
 }
 
-// ---------- The full inbox (/invoices/inbox) ----------
+// ---------- The full inbox (/inbox) ----------
 
 function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
   const o = e.customer_order;
@@ -185,24 +185,39 @@ export async function FullInbox() {
   );
 }
 
-// ---------- The preview on the Invoices tab ----------
+// ---------- The previews: supplier emails on Invoices and buying, catering requests on Prep ----------
 
-export default async function EmailInboxPreview() {
+const PREVIEWS = {
+  supplier: {
+    title: "Supplier emails",
+    empty: "No supplier emails yet. Invoices your suppliers email are read and added on their own.",
+    keep: (e: InboxRow) => e.kind !== "customer_order",
+  },
+  catering: {
+    title: "Catering requests",
+    empty: "No catering requests yet. Requests for events and large orders that come by email show here to accept.",
+    keep: (e: InboxRow) => e.kind === "customer_order" && !isEveryday(e),
+  },
+} as const;
+
+export default async function EmailInboxPreview({ kind }: { kind: keyof typeof PREVIEWS }) {
+  const view = PREVIEWS[kind];
   let data;
   try {
     data = await loadData(50);
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
-  const waiting = data.rows.filter(needsOwner);
-  const top = [...waiting, ...data.rows.filter((e) => !needsOwner(e))].slice(0, PREVIEW);
+  const rows = data.rows.filter(view.keep);
+  const waiting = rows.filter(needsOwner);
+  const top = [...waiting, ...rows.filter((e) => !needsOwner(e))].slice(0, PREVIEW);
   return (
     <PreviewSection
       id="inbox"
-      title="Email inbox"
+      title={view.title}
       description={waiting.length ? `${waiting.length} waiting for you` : <Intro />}
       href={INBOX_HREF}
-      total={data.rows.length}
+      total={rows.length}
       shown={top.length}
       action={
         <>
@@ -213,8 +228,8 @@ export default async function EmailInboxPreview() {
     >
       {top.length === 0 ? (
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
-          <p className="mb-3 text-sm text-gray-500">No emails yet.</p>
-          <SampleEmails />
+          <p className="mb-3 text-sm text-gray-500">{view.empty}</p>
+          <SampleEmails only={kind === "supplier" ? "invoice" : "order"} />
         </div>
       ) : (
         <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white">
