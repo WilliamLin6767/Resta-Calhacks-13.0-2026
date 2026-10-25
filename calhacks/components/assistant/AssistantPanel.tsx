@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/Toaster";
 import { useReducedMotion } from "@/components/ui/useReducedMotion";
 import { useAssistant } from "./AssistantProvider";
 import CompareChart from "./CompareChart";
+import { chatText } from "@/components/ChatText";
 
 const CLOSE_MS = 300; // the slide-out's length in globals.css (.assistant-panel[data-closing])
 
@@ -173,7 +174,7 @@ export default function AssistantPanel() {
             </div>
           ) : (
             <div key={m.id} className="mr-4 space-y-3">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800">{m.content}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800">{chatText(m.content)}</p>
               {m.charts?.map((chart, i) => (
                 <figure key={i} className="rounded-2xl border border-gray-200 p-3">
                   <figcaption className="mb-2 text-xs font-medium text-gray-600">{chart.title}</figcaption>
