@@ -36,7 +36,24 @@ export type CustomerOrder = {
   unmatched: string[]; // what they asked for that isn't on the menu
   notes: string;
   total: number;
+  duplicate_of?: number; // an earlier email with the same order from the same person
 };
+
+// A customer who sends the same order twice (a resend, or a second try) shouldn't get two sales
+const REPEAT_WINDOW_HOURS = 6;
+const orderKey = (lines: { menu_item_id: number; qty: number }[]) =>
+  [...lines].sort((a, b) => a.menu_item_id - b.menu_item_id).map((l) => `${l.menu_item_id}x${l.qty}`).join(",");
+
+async function findRepeat(db: Db, id: number, fromEmail: string, lines: { menu_item_id: number; qty: number }[]) {
+  const since = new Date(Date.now() - REPEAT_WINDOW_HOURS * 3600_000).toISOString();
+  const earlier = must(
+    await db.from("inbound_emails").select("id, customer_order").eq("restaurant_id", RESTAURANT_ID).eq("from_email", fromEmail)
+      .eq("kind", "customer_order").in("status", ["to_confirm", "confirmed"]).neq("id", id).gte("created_at", since).order("id"),
+    "look for a repeated order",
+  ) as { id: number; customer_order: CustomerOrder | null }[];
+  const key = orderKey(lines);
+  return earlier.find((e) => e.customer_order && orderKey(e.customer_order.lines) === key)?.id;
+}
 
 export type InboxRow = {
   id: number; from_email: string; from_name: string | null; subject: string | null; created_at: string;
@@ -121,7 +138,12 @@ async function sortEmail(db: Db, id: number, e: InboundEmail) {
     if (!lines.length) {
       return update(db, id, { kind: "customer_order", status: "needs_review", customer_order: order, note: "A customer order, but none of the dishes matched the menu. Reply to them to check." });
     }
-    return update(db, id, { kind: "customer_order", status: "to_confirm", customer_order: order, note: `Order from ${order.customer_name}: confirm it to add it as a sale.` });
+    const repeat = await findRepeat(db, id, e.from_email, lines);
+    if (repeat) order.duplicate_of = repeat;
+    return update(db, id, {
+      kind: "customer_order", status: "to_confirm", customer_order: order,
+      note: repeat ? `Order from ${order.customer_name}, the same as one they sent earlier.` : `Order from ${order.customer_name}: confirm it to add it as a sale.`,
+    });
   }
 
   return update(db, id, { kind: "other", status: "ignored", note: read.reason ? `Not an invoice or an order: ${read.reason}` : "Not an invoice or an order." });
