@@ -51,9 +51,10 @@ describe("session cookie", () => {
 });
 
 describe("authConfig", () => {
-  it("is open in development without a password, and broken in production", () => {
+  it("is open without a password, in development and production alike", () => {
     expect(authConfig({ NODE_ENV: "development" })).toEqual({ mode: "open" });
-    expect(authConfig({ NODE_ENV: "production" }).mode).toBe("broken");
+    expect(authConfig({ NODE_ENV: "production" })).toEqual({ mode: "open" });
+    expect(authConfig({ NODE_ENV: "production", OWNER_PASSWORD: "" })).toEqual({ mode: "open" });
   });
   it("needs a long session secret once a password is set", () => {
     expect(authConfig({ NODE_ENV: "development", OWNER_PASSWORD: "x", SESSION_SECRET: "short" }).mode).toBe("broken");
@@ -101,11 +102,10 @@ describe("proxy", () => {
     expect(proxy(req("/api/chat", { method: "POST", cookie: signSession(OTHER) })).status).toBe(401);
   });
 
-  it("serves nothing in production without a password", () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("OWNER_PASSWORD", "");
+  it("serves nothing when a password is set but the session secret is too short", () => {
+    vi.stubEnv("OWNER_PASSWORD", "pho tai");
+    vi.stubEnv("SESSION_SECRET", "short");
     expect(proxy(req("/")).status).toBe(503);
-    expect(proxy(req("/login")).status).toBe(503);
   });
 });
 

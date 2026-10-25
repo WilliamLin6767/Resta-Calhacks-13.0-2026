@@ -37,8 +37,11 @@ export function passwordMatches(given: string, expected: string): boolean {
   return sameText(given, expected);
 }
 
-// How login is set up. "open": development without a password (everything allowed, with a
-// warning). "broken": something required is missing, so every request gets a clear error.
+// How login is set up. Login is opt-in: with no OWNER_PASSWORD the app is "open" everywhere
+// (every page and route allowed, with a warning in the server log). "broken": a password is set but
+// the session secret is missing or too short, so every request gets a clear error.
+// Open in production still can't dial a real supplier (lib/calls/phone.ts dialBlocked) and still
+// needs a tap in Actions for anything that spends money, changes a price or contacts someone.
 export type AuthConfig =
   | { mode: "on"; password: string; secret: string }
   | { mode: "open" }
@@ -47,10 +50,7 @@ export type AuthConfig =
 export function authConfig(env: Record<string, string | undefined> = process.env): AuthConfig {
   const password = env.OWNER_PASSWORD ?? "";
   const secret = env.SESSION_SECRET ?? "";
-  const production = env.NODE_ENV === "production";
-  if (!password) {
-    return production ? { mode: "broken", error: "OWNER_PASSWORD is not set. Add it to the server's environment." } : { mode: "open" };
-  }
+  if (!password) return { mode: "open" };
   if (secret.length < MIN_SECRET) {
     return { mode: "broken", error: `SESSION_SECRET is missing or shorter than ${MIN_SECRET} characters. Add a long random value to the server's environment.` };
   }
@@ -104,5 +104,5 @@ let warned = false;
 export function warnOpenOnce(log: (line: string) => void = console.warn) {
   if (warned) return;
   warned = true;
-  log("[auth] OWNER_PASSWORD is not set: every page and route is open. Fine for development only.");
+  log("[auth] OWNER_PASSWORD is not set: every page and route is open to anyone with the link. Set it to turn the login back on.");
 }

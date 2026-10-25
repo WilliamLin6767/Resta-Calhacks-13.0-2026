@@ -8,15 +8,14 @@
 
 - **SQL:** run `supabase/17` to `21` in order in the Supabase SQL editor. `21_demo_loop.sql` plants the labeled demo orders. It's written for a demo between Oct 25 and Oct 28, 2026.
 - **`.env.local` (or Vercel):**
-  - `OWNER_PASSWORD`
-  - `SESSION_SECRET` (32+ characters)
+  - Optional: `OWNER_PASSWORD` and `SESSION_SECRET` (32+ characters) turn on the login. Without them the site is open to anyone with the link.
   - `SUPABASE_SECRET_KEY`
   - `ANTHROPIC_API_KEY`
   - `WAJO_API_KEY`
   - `DEMO_CALL_OVERRIDE_NUMBER`: the teammate's phone, so a real supplier is never dialed.
   - `CARTESIA_API_KEY`, for voice.
   - `CRON_SECRET`
-- **Log in** on the demo laptop. Open Intelligence, Chat and Actions in three tabs. Load Intelligence once beforehand: the first build of the picture takes about 5 seconds, then it's cached for 5 minutes.
+- **On the demo laptop**, open Intelligence, Chat and Actions in three tabs. Load Intelligence once beforehand: the first build of the picture takes about 5 seconds, then it's cached for 5 minutes.
 - **Clear old proposals:** on the Actions page, reject anything still waiting from earlier rehearsals, so the board starts clean.
 - **Teammate:** their phone is on, with the ringer up.
 
