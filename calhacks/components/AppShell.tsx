@@ -73,8 +73,10 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         />
       )}
 
-      <div className={`${open ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:hidden`}>
-        <div className="flex h-full flex-col bg-white shadow-xl">
+      {/* Phone menu only. h-dvh is the visible screen, and the bottom padding keeps Profile above
+          Safari's floating toolbar and the home indicator (the same room the page leaves for the bottom bar). */}
+      <div className={`${open ? "fixed top-0 left-0 z-50 flex h-dvh" : "hidden"} md:hidden`}>
+        <div className="flex h-full flex-col bg-white pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-xl">
           <div className="flex justify-end border-b border-gray-200">
             <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-gray-600">
               Close
