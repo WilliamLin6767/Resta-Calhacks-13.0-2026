@@ -232,7 +232,7 @@ async function invoices(db: Db): Promise<Built> {
     .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review", "confirmed"]).order("created_at", { ascending: false }).limit(15);
   type InboxItem = {
     id: number; from_email: string; from_name: string | null; kind: string; status: string; order_id: number | null;
-    customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number } | null;
+    customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number; headcount?: number } | null;
   };
   for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
     const o = e.customer_order;
@@ -241,7 +241,7 @@ async function invoices(db: Db): Promise<Built> {
       // A repeat of an order already in the list: offer to drop it, never a second one-click sale
       items.push({
         key: `email-order:${e.id}`, fingerprint: `${e.status}:repeat`, tab: "invoices", level: "watch",
-        title: `${o.customer_name} sent the same order again (${cash(o.total)})`,
+        title: `${o.customer_name} sent the same catering request again (${cash(o.total)})`,
         detail: "Probably a repeat of the one above. Decline it unless they want two.",
         actions: [{ kind: "post", label: "Decline the repeat", path: `/api/inbound/${e.id}/decline`, primary: true }, { kind: "link", label: "See the email", href }],
       });
@@ -249,8 +249,8 @@ async function invoices(db: Db): Promise<Built> {
       const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
       items.push({
         key: `email-order:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `Accept ${o.customer_name}'s emailed order (${cash(o.total)})`,
-        detail: `${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}${when ? `, pickup ${when}` : ""}. Accepting holds it; it's counted as a sale when it's paid for.`,
+        title: `Accept ${o.customer_name}'s catering request (${cash(o.total)}${o.headcount ? `, ${o.headcount} people` : ""})`,
+        detail: `${when ? `For ${when}. ` : ""}Accepting holds it; it's counted as a sale when it's paid for.`,
         actions: [{ kind: "post", label: "Accept the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
       });
     } else if (e.status === "confirmed" && o && !e.order_id) {
@@ -258,7 +258,7 @@ async function invoices(db: Db): Promise<Built> {
       if (o.pickup_date && o.pickup_date > todayLocal()) continue;
       items.push({
         key: `email-pickup:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `Did ${o.customer_name} pick up their ${cash(o.total)} order?`,
+        title: `Did ${o.customer_name} pick up their ${cash(o.total)} catering order?`,
         detail: `Rang up at the register (or will scan its receipt)? Choose that, so it isn't counted twice.${o.pickup_time ? ` Pickup was ${o.pickup_time}.` : ""}`,
         actions: [
           { kind: "post", label: "Picked up and paid", path: `/api/inbound/${e.id}/picked-up`, primary: true },
