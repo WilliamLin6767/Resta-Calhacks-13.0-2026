@@ -24,6 +24,19 @@ approves the script once, in their own account.
    expected. Then click **Allow**.
 7. The log says "Checking the inbox every minute from now on." Done.
 
+## "Check email now" (optional, for demos)
+
+The timer checks once a minute. To check on demand from the app's Email inbox:
+
+1. In the script editor, click **Deploy → New deployment**, then the gear next to "Select type", then **Web app**.
+2. Execute as **Me**, Who has access **Anyone**, then **Deploy**. Allow access if asked, and copy the **Web app URL**
+   (it ends in `/exec`).
+3. **Vercel:** add `GMAIL_CHECK_URL` (that URL) under Production, then redeploy.
+
+A **Check email now** button then shows in the Email inbox. It only works with the same secret as the webhook, so
+someone who finds the URL can't use it. After changing `Code.gs` later, use **Deploy → Manage deployments → Edit →
+Version: New version** so the web app runs the new code.
+
 ## Try it
 
 From another email account, send the restaurant's Gmail something like "2 Pho Ga for pickup at 7pm

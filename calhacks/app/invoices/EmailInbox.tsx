@@ -5,7 +5,10 @@ import { everydayOrderReply } from "@/lib/email/catering";
 import { confirmationEmail, loadInbox, type InboxRow } from "@/lib/email/service";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
-import { InboxButtons, SampleEmails, type InboxAction } from "./InboxActions";
+import { CheckEmailNow, InboxButtons, SampleEmails, type InboxAction } from "./InboxActions";
+
+// "Check email now" only when the Gmail script is deployed as a web app (integrations/gmail)
+const canCheckNow = () => !!process.env.GMAIL_CHECK_URL;
 
 export const INBOX_HREF = "/invoices/inbox";
 // How many emails the Invoices tab shows; the rest are on /invoices/inbox
@@ -168,6 +171,7 @@ export async function FullInbox() {
   return (
     <section className="rounded-2xl border border-brand-100 bg-white p-5">
       <p className="mb-3 text-sm text-gray-600"><Intro /></p>
+      {canCheckNow() && <div className="mb-3"><CheckEmailNow /></div>}
       <SampleEmails />
       {data.rows.length === 0 ? (
         <p className="mt-4 text-sm text-gray-500">No emails yet.</p>
@@ -200,7 +204,12 @@ export default async function EmailInboxPreview() {
       href={INBOX_HREF}
       total={data.rows.length}
       shown={top.length}
-      action={<Link href={INBOX_HREF} className="text-sm font-medium text-brand-700 hover:underline">Open inbox</Link>}
+      action={
+        <>
+          {canCheckNow() && <CheckEmailNow />}
+          <Link href={INBOX_HREF} className="text-sm font-medium text-brand-700 hover:underline">Open inbox</Link>
+        </>
+      }
     >
       {top.length === 0 ? (
         <div className="rounded-2xl border border-brand-100 bg-white p-4">
