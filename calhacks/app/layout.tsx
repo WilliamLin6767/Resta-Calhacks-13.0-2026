@@ -38,7 +38,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#101010",
+  themeColor: "#f3f5f9",
 };
 
 // Loads the restaurant's name for the sidebar.
@@ -56,8 +56,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // Chrome adds __gcrremoteframetoken to <html> before React loads. This app does not render that attribute.
       suppressHydrationWarning
     >
-      {/* Dark shell: sidebar on the left, each page in a rounded white panel on the right (AppShell) */}
-      <body className="min-h-full bg-gray-950 text-gray-800">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(localStorage.getItem("resta-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}})()`,
+          }}
+        />
+      </head>
+      {/* Light shell: white sidebar, light page. Profile can switch the whole dashboard to dark. */}
+      <body className="min-h-full bg-[#f3f5f9] text-gray-800">
         {/* Convex live updates, when configured; otherwise this renders its children as they are */}
         <LiveProvider>
         {/* The AI assistant is on every page: the provider tracks the chat and the charts on screen */}
@@ -66,7 +73,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <ToastProvider>
             <AppShell
               restaurant={
-                <Suspense fallback={<Skeleton className="mt-1 h-3 w-24 bg-white/15" />}>
+                <Suspense fallback={<Skeleton className="mt-1 h-3 w-24 bg-gray-200" />}>
                   <RestaurantName />
                 </Suspense>
               }

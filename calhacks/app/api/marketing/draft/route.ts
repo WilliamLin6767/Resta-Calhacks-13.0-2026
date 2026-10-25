@@ -3,7 +3,7 @@ import { loadDishes, loadDishSales, loadRecipes } from "@/lib/agent/evidence";
 import { ASSUMED_PROMO_LIFT, dishStockUnits, forecastDishWeek } from "@/lib/agent/investigate";
 import { loadInventory, todayLocal } from "@/lib/inventory/service";
 import { draftPosts, voiceFor } from "@/lib/marketing/draft";
-import { saveFreshPhoto } from "@/lib/marketing/photo";
+import { BRAVE_IMAGE_REJECTED, BRAVE_IMAGE_SETUP, braveImageConfig, saveFreshPhoto } from "@/lib/marketing/photo";
 import { planWeek, type MenuPerformance } from "@/lib/marketing/targets";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
@@ -44,6 +44,12 @@ function menuPerformance(rows: unknown, fallbackNames: string[]): MenuPerformanc
   }
   if (parsed.length > 0) return parsed;
   return fallbackNames.map((name) => ({ name, units: 0, units_change_pct: null, class: null }));
+}
+
+function imageRejection(reason: unknown): string | null {
+  const message = reason instanceof Error ? reason.message : "";
+  if (message === BRAVE_IMAGE_REJECTED || message === BRAVE_IMAGE_SETUP) return message;
+  return null;
 }
 
 // Days since each dish was last posted, and whether stock covers a promotion week (the same
@@ -87,11 +93,20 @@ async function withPostingAndStock(supabase: Awaited<ReturnType<typeof getSupaba
 export async function POST(request: Request) {
   const denied = requireOwner(request);
   if (denied) return denied;
+  const images = braveImageConfig();
+  if ("error" in images) return errorResponse(images.error, 500);
+
   const supabase = await getSupabase();
   const probe = await supabase.from("marketing_posts").select("id").limit(1);
   if (probe.error) {
     const missing = /marketing_posts|schema cache/i.test(probe.error.message);
     return errorResponse(missing ? `${probe.error.message}. Has supabase/16_marketing.sql been run?` : probe.error.message, 500);
+  }
+
+  const usedPhotos = await supabase.from("marketing_used_photos").select("source_url, dish_name").order("used_at", { ascending: false }).limit(300);
+  if (usedPhotos.error) {
+    const missing = /marketing_used_photos|schema cache/i.test(usedPhotos.error.message);
+    return errorResponse(missing ? `${usedPhotos.error.message}. Has supabase/17_marketing_photo.sql been run?` : usedPhotos.error.message, 500);
   }
 
   const visitor = perVisitor(clientIp(request));
@@ -161,8 +176,21 @@ export async function POST(request: Request) {
     .select("id, dish_name");
   if (inserted.error) return errorResponse(inserted.error.message, 500);
 
-  await Promise.all(
-    (inserted.data ?? []).map((row, index) => saveFreshPhoto(supabase, row.id, row.dish_name, offset + index).catch(() => undefined)),
+  const usedByDish = new Map<string, string[]>();
+  for (const row of usedPhotos.data ?? []) {
+    const list = usedByDish.get(row.dish_name) ?? [];
+    list.push(row.source_url);
+    usedByDish.set(row.dish_name, list);
+  }
+  const cuisine = restaurant.data?.cuisine ?? null;
+  const photos = await Promise.allSettled(
+    (inserted.data ?? []).map((row) => saveFreshPhoto(supabase, row.id, row.dish_name, cuisine, usedByDish.get(row.dish_name) ?? [])),
   );
+  const failures = photos.flatMap((result) => {
+    if (result.status !== "rejected") return [];
+    const message = imageRejection(result.reason);
+    return message ? [message] : [];
+  });
+  if (photos.length > 0 && failures.length === photos.length) return errorResponse(failures[0], 502);
   return Response.json({ stored: posts.length });
 }

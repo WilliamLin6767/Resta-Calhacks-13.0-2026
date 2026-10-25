@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Light is the default. Profile adds .dark on <html> (see components/profile/Appearance.tsx). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
@@ -298,13 +301,6 @@
 @property --color-brand-600 { syntax: "<color>"; inherits: true; initial-value: #3b5680; }
 @property --color-brand-700 { syntax: "<color>"; inherits: true; initial-value: #2e4466; }
 
-/* Something on the menu wheel's oval path: --wheel-a is its angle around the oval (0 = the
-   pointer), --rx/--ry the path's size. Animating the angle moves it along the curve. */
-@property --wheel-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.wheel-orbit {
-  translate: calc(cos(var(--wheel-a)) * var(--rx)) calc(sin(var(--wheel-a)) * var(--ry));
-}
-
 /* Expandable sections ("2 things worth a closer look") open and close smoothly where the
    browser supports it; elsewhere they just open. */
 :root {
@@ -343,19 +339,6 @@
     height: auto;
   }
 
-  /* The menu wheel (components/NavWheel.tsx): it pops out with a slight overshoot, sections
-     and rim dots travel around the oval, and the pointer gives a small "click" at each step. */
-  .wheel-move {
-    transition: translate 320ms cubic-bezier(0.34, 1.3, 0.64, 1);
-  }
-  .wheel-orbit {
-    transition:
-      --wheel-a 300ms cubic-bezier(0.3, 1.2, 0.6, 1),
-      opacity 200ms ease;
-  }
-  .wheel-tick {
-    animation: wheel-tick 160ms ease-out;
-  }
   .nav-progress {
     animation: nav-progress 900ms ease-in-out infinite;
   }
@@ -549,12 +532,6 @@
     translate: 0 8px;
   }
 }
-@keyframes wheel-tick {
-  50% {
-    scale: 1.05;
-    background-color: rgb(255 255 255 / 0.18);
-  }
-}
 @keyframes nav-progress {
   from {
     translate: -100% 0;
@@ -575,6 +552,74 @@
 /* Colors are set with Tailwind classes in app/layout.tsx */
 body {
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
+}
+
+/* Dark mode, chosen on Profile. Unlayered so these beat the utility classes.
+   text-white and the brand/status colors stay as they are, so buttons keep their contrast. */
+html.dark {
+  color-scheme: dark;
+}
+html.dark body {
+  background-color: #101014;
+}
+html.dark .section-main {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-brand-500) 24%, #1b1e27), #1b1e27 320px);
+  color: #e6e8ef;
+}
+html.dark .bg-white,
+html.dark .hover\:bg-white:hover {
+  background-color: #1b1e27;
+}
+html.dark .bg-white\/80 {
+  background-color: rgb(27 30 39 / 0.8);
+}
+html.dark .bg-white\/85 {
+  background-color: rgb(27 30 39 / 0.85);
+}
+html.dark .bg-gray-50,
+html.dark .bg-gray-50\/60,
+html.dark .disabled\:bg-gray-50:disabled {
+  background-color: #222633;
+}
+html.dark .hover\:bg-gray-50:hover {
+  background-color: #2a3040;
+}
+html.dark .bg-gray-100 {
+  background-color: #2a3040;
+}
+html.dark .text-gray-900 {
+  color: #f4f6fb;
+}
+html.dark .text-gray-800,
+html.dark .hover\:text-gray-800:hover {
+  color: #e6e8ef;
+}
+html.dark .text-gray-700 {
+  color: #c9ced8;
+}
+html.dark .text-gray-600 {
+  color: #aeb6c4;
+}
+html.dark .text-gray-500 {
+  color: #8e97a8;
+}
+html.dark .border-gray-100,
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #2a2e3a;
+}
+html.dark .border-gray-200,
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #343a4a;
+}
+html.dark .border-gray-300,
+html.dark .hover\:border-gray-300:hover {
+  border-color: #454c60;
+}
+html.dark [class~="bg-brand-50"] {
+  background-color: color-mix(in srgb, var(--color-brand-500) 22%, #1b1e27);
+}
+html.dark [class~="border-brand-100"] {
+  border-color: color-mix(in srgb, var(--color-brand-500) 40%, #343a4a);
 }
 
 

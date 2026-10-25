@@ -97,7 +97,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <ol
         aria-live="polite"
         data-section={section?.theme}
-        className={`pointer-events-none fixed inset-x-4 ${phoneBottom} z-[60] flex flex-col gap-2 md:right-auto md:bottom-6 md:left-16 md:w-96`}
+        className={`pointer-events-none fixed inset-x-4 ${phoneBottom} z-[60] flex flex-col gap-2 md:right-auto md:bottom-6 md:left-[19rem] md:w-96`}
       >
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onClose={close} />
