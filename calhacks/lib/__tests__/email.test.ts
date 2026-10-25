@@ -1,5 +1,30 @@
 import { describe, expect, it } from "vitest";
+import { everydayOrderReply, isCatering } from "../email/catering";
 import { fromPostmark, invoiceAttachment, isAutoReply, matchSupplier, newText } from "../email/parse";
+
+describe("isCatering", () => {
+  const order = (over: Partial<{ catering: boolean; headcount: number; qty: number; total: number }> = {}) => ({
+    catering: over.catering ?? false, headcount: over.headcount ?? 0, lines: [{ qty: over.qty ?? 2 }], total: over.total ?? 31,
+  });
+  it("skips one person's dinner", () => {
+    expect(isCatering(order())).toBe(false);
+  });
+  it("takes anything the email says is for an event or a group", () => {
+    expect(isCatering(order({ catering: true }))).toBe(true);
+    expect(isCatering(order({ headcount: 20 }))).toBe(true);
+  });
+  it("takes big orders even when they don't say why: 10 dishes or $150", () => {
+    expect(isCatering(order({ qty: 10 }))).toBe(true);
+    expect(isCatering(order({ total: 150 }))).toBe(true);
+    expect(isCatering(order({ qty: 9, total: 149 }))).toBe(false);
+  });
+  it("writes a reply pointing an everyday order to phone or online", () => {
+    const href = decodeURIComponent(everydayOrderReply("sam@example.com", "Sam Lee", "Pho Berkeley"));
+    expect(href).toMatch(/^mailto:sam@example\.com/);
+    expect(href).toContain("Hi Sam,");
+    expect(href).toContain("DoorDash");
+  });
+});
 
 const suppliers = [
   { id: 2, name: "Bay Area Meat Co.", email: "billing@bayareameat.example" },

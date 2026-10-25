@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ErrorMessage from "@/components/ErrorMessage";
 import PreviewSection from "@/components/ui/Preview";
+import { everydayOrderReply } from "@/lib/email/catering";
 import { confirmationEmail, loadInbox, type InboxRow } from "@/lib/email/service";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
@@ -20,7 +21,10 @@ const STATUS: Record<InboxRow["status"], { label: string; className: string }> =
   ignored: { label: "Skipped", className: "bg-gray-100 text-gray-600" },
   error: { label: "Couldn't read", className: "bg-red-50 text-red-700" },
 };
-const KIND = { supplier_invoice: "Supplier invoice", customer_order: "Customer order", other: "Other", unknown: "Email" };
+const KIND = { supplier_invoice: "Supplier invoice", customer_order: "Catering request", other: "Other", unknown: "Email" };
+// Catering only by email: an everyday order is skipped (lib/email/catering.ts)
+const isEveryday = (e: InboxRow) => e.kind === "customer_order" && e.customer_order?.catering === false;
+const kindOf = (e: InboxRow) => (isEveryday(e) ? "Everyday order" : KIND[e.kind]);
 
 // An accepted customer order (held for pickup, not a sale yet)
 const isAccepted = (e: InboxRow) => e.kind === "customer_order" && e.status === "confirmed" && !e.order_id;
@@ -61,9 +65,10 @@ function pickup(date: string, time: string) {
 function summary(e: InboxRow) {
   const o = e.customer_order;
   if (o && o.lines.length) {
+    if (isEveryday(e)) return "An everyday order, skipped: reply that they can order by phone or online";
     const dishes = o.lines.map((l) => `${l.qty} x ${l.name.replace(/\s*\(.*\)$/, "")}`).join(", ");
     const p = pickup(o.pickup_date, o.pickup_time);
-    return `${dishes} · ${formatMoney(o.total)}${p ? ` · pickup ${p}` : ""}`;
+    return `${o.headcount ? `For ${o.headcount} · ` : ""}${dishes} · ${formatMoney(o.total)}${p ? ` · ${o.delivery ? "deliver" : "pickup"} ${p}` : ""}`;
   }
   return e.note ?? e.subject ?? "";
 }
@@ -88,7 +93,7 @@ function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
     <li id={`email-${e.id}`} className="scroll-mt-4 py-4">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
         <StatusChip e={e} />
-        <span className="font-medium text-gray-900">{KIND[e.kind]}</span>
+        <span className="font-medium text-gray-900">{kindOf(e)}</span>
         <span className="text-gray-600">from {e.from_name || e.from_email}</span>
         {e.subject && <span className="text-gray-500">· {e.subject}</span>}
         <span className="ml-auto text-xs text-gray-400">{when(e.created_at)}</span>
@@ -99,15 +104,25 @@ function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
           The same order from the same person came in earlier (<a href={`#email-${o.duplicate_of}`} className="underline">see it</a>). Decline this one if it&apos;s a repeat.
         </p>
       )}
-      {o && o.lines.length > 0 && (
+      {o && isEveryday(e) && (
+        <a href={everydayOrderReply(o.customer_email, o.customer_name, restaurant)} className="mt-1 inline-block text-sm text-brand-700 underline">
+          Reply: order by phone or online
+        </a>
+      )}
+      {o && o.lines.length > 0 && !isEveryday(e) && (
         <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-sm">
+          {(o.headcount || o.delivery) && (
+            <p className="mb-1 font-medium text-gray-700">
+              {[o.headcount ? `For ${o.headcount} people` : "", o.delivery ? "Delivery requested" : ""].filter(Boolean).join(" · ")}
+            </p>
+          )}
           <ul className="grid gap-0.5">
             {o.lines.map((l) => (
               <li key={l.menu_item_id} className="flex justify-between gap-3"><span>{l.qty} x {l.name}</span><span className="tabular-nums">{formatMoney(l.qty * l.unit_price)}</span></li>
             ))}
           </ul>
           <p className="mt-1 flex justify-between border-t border-gray-200 pt-1 font-medium"><span>Total</span><span className="tabular-nums">{formatMoney(o.total)}</span></p>
-          {pickup(o.pickup_date, o.pickup_time) && <p className="mt-1 text-gray-600">Pickup: {pickup(o.pickup_date, o.pickup_time)}</p>}
+          {pickup(o.pickup_date, o.pickup_time) && <p className="mt-1 text-gray-600">{o.delivery ? "Deliver" : "Pickup"}: {pickup(o.pickup_date, o.pickup_time)}</p>}
           {o.notes && <p className="text-gray-600">Note: {o.notes}</p>}
           {o.unmatched.length > 0 && <p className="text-amber-800">Not on the menu: {o.unmatched.join(", ")}</p>}
         </div>
@@ -136,8 +151,9 @@ function Intro() {
   const address = process.env.INBOUND_EMAIL_ADDRESS;
   return (
     <>
-      Supplier invoices are read and added on their own. Customer orders, and invoices from addresses that aren&apos;t your suppliers&apos;, wait for you.
-      {address ? <> Suppliers and customers email <span className="font-medium text-gray-900">{address}</span>.</> : null}
+      Supplier invoices are read and added on their own. Catering requests (events, groups, 10 or more dishes) and invoices from addresses that
+      aren&apos;t your suppliers&apos; wait for you. Everyday orders by email are skipped, with a reply pointing to phone or online ordering.
+      {address ? <> Suppliers and catering customers email <span className="font-medium text-gray-900">{address}</span>.</> : null}
     </>
   );
 }

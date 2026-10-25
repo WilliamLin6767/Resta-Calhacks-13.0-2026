@@ -2,7 +2,8 @@
 //   receiveEmail  - an email arrived: save it once, then sort it
 //     supplier on file + invoice  -> read and saved like a scanned invoice (once: a second copy is skipped)
 //     unknown sender + invoice    -> held until the owner says to read it
-//     customer order              -> waits for the owner to accept it
+//     catering request            -> waits for the owner to accept it
+//     everyday customer order     -> skipped (catering only by email: lib/email/catering.ts)
 //     anything else               -> ignored
 //   readHeldInvoice - the owner trusts an unknown sender's invoice
 //   A customer order, step by step (statuses for kind customer_order):
@@ -19,6 +20,7 @@ import { saveInvoiceOnce, type SavedInvoice } from "@/lib/purchasing/service";
 import { loadMenu, saveReceipt } from "@/lib/sales/service";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { readEmail } from "./ai";
+import { isCatering } from "./catering";
 import { invoiceAttachment, isAutoReply, matchSupplier, type InboundEmail, type SupplierRef } from "./parse";
 
 type Db = SupabaseClient;
@@ -40,6 +42,9 @@ export type CustomerOrder = {
   unmatched: string[]; // what they asked for that isn't on the menu
   notes: string;
   total: number;
+  headcount?: number; // people it's for, 0 if not said
+  delivery?: boolean; // they asked for delivery
+  catering?: boolean; // false: an everyday order, skipped (catering only by email)
   duplicate_of?: number; // an earlier email with the same order from the same person
 };
 
@@ -144,15 +149,27 @@ async function sortEmail(db: Db, id: number, e: InboundEmail) {
       pickup_time: /^\d{2}:\d{2}$/.test(read.pickup_time) ? read.pickup_time : "",
       lines, unmatched: read.lines.filter((l) => !byId.has(l.menu_item_id)).map((l) => `${l.qty} x ${l.asked_for}`),
       notes: read.notes, total: Math.round(lines.reduce((s, l) => s + l.qty * l.unit_price, 0) * 100) / 100,
+      headcount: read.headcount, delivery: read.delivery,
     };
+    order.catering = isCatering({ catering: read.catering, headcount: read.headcount, lines, total: order.total });
+    // Catering only: an everyday order by email is skipped, with a reply pointing to phone or online ordering
+    if (!order.catering) {
+      return update(db, id, {
+        kind: "customer_order", status: "ignored", customer_order: order,
+        note: "An everyday order, not catering, so it wasn't added. Reply that they can order by phone, in person or online.",
+      });
+    }
     if (!lines.length) {
-      return update(db, id, { kind: "customer_order", status: "needs_review", customer_order: order, note: "A customer order, but none of the dishes matched the menu. Reply to them to check." });
+      return update(db, id, { kind: "customer_order", status: "needs_review", customer_order: order, note: "A catering request, but none of the dishes matched the menu. Reply to them to check." });
     }
     const repeat = await findRepeat(db, id, e.from_email, lines);
     if (repeat) order.duplicate_of = repeat;
+    const forWhom = order.headcount ? ` for ${order.headcount} people` : "";
     return update(db, id, {
       kind: "customer_order", status: "to_confirm", customer_order: order,
-      note: repeat ? `Order from ${order.customer_name}, the same as one they sent earlier.` : `Order from ${order.customer_name}. Accept it to hold it for pickup.`,
+      note: repeat
+        ? `Catering request from ${order.customer_name}, the same as one they sent earlier.`
+        : `Catering request from ${order.customer_name}${forWhom}${order.delivery ? ", for delivery" : ""}. Accept it to hold it.`,
     });
   }
 

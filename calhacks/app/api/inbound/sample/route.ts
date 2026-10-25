@@ -21,7 +21,7 @@ async function sampleInvoice(origin: string) {
 
 // POST /api/inbound/sample   { "kind": "invoice" | "order" }
 // Runs a made-up email through the same inbox as a real one, so the feature can be tried without
-// sending mail: a Bay Area Meat Co. invoice (a supplier on file), or a customer's pickup order.
+// sending mail: a Bay Area Meat Co. invoice (a supplier on file), or a catering request for an office lunch.
 export async function POST(request: Request) {
   const { kind } = await request.json().catch(() => ({}));
   if (kind !== "invoice" && kind !== "order") return errorResponse("Say which sample: invoice or order.", 400);
@@ -38,8 +38,10 @@ export async function POST(request: Request) {
       }
       : {
         message_id: `sample-order-${stamp}@backofhouse.example`, from_email: "jamie.nguyen@example.com", from_name: "Jamie Nguyen",
-        subject: "Pickup order for tomorrow",
-        text: "Hi! Could I order 3 Pho Tai and 2 orders of the egg rolls for pickup tomorrow around 6:30pm? One of the pho with no onions please. Thanks, Jamie",
+        subject: "Catering for our office lunch Friday",
+        text: "Hi! We're having a team lunch for 20 people this Friday and would love to order from you. Could we get 12 Pho Tai, " +
+          "8 Pho Ga and 5 orders of the egg rolls, for pickup at 11:30am? Two of the pho with no onions please, and utensils for 20. " +
+          "Thanks, Jamie (Bayside Design)",
         attachments: [], headers: [],
       };
     const id = await receiveEmail(await getSupabase(), email);
