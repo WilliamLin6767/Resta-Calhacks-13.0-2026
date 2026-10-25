@@ -230,23 +230,35 @@ async function invoices(db: Db): Promise<Built> {
   // Email inbox: customer orders to confirm, and invoices from addresses that aren't a supplier's
   const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, customer_order")
     .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review"]).order("created_at", { ascending: false }).limit(10);
-  type InboxItem = { id: number; from_email: string; from_name: string | null; kind: string; status: string; customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[] } | null };
+  type InboxItem = {
+    id: number; from_email: string; from_name: string | null; kind: string; status: string;
+    customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number } | null;
+  };
   for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
     const o = e.customer_order;
-    if (e.status === "to_confirm" && o) {
+    const href = `/invoices/inbox#email-${e.id}`;
+    if (e.status === "to_confirm" && o?.duplicate_of) {
+      // A repeat of an order already in the list: offer to drop it, never a second one-click sale
+      items.push({
+        key: `email-order:${e.id}`, fingerprint: `${e.status}:repeat`, tab: "invoices", level: "watch",
+        title: `${o.customer_name} sent the same order again (${cash(o.total)})`,
+        detail: "Probably a repeat of the one above. Decline it unless they want two.",
+        actions: [{ kind: "post", label: "Decline the repeat", path: `/api/inbound/${e.id}/decline`, primary: true }, { kind: "link", label: "See the email", href }],
+      });
+    } else if (e.status === "to_confirm" && o) {
       const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
       items.push({
         key: `email-order:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
         title: `Confirm ${o.customer_name}'s emailed order (${cash(o.total)})`,
         detail: `${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}${when ? `, pickup ${when}` : ""}. Confirming adds it as a sale.`,
-        actions: [{ kind: "post", label: "Confirm the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href: "/invoices" }],
+        actions: [{ kind: "post", label: "Confirm the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
       });
     } else if (e.kind === "supplier_invoice") {
       items.push({
         key: `email-invoice:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
         title: `An invoice came from ${e.from_name || e.from_email}, who isn't one of your suppliers`,
         detail: "Read it only if you trust the sender.",
-        actions: [{ kind: "link", label: "Check it", href: "/invoices" }],
+        actions: [{ kind: "link", label: "Check it", href }],
       });
     }
   }
