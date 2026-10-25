@@ -11,6 +11,7 @@ import { sectionOfTool } from "@/lib/approvals/sections";
 import { useToast } from "@/components/ui/Toaster";
 import TypingDots from "@/components/ui/TypingDots";
 import MicButton from "@/components/voice/MicButton";
+import { chatText } from "@/components/ChatText";
 
 // When this browser last showed the loop's messages (localStorage)
 const LOOP_SEEN = "resta-loop-seen";
@@ -243,7 +244,7 @@ export default function ChatPage() {
           // Each bubble rises in when it's added; the ones already on screen stay put
           <div key={message.id} className={`reveal-in ${message.role === "user" ? "flex justify-end" : "flex justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm leading-relaxed ${message.role === "user" ? "bg-brand-600 text-white" : "border border-brand-100 bg-white text-gray-900"}`}>
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="whitespace-pre-wrap">{message.role === "user" ? message.content : chatText(message.content)}</p>
               {/* What the agent changed, one line each, with Undo where it can be undone */}
               {(message.changes?.length ?? 0) > 0 && (
                 <ul className="mt-2 space-y-1 border-t border-gray-200 pt-2">
