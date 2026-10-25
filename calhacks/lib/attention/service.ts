@@ -8,7 +8,8 @@ import { createRateLimiter } from "@/lib/aiLimits";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { SUMMARY_VERSION, summarizeTab, TabSummarySchema, type TabSummary } from "./ai";
 import { buildTab } from "./build";
-import type { Item, Tab, TabFacts } from "./types";
+import { rankFindings } from "./impact";
+import { TABS, type Item, type Tab, type TabFacts } from "./types";
 
 type Db = SupabaseClient;
 
@@ -50,6 +51,20 @@ export async function loadBar(db: Db, tab: Tab): Promise<{ items: Item[]; facts:
   };
 }
 
+// The most valuable findings across every tab (impact.ts rankFindings), minus dismissed ones.
+// Cached for 10 minutes, since it builds every tab; a dismissal clears the cache.
+const TOP_TTL_MS = 10 * 60 * 1000;
+let topCache: { at: number; items: Item[] } | null = null;
+
+export async function loadTop(db: Db, n = 5, opts: { fresh?: boolean } = {}): Promise<Item[]> {
+  if (!opts.fresh && topCache && Date.now() - topCache.at < TOP_TTL_MS) return topCache.items.slice(0, n);
+  const [built, hidden] = await Promise.all([Promise.allSettled(TABS.map((tab) => buildTab(db, tab))), dismissed(db)]);
+  const all = built.flatMap((b) => (b.status === "fulfilled" ? b.value.items : [])).filter((i) => !hidden.has(`${i.key}|${i.fingerprint}`));
+  const ranked = rankFindings(all, 20);
+  topCache = { at: Date.now(), items: ranked };
+  return ranked.slice(0, n);
+}
+
 export async function writeSummary(db: Db, facts: TabFacts, hash: string): Promise<TabSummary> {
   if (!dailyLimit("all").ok) throw new Error("Too many AI summaries today.");
   const summary = await summarizeTab(facts);
@@ -58,6 +73,7 @@ export async function writeSummary(db: Db, facts: TabFacts, hash: string): Promi
 }
 
 export async function dismiss(db: Db, key: string, fingerprint: string) {
+  topCache = null;
   must(
     await db.from("attention_dismissals").upsert(
       { restaurant_id: RESTAURANT_ID, item_key: key.slice(0, 200), fingerprint: fingerprint.slice(0, 500) },

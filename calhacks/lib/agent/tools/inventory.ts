@@ -42,6 +42,8 @@ function changedAll(ctx: AgentCtx, changes: Change[]) {
 export const inventoryTools = [
   defineTool({
     name: "list_inventory",
+    tier: "read",
+    area: "inventory",
     description: "Stock on hand for every ingredient: estimated quantity now, par, status (out, low, ok) and days left. filter: 'low' (out or low only), 'all', or a category name.",
     input: z.object({ filter: z.string().optional() }),
     run: async ({ filter }, ctx) => {
@@ -53,12 +55,16 @@ export const inventoryTools = [
   }),
   defineTool({
     name: "check_ingredient",
+    tier: "read",
+    area: "inventory",
     description: "Stock on hand, par, and the suppliers who sell one ingredient. Pass the food name the owner said.",
     input: z.object({ ingredient: z.string() }),
     run: async ({ ingredient }, ctx) => json(await checkIngredient(ctx.db, ingredient)),
   }),
   defineTool({
     name: "set_stock_count",
+    tier: "record",
+    area: "inventory",
     description:
       "Save what the owner counted (sets stock to that amount). One item per food. Names, units ('2 cases') and odd counts are checked in code: " +
       "if it returns ask, say only that question. Pass confirm: true only when retrying after the owner said yes to a 'Did you mean' question.",
@@ -92,6 +98,8 @@ export const inventoryTools = [
   }),
   defineTool({
     name: "log_waste",
+    tier: "record",
+    area: "inventory",
     description: `Log food thrown out (lowers stock). reason: ${WASTE_REASONS.join(", ")}. If it returns ask, say only that question.`,
     input: z.object({ items: z.array(z.object({ ...amountItem, reason: z.enum(WASTE_REASONS).optional() })).min(1).max(20) }),
     run: async ({ items }, ctx) => {

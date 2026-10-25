@@ -171,6 +171,40 @@ export function signalAfter(route: LiveRoute) {
   if (liveEnabled()) after(() => bump(ROUTE_TOPICS[route]));
 }
 
+// A generic label per action tool for the live mirror: no names, numbers or money.
+const ACTION_LABELS: Record<string, string> = {
+  approve_purchase_order: "Approve an order", send_purchase_order: "Send an order", mark_invoice_paid: "Mark a bill paid",
+  set_menu_price: "Change a menu price", set_delivery_prices: "Change delivery prices", mark_delivery_price_updated: "Record a price update",
+  place_call: "Supplier call", reject_call: "Turn down a call", apply_call_result: "Apply a call result", send_dispute: "Send a dispute",
+  publish_post: "Instagram post", start_promotion: "Promotion", bank_reserve: "Cash reserve", bank_savings: "Move to savings",
+};
+
+export type LiveActionSource = { id: number; restaurant_id: number; tool: string; status: string };
+
+// Mirrors one action's status to Convex and wakes the screens that list actions.
+export async function syncAction(row: LiveActionSource, deps: LiveDeps = defaultDeps, now = Date.now()): Promise<void> {
+  const client = clientOf(deps);
+  if (!client) return;
+  try {
+    await send(deps, client, api.live.upsertAction, {
+      action: { actionId: row.id, restaurantId: row.restaurant_id, status: row.status, label: ACTION_LABELS[row.tool] ?? "Action", updatedAt: now },
+    });
+  } catch (err) {
+    deps.log(`[live] action ${row.id} failed: ${message(err)}`);
+  }
+  await bump(["actions", "attention"], deps);
+}
+
+// For the approval gate: mirror the action after the response is sent (or right away outside a request).
+export function signalAction(row: LiveActionSource) {
+  if (!liveEnabled()) return;
+  try {
+    after(() => syncAction(row));
+  } catch {
+    void syncAction(row); // not inside a request (the loop's tick runs inside one; tests don't)
+  }
+}
+
 const POLLED_ROUTE: LiveRoute = "/api/calls/[id]/status";
 
 // For routes that change supplier calls: sync those calls after the response is sent.

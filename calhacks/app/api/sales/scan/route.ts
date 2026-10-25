@@ -4,10 +4,13 @@ import { readReceipt } from "@/lib/sales/ai";
 import { checkReceipt } from "@/lib/sales/receipt";
 import { loadMenu } from "@/lib/sales/service";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/sales/scan   form field "file": a photo of a customer receipt
 // Returns the receipt as read, with each line matched to a dish, for the owner to check. Nothing is saved.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const file = (await request.formData().catch(() => null))?.get("file");
   if (!(file instanceof File) || file.size === 0) return errorResponse("Add a photo of the receipt.", 400);
   if (file.size > 15 * 1024 * 1024) return errorResponse("That photo is over 15 MB.", 400);

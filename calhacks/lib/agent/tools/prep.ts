@@ -27,6 +27,8 @@ export function dayToDate(day: string, today = todayLocal()): string | null {
 export const prepTools = [
   defineTool({
     name: "get_prep_plan",
+    tier: "read",
+    area: "prep",
     description: "The sales forecast per dish for a day and the ingredients that would run short. day: 'today', 'tomorrow', a weekday name, or YYYY-MM-DD.",
     input: z.object({ day: z.string() }),
     run: async ({ day }, ctx) => {
@@ -47,6 +49,8 @@ export const prepTools = [
   }),
   defineTool({
     name: "adjust_prep_for_day",
+    tier: "read",
+    area: "prep",
     description:
       "Ask the AI how a note about a coming day (weather, an event) changes the forecast per dish. Returns the factors; nothing is saved, " +
       "the same as on the Prep page. day: tomorrow up to a week ahead.",

@@ -22,7 +22,7 @@ const fail = (status: number, error: string, retryAfterSeconds?: number): Refres
 const usdaPerVisitor = createRateLimiter({ limit: 1, windowMs: 3 * 60 * 1000 });
 const usdaWholeApp = createRateLimiter({ limit: 1, windowMs: 3 * 60 * 1000 });
 
-const QUOTE_COLUMNS = "report_id, commodity, class, price_unit, market_location, report_date, price_avg, ingredient_family";
+export const QUOTE_COLUMNS = "report_id, commodity, class, price_unit, market_location, report_date, price_avg, ingredient_family";
 
 // Fetches the cached USDA livestock and dairy reports and stores them. Does not write supplier_prices.
 export async function refreshUsda(db: Db, identity: string): Promise<Refreshed> {

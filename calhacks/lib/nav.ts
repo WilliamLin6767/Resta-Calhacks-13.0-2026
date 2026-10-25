@@ -14,6 +14,7 @@ export const ICONS = {
   chart: "M3 20h18 M5 20V11 M11 20V5 M17 20v-7",
   trend: "M3 17l6-6 4 4 8-8 M15 7h6v6",
   megaphone: "M4 10v4h3l5 4V6L7 10z M16 9a4 4 0 0 1 0 6 M18.5 7a7 7 0 0 1 0 10",
+  check: "M4 4h16v16H4z M8 12l3 3 5-6",
 };
 
 export type Section = {
@@ -29,6 +30,7 @@ export type Section = {
 export const SECTIONS: Section[] = [
   { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-500/20 text-overview-200" },
   { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-500/20 text-chat-200" },
+  { href: "/actions", label: "Actions", icon: "check", theme: "actions", solid: "bg-actions-500", soft: "bg-actions-500/20 text-actions-200" },
   { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-500/20 text-inventory-200" },
   { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-500/20 text-prep-200" },
   { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-500/20 text-invoices-200" },

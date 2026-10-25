@@ -6,6 +6,7 @@ import { saveScannedInvoice } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
 import { ROUTE_TOPICS } from "@/lib/live/routeTopics";
 import { signalAfter, syncCalls } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
@@ -13,6 +14,8 @@ const MAX_BYTES = 15 * 1024 * 1024;
 // Claude reads it; we match each line to an ingredient, check it, save it, and
 // record the new prices (so food cost and margins update). Returns { id }.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) return errorResponse("Attach the invoice as a file named 'file'.", 400);

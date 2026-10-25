@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { countsFields, liveCallFields } from "./schema";
+import { countsFields, liveActionFields, liveCallFields } from "./schema";
 import { TOPICS, topicValidator, type Topic } from "./topics";
 
 const callValidator = v.object(liveCallFields);
@@ -81,6 +81,20 @@ export const setCounts = mutation({
   handler: async (ctx, args) => {
     checkSecret(args.secret);
     return await writeCounts(ctx, args.restaurantId, args.counts); // true if it changed
+  },
+});
+
+export const upsertAction = mutation({
+  args: { secret: v.string(), action: v.object(liveActionFields) },
+  handler: async (ctx, args) => {
+    checkSecret(args.secret);
+    const existing = await ctx.db
+      .query("liveActions")
+      .withIndex("by_restaurant_and_actionId", (q) => q.eq("restaurantId", args.action.restaurantId).eq("actionId", args.action.actionId))
+      .unique();
+    if (!existing) await ctx.db.insert("liveActions", args.action);
+    else if (existing.status !== args.action.status) await ctx.db.replace("liveActions", existing._id, args.action);
+    return null;
   },
 });
 
@@ -188,6 +202,22 @@ export const counts = query({
       .unique();
     if (!doc) return null;
     return { total: doc.total, sections: doc.sections, byContext: doc.byContext, bySupplier: doc.bySupplier, updatedAt: doc.updatedAt };
+  },
+});
+
+// The status of these action cards ({ "12": "running" }). An action not mirrored yet is left out.
+export const actionStatuses = query({
+  args: { restaurantId: v.number(), actionIds: v.array(v.number()) },
+  handler: async (ctx, args) => {
+    const out: Record<string, Doc<"liveActions">["status"]> = {};
+    for (const actionId of new Set(args.actionIds.slice(0, 50))) {
+      const doc = await ctx.db
+        .query("liveActions")
+        .withIndex("by_restaurant_and_actionId", (q) => q.eq("restaurantId", args.restaurantId).eq("actionId", actionId))
+        .unique();
+      if (doc) out[String(actionId)] = doc.status;
+    }
+    return out;
   },
 });
 

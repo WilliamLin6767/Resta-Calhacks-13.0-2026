@@ -4,6 +4,7 @@ import { createOwnerRequest } from "@/lib/calls/service";
 import { CONTEXT_TYPES } from "@/lib/calls/types";
 import { getSupabase } from "@/lib/supabase";
 import { syncCallsAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 const BodySchema = z.object({
   supplier_id: z.number().int().positive(),
@@ -15,6 +16,8 @@ const BodySchema = z.object({
 // POST /api/calls/request   { supplier_id, text: "ask if they can deliver extra brisket Saturday" }
 // Claude turns the owner's words into a brief; the request still waits for approval. Returns { id, title }.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const parsed = BodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return errorResponse("Pick a supplier and say what to ask (3 to 1000 characters).", 400);
   const limited = aiRateLimit(request);

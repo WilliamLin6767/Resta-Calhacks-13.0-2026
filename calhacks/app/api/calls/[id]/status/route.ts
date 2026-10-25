@@ -7,11 +7,14 @@ import { getSupabase } from "@/lib/supabase";
 import { createWajo } from "@/lib/wajo/client";
 import { ROUTE_TOPICS } from "@/lib/live/routeTopics";
 import { syncCalls, syncCallsAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 // GET /api/calls/12/status   the request, brought up to date. While the call runs this asks
 // Wajo how it's going (at most once every 5 seconds per request), answers the caller's
 // questions within the approved brief, and reads the result when the call is done.
-export async function GET(_request: Request, ctx: RouteContext<"/api/calls/[id]/status">) {
+export async function GET(request: Request, ctx: RouteContext<"/api/calls/[id]/status">) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const id = parseId((await ctx.params).id);
   if (!id) return errorResponse("Unknown call request.", 404);
   try {

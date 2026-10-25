@@ -22,6 +22,20 @@ export function createRateLimiter({ limit, windowMs }: { limit: number; windowMs
   };
 }
 
+// For routes that move money, change prices or reach outside the restaurant: a 429 response
+// when this visitor is over the limit, otherwise null.
+//
+//   const tooMany = limitResponse(perVisitor, request);
+//   if (tooMany) return tooMany;
+export function limitResponse(check: (key: string) => RateLimitResult, request: Request): Response | null {
+  const result = check(clientIp(request));
+  if (result.ok) return null;
+  return Response.json(
+    { error: `Too many requests. Try again in ${result.retryAfterSeconds} seconds.` },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } },
+  );
+}
+
 // The visitor's IP address, as reported by the hosting proxy.
 export function clientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");

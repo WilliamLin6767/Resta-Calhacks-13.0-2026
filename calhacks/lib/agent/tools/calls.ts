@@ -18,6 +18,8 @@ const limitMessage = (retryAfterSeconds: number) => `Error: Too many AI requests
 export const callTools = [
   defineTool({
     name: "list_calls",
+    tier: "read",
+    area: "calls",
     description: "Supplier call requests, newest first. status: 'pending' (waiting for the owner's OK), 'active' (on the phone), 'finished', or 'all'.",
     input: z.object({ status: z.enum(["pending", "active", "finished", "all"]).optional() }),
     run: async ({ status }, ctx) => {
@@ -28,6 +30,8 @@ export const callTools = [
   }),
   defineTool({
     name: "get_call",
+    tier: "read",
+    area: "calls",
     description: "One supplier call: what it's for, what the caller may agree to, its progress or result. call_id comes from list_calls.",
     input: z.object({ call_id: z.number().int().positive() }),
     run: async ({ call_id }, ctx) => {
@@ -44,6 +48,8 @@ export const callTools = [
   }),
   defineTool({
     name: "propose_call",
+    tier: "draft",
+    area: "calls",
     description:
       "Propose a phone call to one of the restaurant's suppliers, when the owner asks for one (for example 'call Valley Butcher and ask if they can deliver Saturday'). " +
       "This only adds a request that the owner must review and approve on the Suppliers page; it does not call anyone. Tell the owner that. At most one per answer.",
@@ -69,6 +75,8 @@ export const callTools = [
   }),
   defineTool({
     name: "scan_for_calls",
+    tier: "draft",
+    area: "calls",
     description: "Look for supplier calls worth making (billing errors to dispute, low stock to order by phone, price jumps to ask about). New ones wait for the owner's OK; nothing is dialed.",
     input: z.object({}),
     run: async (_input, ctx) => {

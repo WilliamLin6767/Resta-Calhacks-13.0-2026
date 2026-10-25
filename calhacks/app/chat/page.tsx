@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import ActionCard from "@/components/agent/ActionCard";
+import { LIVE_RESTAURANT_ID, useLiveOn, useLiveQuery } from "@/components/live/useLiveQuery";
+import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/PageHeader";
@@ -8,6 +11,9 @@ import EmptyState from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toaster";
 import TypingDots from "@/components/ui/TypingDots";
 import MicButton from "@/components/voice/MicButton";
+
+// When this browser last showed the loop's messages (localStorage)
+const LOOP_SEEN = "resta-loop-seen";
 
 type Order = {
   orderId: number;
@@ -19,6 +25,7 @@ type Order = {
 // What the agent changed (lib/agent/types.ts), and pages it linked to.
 type Change = { kind: string; label: string; before: string | number | null; after: string | number | null; undo?: Record<string, unknown> };
 type PageLink = { href: string; label: string; reason: string };
+type Proposal = { action_id: number; tool: string; title: string; summary: string };
 
 type Message = {
   id: number;
@@ -28,6 +35,7 @@ type Message = {
   approved?: boolean;
   changes?: Change[];
   links?: PageLink[];
+  proposals?: Proposal[]; // actions waiting for the owner tap (cards)
   undone?: number[]; // indexes of changes undone here
 };
 
@@ -97,6 +105,10 @@ export default function ChatPage() {
     const text = draft.trim();
     if (!text || busy) return;
     setDraft("");
+    await ask(text);
+  }
+
+  async function ask(text: string) {
     setError("");
     const sent = [...historyOf(messages).slice(-11), { role: "user" as const, content: text }];
     add({ role: "user", content: text });
@@ -109,7 +121,7 @@ export default function ChatPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
-      add({ role: "assistant", content: data.answer, order: data.order, changes: data.changes, links: data.links });
+      add({ role: "assistant", content: data.answer, order: data.order, changes: data.changes, links: data.links, proposals: data.proposals });
       if (data.changes?.length) router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -117,6 +129,51 @@ export default function ChatPage() {
       setBusy(false);
     }
   }
+
+  // "Ask Resta" on the Overview opens /chat?ask=...: send that question once, then tidy the URL.
+  const askedFromLink = useRef(false);
+  useEffect(() => {
+    if (askedFromLink.current) return;
+    askedFromLink.current = true;
+    const question = new URLSearchParams(window.location.search).get("ask")?.trim().slice(0, 500);
+    if (!question) return;
+    window.history.replaceState(null, "", "/chat");
+    void Promise.resolve().then(() => ask(question));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on arrival
+  }, []);
+
+  // What the loop found on its own: when a case reaches "proposed" or "closed", Resta posts one
+  // message here ("I noticed ...; I propose ..." with the cards, or "Results for ..."). Checked on
+  // load, and again whenever the actions topic changes (Convex); remembered per browser.
+  const live = useLiveOn();
+  const versions = useLiveQuery(api.live.topicVersions, live ? { restaurantId: LIVE_RESTAURANT_ID, topics: ["actions"] } : "skip");
+  const actionsVersion = versions?.actions ?? 0;
+  useEffect(() => {
+    let stop = false;
+    let since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    try {
+      since = localStorage.getItem(LOOP_SEEN) ?? since;
+    } catch {}
+    fetch(`/api/loop/updates?since=${encodeURIComponent(since)}`)
+      .then((res) => res.json())
+      .then((body: { updates?: { case_id: number; text: string; is_demo: boolean; action_ids: number[] }[]; now?: string }) => {
+        if (stop || !body.updates) return;
+        for (const u of body.updates) {
+          add({
+            role: "assistant",
+            content: `${u.text}${u.is_demo ? " (Demo data)" : ""}`,
+            proposals: u.action_ids.map((id) => ({ action_id: id, tool: "", title: "Loading...", summary: "" })),
+          });
+        }
+        try {
+          if (body.now) localStorage.setItem(LOOP_SEEN, body.now);
+        } catch {}
+      })
+      .catch(() => {});
+    return () => {
+      stop = true;
+    };
+  }, [actionsVersion]);
 
   async function sendClip(blob: Blob) {
     if (busy) return;
@@ -143,7 +200,7 @@ export default function ChatPage() {
         setSpoken(true);
       }
       add({ role: "user", content: data.transcript });
-      add({ role: "assistant", content: data.answer, order: data.order, changes: data.changes, links: data.links });
+      add({ role: "assistant", content: data.answer, order: data.order, changes: data.changes, links: data.links, proposals: data.proposals });
       if (data.changes?.length) router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -235,6 +292,14 @@ export default function ChatPage() {
                     </Link>
                   ))}
                 </p>
+              )}
+              {/* Actions the agent proposed: they run only when the owner taps Approve */}
+              {(message.proposals?.length ?? 0) > 0 && (
+                <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
+                  {message.proposals!.map((p) => (
+                    <ActionCard key={p.action_id} action={{ id: p.action_id, title: p.title, summary: p.summary }} />
+                  ))}
+                </div>
               )}
               {message.order && (
                 <div className="mt-3 border-t border-gray-200 pt-3">

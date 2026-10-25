@@ -1,75 +1,35 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { z } from "zod";
 import { loadCompare } from "@/app/analytics/compareData";
 import { loadAnalytics } from "@/app/analytics/data";
 import {
   ASSISTANT_SYSTEM_PROMPT,
   AssistantRequestSchema,
   chartContext,
-  chartFromResult,
   checkQuestion,
   explainChartMessage,
   explainCompareMessage,
   screenContextText,
-  type AssistantChart,
   type AssistantResponse,
 } from "@/lib/assistant";
-import {
-  BREAKDOWNS,
-  BREAKDOWN_IDS,
-  CompareQuerySchema,
-  METRICS,
-  METRIC_IDS,
-  invalidPairReason,
-  type BreakdownId,
-  type CompareResult,
-  type MetricId,
-} from "@/lib/compare";
-import { clientIp, createRateLimiter } from "@/lib/rateLimit";
-import { getSupabase } from "@/lib/supabase";
-import { buildTools, createCtx } from "@/lib/agent/registry";
+import { CompareQuerySchema, invalidPairReason, type CompareResult } from "@/lib/compare";
+import { requireOwner } from "@/lib/auth";
+import { agentLimit } from "@/lib/agent/http";
+import { agentErrorResponse, runAgent } from "@/lib/agent/run";
 import { signalAfter } from "@/lib/live/signal";
-
-// Change this one line to try a different Claude model.
-const AI_MODEL = "claude-sonnet-5-5";
-const MAX_CHARTS = 2;
-
-// Rate limits: 20 questions per visitor per 10 minutes, and 300 per day for the whole app.
-const perVisitor = createRateLimiter({ limit: 20, windowMs: 10 * 60 * 1000 });
-const wholeApp = createRateLimiter({ limit: 300, windowMs: 24 * 60 * 60 * 1000 });
-
-// Server only, so ANTHROPIC_API_KEY never reaches the browser.
-const anthropic = new Anthropic();
+import { clientIp } from "@/lib/rateLimit";
 
 function errorResponse(message: string, status: number, headers?: HeadersInit) {
   return Response.json({ error: message }, { status, headers });
 }
 
-// The metric and breakdown lists, written into the tool descriptions so the model knows its options.
-const METRIC_LIST = METRIC_IDS.map((id) => `- ${id}: ${METRICS[id].label}. ${METRICS[id].description}`).join("\n");
-const BREAKDOWN_LIST = BREAKDOWN_IDS.map((id) => `- ${id}: ${BREAKDOWNS[id].label}`).join("\n");
-// The panel can change things too (the shared agent tools), with the same rules as the chat.
-const CHANGE_RULES =
-  "After any change, say what changed in one short sentence, with the old and new amounts. If a tool returns ask, say only that question. " +
-  "Never say something changed unless a tool returned ok: true for it. For anything that needs a photo or a file, use open_page.";
-const PAIR_RULE = "net_revenue, orders and avg_ticket are per order, so they can't be split by dish or category.";
-
-// POST /api/assistant  body: { days, messages, explain?, page? }
+// POST /api/assistant  body: { days, messages, explain?, page?, view? }
+// The analytics panel: a thin wrapper around the one agent (lib/agent/run.ts) on the "panel"
+// surface, which adds show_chart. This route works out the period and what's on screen.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   // 1. Rate limit before doing any work.
-  const visitor = perVisitor(clientIp(request));
-  if (!visitor.ok) {
-    return errorResponse("You've asked a lot of questions in the last 10 minutes. Try again in a few minutes.", 429, {
-      "Retry-After": String(visitor.retryAfterSeconds),
-    });
-  }
-  const app = wholeApp("all");
-  if (!app.ok) {
-    return errorResponse("The assistant has reached today's limit. Try again tomorrow.", 429, {
-      "Retry-After": String(app.retryAfterSeconds),
-    });
-  }
+  const limited = agentLimit(request, "panel");
+  if (limited) return limited;
 
   // 2. Validate the request.
   const parsed = AssistantRequestSchema.safeParse(await request.json().catch(() => null));
@@ -103,62 +63,12 @@ export async function POST(request: Request) {
     messages.push({ role: "user", content });
   }
 
-  // 5. Tools. Every number and chart comes from the database through these: the app's shared
-  //    agent tools (lib/agent/registry.ts, including get_dashboard_summary) plus the chart tools.
-  const charts: AssistantChart[] = [];
-  const ctx = createCtx({ db: await getSupabase(), kind: "panel", identity: clientIp(request), days, digest });
-
-  // Runs analytics_compare for the request's period. Returns an "Error: ..." string for the model on failure.
-  async function runCompare(metric: MetricId, breakdown: BreakdownId): Promise<CompareResult | string> {
-    const query = CompareQuerySchema.safeParse({ metric, breakdown, days });
-    if (!query.success) {
-      return `Error: ${invalidPairReason(metric, breakdown) ?? "Invalid metric or breakdown."} Pick another breakdown.`;
-    }
-    const compare = await loadCompare(query.data);
-    return "error" in compare ? `Error: ${compare.error}` : compare.result;
-  }
-
-  const compareInput = z.object({ metric: z.enum(METRIC_IDS), breakdown: z.enum(BREAKDOWN_IDS) });
-
-  const tools = [
-    ...buildTools(ctx),
-    betaZodTool({
-      name: "compare_data",
-      description:
-        `One metric split by one breakdown for the period, with the previous period for comparison. ${PAIR_RULE}\n` +
-        `Metrics:\n${METRIC_LIST}\nBreakdowns:\n${BREAKDOWN_LIST}`,
-      inputSchema: compareInput,
-      run: async ({ metric, breakdown }) => {
-        const result = await runCompare(metric, breakdown);
-        return typeof result === "string" ? result : JSON.stringify(result);
-      },
-    }),
-    betaZodTool({
-      name: "show_chart",
-      description: `Show the owner a bar chart of one metric by one breakdown (same options as compare_data). At most ${MAX_CHARTS} charts per answer. ${PAIR_RULE}`,
-      inputSchema: compareInput,
-      run: async ({ metric, breakdown }) => {
-        const result = await runCompare(metric, breakdown);
-        if (typeof result === "string") return result;
-        const shown = charts.length < MAX_CHARTS;
-        if (shown) charts.push(chartFromResult(result));
-        return JSON.stringify({
-          shown,
-          note: shown ? "The owner can see this chart." : `Not shown: already showing ${MAX_CHARTS} charts.`,
-          rows: result.rows,
-        });
-      },
-    }),
-  ];
-
+  // 5. What's on screen. The browser sent only chart ids; the numbers are looked up here.
+  //    If the focused Compare chart fails to load, its title is still used.
   const period = digest.period;
   const contextLine =
     `Period: ${period.start} to ${period.end} (last ${days} days), compared with ${period.previous_start} to ${period.previous_end}. ` +
-    `Restaurant: ${digest.restaurant}.` +
-    (req.page ? ` The owner is looking at: ${req.page}.` : "");
-
-  // What's on screen. The browser sent only chart ids; the numbers are looked up here.
-  // If the focused Compare chart fails to load, its title is still used.
+    `Restaurant: ${digest.restaurant}.`;
   let focusedCompare: CompareResult | undefined;
   const focus = req.view?.focus;
   if (focus && "compare" in focus) {
@@ -170,51 +80,28 @@ export async function POST(request: Request) {
   }
   const screenText = screenContextText(req.view, digest, focusedCompare);
 
-  // 6. Ask Claude. The tool runner calls the tools and loops until Claude answers.
-  let final;
+  // 6. Ask the agent. Every number and chart comes from the database through its tools.
   try {
-    final = await anthropic.beta.messages.toolRunner({
-      model: AI_MODEL,
-      max_tokens: 4000,
-      max_iterations: 6,
-      thread: false, // send the full history each turn
-      // If a safety check declines the request, the API retries it on a fallback model.
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      output_config: { effort: "low" },
-      system: [ASSISTANT_SYSTEM_PROMPT, CHANGE_RULES, contextLine, screenText].filter(Boolean).join("\n\n"),
+    const result = await runAgent({
+      surface: "panel",
       messages,
-      tools,
+      identity: clientIp(request),
+      page: req.page,
+      instructions: ASSISTANT_SYSTEM_PROMPT,
+      context: [contextLine, screenText].filter(Boolean).join("\n\n"),
+      days,
+      digest,
     });
+    if (result.changes.length || result.order) signalAfter("/api/assistant");
+    const body: AssistantResponse & Pick<typeof result, "changes" | "links" | "proposals"> = {
+      answer: result.answer,
+      charts: result.charts,
+      changes: result.changes,
+      links: result.links,
+      proposals: result.proposals,
+    };
+    return Response.json(body);
   } catch (err) {
-    // 7. Most specific errors first, same as the report route.
-    if (err instanceof Anthropic.AuthenticationError) {
-      return errorResponse("The Anthropic API key is missing or invalid. Check ANTHROPIC_API_KEY in .env.local.", 500);
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return errorResponse("Too many AI requests right now. Wait a minute and try again.", 429);
-    }
-    if (err instanceof Anthropic.APIConnectionError) {
-      return errorResponse("Could not reach the AI service. Check your internet connection.", 502);
-    }
-    if (err instanceof Anthropic.APIError) {
-      return errorResponse(`AI request failed (${err.status}): ${err.message}`, 502);
-    }
-    throw err;
+    return agentErrorResponse(err);
   }
-
-  if (final.stop_reason === "refusal") {
-    return errorResponse("The assistant declined to answer that.", 422);
-  }
-  const answer = final.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n\n")
-    .trim();
-  if (!answer) return errorResponse("The assistant didn't come up with an answer. Try asking another way.", 502);
-
-  // 8. The answer plus any charts it asked to show.
-  if (ctx.changes.length) signalAfter("/api/assistant");
-  const body: AssistantResponse = { answer, charts };
-  return Response.json(body);
 }

@@ -1,6 +1,7 @@
 import { reportLimit, runReport, type ReportResult } from "@/lib/analyticsReport";
 import { clientIp } from "@/lib/rateLimit";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 function respond(result: ReportResult) {
   if (result.ok) return Response.json(result.body);
@@ -11,6 +12,8 @@ function respond(result: ReportResult) {
 // POST /api/analytics/report  body: { days: 7 | 30 | 60 }
 // The AI report for the period (lib/analyticsReport.ts): reused if one was made in the last few minutes.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const limited = reportLimit(clientIp(request));
   if (limited) return respond(limited);
   const body = await request.json().catch(() => ({}));

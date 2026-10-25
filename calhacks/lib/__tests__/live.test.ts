@@ -195,6 +195,11 @@ describe("ROUTE_TOPICS", () => {
         used.add(key);
       }
     }
+    // Since Phase 3, the approval gate's executors run the writes those routes used to make, and
+    // signal under the route's key on its behalf (lib/agent/executors.ts).
+    // The loop signals under /api/loop/tick from lib/loop/run.ts (the tick and Run now share it).
+    const executors = ["agent/executors.ts", "loop/run.ts"].map((f) => readFileSync(join(app, "..", "lib", ...f.split("/")), "utf8")).join("\n");
+    for (const [, key] of executors.matchAll(/(?:signalAfter|syncCallsAfter)\([^)]*?"(\/api\/[^"]+)"/g)) used.add(key);
     expect([...used].sort()).toEqual(Object.keys(ROUTE_TOPICS).sort());
   });
 });

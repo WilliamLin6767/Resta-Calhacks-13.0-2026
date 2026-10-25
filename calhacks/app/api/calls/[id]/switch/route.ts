@@ -3,11 +3,14 @@ import { supabaseStore } from "@/lib/calls/service";
 import { checkSwitch } from "@/lib/calls/switching";
 import { getSupabase } from "@/lib/supabase";
 import { syncCallsAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/calls/12/switch   check again whether to switch suppliers after this call's supply
 // problem (e.g. after adding APIFY_TOKEN so ThomasNet can be searched). Only when the last check
 // didn't add a call to a new supplier. May add a PENDING call; never dials. Rate limited (Claude).
 export async function POST(request: Request, ctx: RouteContext<"/api/calls/[id]/switch">) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const id = parseId((await ctx.params).id);
   if (!id) return errorResponse("Unknown call request.", 404);
   const limited = aiRateLimit(request);

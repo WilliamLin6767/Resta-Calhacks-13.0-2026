@@ -1,3 +1,4 @@
+import { TARGET_FOOD_COST } from "@/lib/pricing/pricing";
 import { isOnMenu } from "@/lib/trends/score";
 
 export type MenuPerformance = {
@@ -5,7 +6,27 @@ export type MenuPerformance = {
   units: number;
   units_change_pct: number | null;
   class: "star" | "plowhorse" | "puzzle" | "dog" | null;
+  // Optional, when known: margin in dollars a plate, food cost %, days since it was last posted,
+  // and whether stock covers a promotion week (the same check as campaign_options).
+  margin_usd?: number | null;
+  food_cost_pct?: number | null;
+  posted_days_ago?: number | null;
+  stock_covers?: boolean | null;
 };
+
+export const REPOST_AFTER_DAYS = 14;
+
+// Worth a push: food cost on target (so the margin holds), not posted in the last two weeks, and
+// enough stock for the extra orders a promotion brings. Unknown values don't rule a dish out.
+export function eligible(dish: MenuPerformance): boolean {
+  if (dish.food_cost_pct != null && dish.food_cost_pct > TARGET_FOOD_COST * 100) return false;
+  if (dish.posted_days_ago != null && dish.posted_days_ago < REPOST_AFTER_DAYS) return false;
+  if (dish.stock_covers === false) return false;
+  return true;
+}
+
+// Higher margin in dollars first; dishes without a known margin keep their order.
+const byMargin = (a: MenuPerformance, b: MenuPerformance) => (b.margin_usd ?? 0) - (a.margin_usd ?? 0);
 
 export type Slot = {
   kind: "boost" | "poll";
@@ -35,12 +56,14 @@ function whyBoost(dish: MenuPerformance): string {
   return "It is one of the quietest dishes on the menu.";
 }
 
-// Puzzles first: profitable dishes Analytics says to promote. Then dishes whose orders fell, then the quietest.
-export function boostCandidates(menu: MenuPerformance[]): MenuPerformance[] {
-  const puzzles = menu.filter((dish) => dish.class === "puzzle").sort((a, b) => a.units - b.units);
+// Puzzles first: profitable dishes Analytics says to promote (highest margin in dollars first). Then
+// dishes whose orders fell, then the quietest. Only dishes that pass eligible().
+export function boostCandidates(all: MenuPerformance[]): MenuPerformance[] {
+  const menu = all.filter(eligible);
+  const puzzles = menu.filter((dish) => dish.class === "puzzle").sort((a, b) => byMargin(a, b) || a.units - b.units);
   const falling = menu
     .filter((dish) => dish.class !== "star" && dish.units_change_pct !== null && dish.units_change_pct <= -10)
-    .sort((a, b) => (a.units_change_pct ?? 0) - (b.units_change_pct ?? 0));
+    .sort((a, b) => (a.units_change_pct ?? 0) - (b.units_change_pct ?? 0) || byMargin(a, b));
   const dogs = menu.filter((dish) => dish.class === "dog").sort((a, b) => a.units - b.units);
   const quiet = [...menu].sort((a, b) => a.units - b.units);
   const order = unique([...puzzles, ...falling, ...dogs, ...quiet].map((dish) => dish.name));

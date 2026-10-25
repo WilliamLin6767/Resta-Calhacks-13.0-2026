@@ -40,7 +40,31 @@ export const countsFields = {
   bySupplier: v.record(v.string(), v.number()),
 };
 
+// The same statuses as ACTION_STATUSES in lib/agent/actions.ts.
+export const actionStatusValidator = v.union(
+  v.literal("proposed"),
+  v.literal("approved"),
+  v.literal("running"),
+  v.literal("done"),
+  v.literal("failed"),
+  v.literal("rejected"),
+  v.literal("undone"),
+  v.literal("expired"),
+);
+
+// An action card's status while it changes. actionId is the Supabase id. The label is generic
+// ("Supplier call"), never the title, args or evidence: no names, numbers or money here.
+export const liveActionFields = {
+  actionId: v.number(),
+  restaurantId: v.number(),
+  status: actionStatusValidator,
+  label: v.string(),
+  updatedAt: v.number(), // ms
+};
+
 export default defineSchema({
+  liveActions: defineTable(liveActionFields).index("by_restaurant_and_actionId", ["restaurantId", "actionId"]),
+
   liveCalls: defineTable(liveCallFields)
     .index("by_callId", ["callId"])
     .index("by_restaurant_status", ["restaurantId", "status"])

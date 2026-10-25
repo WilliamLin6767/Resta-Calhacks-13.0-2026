@@ -1,6 +1,7 @@
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { isOnMenu } from "@/lib/trends/score";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 const perVisitor = createRateLimiter({ limit: 10, windowMs: 60 * 1000 });
 
@@ -18,6 +19,8 @@ function typicalPrice(prices: number[]): number {
 // POST /api/market/trends/approve
 // Puts one recommended dish on the menu. The owner can change the price later.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   let body: { dish_name?: unknown };
   try {
     body = await request.json();
