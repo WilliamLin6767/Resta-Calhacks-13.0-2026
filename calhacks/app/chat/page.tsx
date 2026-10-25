@@ -311,7 +311,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-gray-200 bg-white md:sticky md:bottom-6 md:rounded-2xl md:border md:border-brand-100 md:shadow-lg">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:sticky md:bottom-6 md:pb-0 md:rounded-2xl md:border md:border-brand-100 md:shadow-lg">
         {error && <p className="px-4 pt-2 text-sm text-red-600">{error}</p>}
         <audio
           ref={player}

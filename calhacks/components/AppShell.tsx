@@ -10,18 +10,7 @@ import NavIcon from "@/components/NavIcon";
 import Sidebar from "@/components/Sidebar";
 import { PROFILE } from "@/lib/nav";
 
-const phoneLinks = [
-  { href: "/", label: "Overview" },
-  { href: "/chat", label: "Chat" },
-  { href: "/invoices", label: "Invoices" },
-  { href: "/suppliers", label: "Suppliers" },
-];
-
-function isActive(pathname: string, href: string) {
-  return pathname === href || (href !== "/" && pathname.startsWith(href + "/"));
-}
-
-// Phone: top bar, a drawer menu, and a bottom bar.
+// Phone: top bar and a drawer menu (every page is in the menu).
 // Desktop: the section list on the left, which can be collapsed to its icons. The logo at its top opens Overview.
 export default function AppShell({ restaurant, children }: { restaurant: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
@@ -102,23 +91,6 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
 
       <SectionMain>{children}</SectionMain>
 
-      <nav aria-label="Owner actions" className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
-        <ul className="grid grid-cols-4">
-          {phoneLinks.map((link) => {
-            const on = isActive(pathname, link.href);
-            return (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  className={`flex min-h-14 items-center justify-center px-2 text-center text-sm ${on ? "font-semibold text-gray-900" : "text-gray-500"}`}
-                >
-                  {link.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
     </div>
   );
 }
