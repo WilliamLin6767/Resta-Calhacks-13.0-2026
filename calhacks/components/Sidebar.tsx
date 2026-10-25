@@ -2,10 +2,79 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useId, useSyncExternalStore } from "react";
 import NavIcon from "@/components/NavIcon";
 import { useCallCounts } from "@/components/useCallCounts";
-import { PROFILE, SECTIONS, type Section } from "@/lib/nav";
+import { NAV, PROFILE, type Section } from "@/lib/nav";
+
+// Collapsed or not lives on <html data-nav> (styled in globals.css, set before the first paint by
+// app/layout.tsx), and is remembered on this browser.
+export const NAV_KEY = "resta-nav";
+const NAV_EVENT = "resta-nav-change";
+
+function isCollapsed() {
+  return document.documentElement.dataset.nav === "collapsed";
+}
+
+function setCollapsed(collapsed: boolean) {
+  if (collapsed) document.documentElement.dataset.nav = "collapsed";
+  else delete document.documentElement.dataset.nav;
+  try {
+    localStorage.setItem(NAV_KEY, collapsed ? "collapsed" : "open");
+  } catch {
+    // Storage blocked: it still collapses, just isn't remembered.
+  }
+  window.dispatchEvent(new Event(NAV_EVENT));
+}
+
+function subscribe(onChange: () => void) {
+  window.addEventListener(NAV_EVENT, onChange);
+  return () => window.removeEventListener(NAV_EVENT, onChange);
+}
+
+function useCollapsed() {
+  return useSyncExternalStore(subscribe, isCollapsed, () => false);
+}
+
+// Only after the first paint may the menu animate, so a remembered collapse doesn't slide on load.
+function useNavReady() {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => document.documentElement.classList.add("nav-ready"));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+}
+
+// "Collapse menu" / "Keep menu open", under the logo at the top of the desktop menu. After
+// collapsing, the menu holds shut until the pointer leaves (data-hold on the .rail), or the hover
+// would reopen it at once.
+function CollapseButton() {
+  const collapsed = useCollapsed();
+  useNavReady();
+  return (
+    <button
+      type="button"
+      aria-pressed={collapsed}
+      title={collapsed ? "Keep menu open" : "Collapse menu"}
+      onClick={(e) => {
+        const next = !isCollapsed();
+        setCollapsed(next);
+        const rail = e.currentTarget.closest<HTMLElement>(".rail");
+        if (next && rail) {
+          rail.dataset.hold = "";
+          rail.addEventListener("pointerleave", () => delete rail.dataset.hold, { once: true });
+        }
+      }}
+      className="ml-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+    >
+      <svg className="rail-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M11 17l-5-5 5-5" />
+        <path d="M18 17l-5-5 5-5" />
+      </svg>
+      <span className="rail-label-close sr-only">Collapse menu</span>
+      <span className="rail-label-open sr-only">Keep menu open</span>
+    </button>
+  );
+}
 
 // Collapsed or not lives on <html data-nav> (styled in globals.css, set before the first paint by
 // app/layout.tsx), and is remembered on this browser.
@@ -93,6 +162,7 @@ function PendingBar({ color }: { color: string }) {
 export default function Sidebar({ restaurant, collapsible = false }: { restaurant: React.ReactNode; collapsible?: boolean }) {
   const pathname = usePathname();
   const callCounts = useCallCounts();
+  const navId = useId();
 
   const item = (link: Section) => {
     const active = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href + "/"));
@@ -143,11 +213,25 @@ export default function Sidebar({ restaurant, collapsible = false }: { restauran
         {collapsible && <CollapseButton />}
       </div>
       <p className="rail-fade mb-3 truncate px-1 text-sm whitespace-nowrap text-gray-500">{restaurant}</p>
-      <ul className="min-h-0 flex-1 space-y-0.5 overflow-x-hidden overflow-y-auto">
-        {SECTIONS.map((link) => (
-          <li key={link.href}>{item(link)}</li>
-        ))}
-      </ul>
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        {NAV.map((group) => {
+          const headingId = group.label ? `${navId}-${group.label.toLowerCase().replace(/\s+/g, "-")}` : undefined;
+          return (
+            <div key={group.label ?? "top"} className={group.label ? "rail-group mt-4" : undefined}>
+              {group.label && (
+                <p id={headingId} className="rail-heading mb-1 px-1.5 text-[11px] font-semibold tracking-wide whitespace-nowrap text-gray-400 uppercase">
+                  {group.label}
+                </p>
+              )}
+              <ul aria-labelledby={headingId} className="space-y-0.5">
+                {group.sections.map((link) => (
+                  <li key={link.href}>{item(link)}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
       <div className="mt-3 border-t border-gray-200 pt-3">
         {item(PROFILE)}
       </div>
