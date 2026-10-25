@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { HealthBadge } from "@/components/analytics/AiSummary";
 import ErrorMessage from "@/components/ErrorMessage";
+import { NessieBadge } from "@/components/NessieBrand";
 import AiThinking from "@/components/ui/AiThinking";
 import Fold from "@/components/ui/Fold";
 import LiveValue from "@/components/ui/LiveValue";
@@ -77,6 +78,7 @@ function Savings({ money }: { money: Money }) {
   return (
     <div className="rounded-xl border border-gray-100 p-4">
       <h3 className="font-semibold">Move spare cash to savings</h3>
+      <p className="mt-0.5 text-xs text-gray-500">The move is a real transfer in the Capital One Nessie API, between two simulated accounts.</p>
       {!ready && <p className="mt-1 text-sm text-gray-600">Run supabase/14_cash.sql in Supabase to turn this on.</p>}
       {ready && move.kind === "now" && (
         <>
@@ -147,10 +149,11 @@ async function CashPlanBody() {
   const big = f.days.filter((d) => d.events.length);
   return (
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Cash plan, next 14 days</h2>
-        <p className="text-xs text-gray-500">Supplies account: delivery payouts in, supplier bills out · simulated · an estimate from sample data</p>
+        <NessieBadge label="Balance from Capital One Nessie" />
       </div>
+      <p className="mt-1 text-xs text-gray-500">Supplies account: delivery payouts in, supplier bills out · simulated · an estimate from sample data</p>
       <div className="mt-3 border-b border-gray-100 pb-4"><Plan money={money} /></div>
 
       {f.first_below && (

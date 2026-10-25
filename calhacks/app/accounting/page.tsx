@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import AttentionBar from "@/components/attention/AttentionBar";
+import { NessieBadge, NessieBanner } from "@/components/NessieBrand";
 import PageHeader from "@/components/PageHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
@@ -60,10 +61,13 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
   if (!bank.connected) {
     return (
       <section className="mb-8 rounded-2xl border border-dashed border-brand-100 bg-white p-4">
-        <h2 className="font-semibold">Bank check</h2>
-        <p className="mb-3 text-sm text-gray-600">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Bank check</h2>
+          <NessieBadge />
+        </div>
+        <p className="mb-3 mt-1 text-sm text-gray-600">
           Connect a bank account to check that delivery payouts actually arrived, and to see the cash left after upcoming bills. For the demo this
-          is a simulated account from Capital One&apos;s Nessie API, with no real money.
+          is a simulated account from Capital One&apos;s Nessie banking API, with no real money.
         </p>
         <SetupBank />
       </section>
@@ -72,10 +76,11 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
   const { cash, account, problems, restaurant } = bank;
   return (
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Bank check</h2>
-        <p className="text-xs text-gray-500">Simulated account from Capital One Nessie · {account.nickname}{account.last4 ? ` ····${account.last4}` : ""} · not real money</p>
+        <p className="text-xs text-gray-500">{account.nickname}</p>
       </div>
+      <NessieBanner last4={account.last4} deposits={bank.checks.filter((c) => c.deposit).length} />
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div>
           <p className="text-xl font-semibold tabular-nums"><LiveValue value={formatMoney(cash.balance)} /></p>
@@ -182,7 +187,7 @@ async function Accounting() {
                   <th className={thNum}>Should pay</th>
                   <th className={thNum}>Paid</th>
                   <th className={th}>Check</th>
-                  {inBank.size > 0 && <th className={thNum}>Bank got</th>}
+                  {inBank.size > 0 && <th className={thNum} title="Deposits in the Capital One Nessie account">Bank got (Nessie)</th>}
                 </tr>
               </thead>
               <tbody>
