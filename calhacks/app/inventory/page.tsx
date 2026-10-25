@@ -16,6 +16,7 @@ import { countGap } from "@/lib/inventory/stock";
 import OrderPlan from "@/components/OrderPlan";
 import { getSupabase } from "@/lib/supabase";
 import Capture from "./Capture";
+import ScanInvoice from "../invoices/ScanInvoice";
 import SalesReceipts from "./SalesReceipts";
 import StockEvents, { fmt } from "./StockEvents";
 import LiveRefresh from "@/components/live/LiveRefresh";
@@ -62,6 +63,9 @@ async function Inventory() {
           <p className="text-sm text-gray-600">Counted less than expected (recent counts)</p>
         </div>
       </div>
+
+      {/* Everything that changes stock starts here. A scanned delivery invoice is saved once, on Invoices */}
+      <ScanInvoice />
 
       <SalesReceipts />
 

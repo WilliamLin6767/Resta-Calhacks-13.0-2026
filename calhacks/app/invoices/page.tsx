@@ -160,7 +160,7 @@ export default function InvoicesPage() {
       </div>
       <div className="order-4 md:order-none">
         <Suspense fallback={<Skeleton className="mb-8 h-32 rounded-2xl" />}>
-          <EmailInbox />
+          <EmailInbox kind="supplier" />
         </Suspense>
       </div>
       <div className="order-2 md:order-none">

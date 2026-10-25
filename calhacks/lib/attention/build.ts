@@ -168,12 +168,67 @@ async function inventory(db: Db): Promise<Built> {
 }
 
 // ---------- Prep: the next open day's shortfalls ----------
+// Email inbox items: catering requests go on Prep (they're what the kitchen cooks for), invoices from
+// addresses that aren't a supplier's go on Invoices. Each email shows on one tab only.
+async function inboxItems(db: Db): Promise<{ supplier: Item[]; catering: Item[] }> {
+  const supplier: Item[] = [];
+  const catering: Item[] = [];
+  const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, order_id, customer_order")
+    .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review", "confirmed"]).order("created_at", { ascending: false }).limit(15);
+  type InboxItem = {
+    id: number; from_email: string; from_name: string | null; kind: string; status: string; order_id: number | null;
+    customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number; headcount?: number } | null;
+  };
+  for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
+    const o = e.customer_order;
+    const href = `/inbox#email-${e.id}`;
+    if (e.status === "to_confirm" && o?.duplicate_of) {
+      // A repeat of an order already in the list: offer to drop it, never a second one-click sale
+      catering.push({
+        key: `email-order:${e.id}`, fingerprint: `${e.status}:repeat`, tab: "prep", level: "watch",
+        title: `${o.customer_name} sent the same catering request again (${cash(o.total)})`,
+        detail: "Probably a repeat of the one above. Decline it unless they want two.",
+        actions: [{ kind: "post", label: "Decline the repeat", path: `/api/inbound/${e.id}/decline`, primary: true }, { kind: "link", label: "See the email", href }],
+      });
+    } else if (e.status === "to_confirm" && o) {
+      const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
+      catering.push({
+        key: `email-order:${e.id}`, fingerprint: e.status, tab: "prep", level: "act",
+        title: `Accept ${o.customer_name}'s catering request (${cash(o.total)}${o.headcount ? `, ${o.headcount} people` : ""})`,
+        detail: `${when ? `For ${when}. ` : ""}Accepting holds it; it's counted as a sale when it's paid for.`,
+        actions: [{ kind: "post", label: "Accept the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
+      });
+    } else if (e.status === "confirmed" && o && !e.order_id) {
+      // Accepted: once the pickup day comes, ask how it was paid, so it's counted once
+      if (o.pickup_date && o.pickup_date > todayLocal()) continue;
+      catering.push({
+        key: `email-pickup:${e.id}`, fingerprint: e.status, tab: "prep", level: "act",
+        title: `Did ${o.customer_name} pick up their ${cash(o.total)} catering order?`,
+        detail: `Rang up at the register (or will scan its receipt)? Choose that, so it isn't counted twice.${o.pickup_time ? ` Pickup was ${o.pickup_time}.` : ""}`,
+        actions: [
+          { kind: "post", label: "Picked up and paid", path: `/api/inbound/${e.id}/picked-up`, primary: true },
+          { kind: "post", label: "Rang up at the register", path: `/api/inbound/${e.id}/register` },
+          { kind: "link", label: "See the email", href },
+        ],
+      });
+    } else if (e.kind === "supplier_invoice" && e.status === "needs_review") {
+      supplier.push({
+        key: `email-invoice:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
+        title: `An invoice came from ${e.from_name || e.from_email}, who isn't one of your suppliers`,
+        detail: "Read it only if you trust the sender.",
+        actions: [{ kind: "link", label: "Check it", href }],
+      });
+    }
+  }
+  return { supplier, catering };
+}
+
 async function prep(db: Db): Promise<Built> {
   const today = todayLocal();
   let p = await loadPrep(db, addDays(today, 1));
   const next = p.days.find((d) => !d.closed);
   if (p.forecast.closed && next) p = await loadPrep(db, next.date);
-  const items: Item[] = [];
+  const items: Item[] = (await inboxItems(db)).catering;
   if (p.forecast.closed) return { items, facts: { tab: "prep", items: [], numbers: { note: "closed the whole week" } } };
   const needs = prepNeeds(p.forecast, p.recipes, p.stock);
   const short = needs.filter((n) => n.short > 0 && !n.tight);
@@ -321,54 +376,7 @@ async function invoices(db: Db): Promise<Built> {
       ],
     });
   }
-  // Email inbox: customer orders to confirm, and invoices from addresses that aren't a supplier's
-  const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, order_id, customer_order")
-    .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review", "confirmed"]).order("created_at", { ascending: false }).limit(15);
-  type InboxItem = {
-    id: number; from_email: string; from_name: string | null; kind: string; status: string; order_id: number | null;
-    customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number; headcount?: number } | null;
-  };
-  for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
-    const o = e.customer_order;
-    const href = `/invoices/inbox#email-${e.id}`;
-    if (e.status === "to_confirm" && o?.duplicate_of) {
-      // A repeat of an order already in the list: offer to drop it, never a second one-click sale
-      items.push({
-        key: `email-order:${e.id}`, fingerprint: `${e.status}:repeat`, tab: "invoices", level: "watch",
-        title: `${o.customer_name} sent the same catering request again (${cash(o.total)})`,
-        detail: "Probably a repeat of the one above. Decline it unless they want two.",
-        actions: [{ kind: "post", label: "Decline the repeat", path: `/api/inbound/${e.id}/decline`, primary: true }, { kind: "link", label: "See the email", href }],
-      });
-    } else if (e.status === "to_confirm" && o) {
-      const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
-      items.push({
-        key: `email-order:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `Accept ${o.customer_name}'s catering request (${cash(o.total)}${o.headcount ? `, ${o.headcount} people` : ""})`,
-        detail: `${when ? `For ${when}. ` : ""}Accepting holds it; it's counted as a sale when it's paid for.`,
-        actions: [{ kind: "post", label: "Accept the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
-      });
-    } else if (e.status === "confirmed" && o && !e.order_id) {
-      // Accepted: once the pickup day comes, ask how it was paid, so it's counted once
-      if (o.pickup_date && o.pickup_date > todayLocal()) continue;
-      items.push({
-        key: `email-pickup:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `Did ${o.customer_name} pick up their ${cash(o.total)} catering order?`,
-        detail: `Rang up at the register (or will scan its receipt)? Choose that, so it isn't counted twice.${o.pickup_time ? ` Pickup was ${o.pickup_time}.` : ""}`,
-        actions: [
-          { kind: "post", label: "Picked up and paid", path: `/api/inbound/${e.id}/picked-up`, primary: true },
-          { kind: "post", label: "Rang up at the register", path: `/api/inbound/${e.id}/register` },
-          { kind: "link", label: "See the email", href },
-        ],
-      });
-    } else if (e.kind === "supplier_invoice" && e.status === "needs_review") {
-      items.push({
-        key: `email-invoice:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `An invoice came from ${e.from_name || e.from_email}, who isn't one of your suppliers`,
-        detail: "Read it only if you trust the sender.",
-        actions: [{ kind: "link", label: "Check it", href }],
-      });
-    }
-  }
+  items.push(...(await inboxItems(db)).supplier);
   return { items, facts: { tab: "invoices", items: [], numbers: { since, billed_wrong_open: money(billedWrong), possible_savings: money(savings) } } };
 }
 

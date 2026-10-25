@@ -8,6 +8,7 @@ import { Skeleton, SkeletonTable } from "@/components/ui/Skeleton";
 import { parsePrepDate } from "@/lib/prep/http";
 import { addDays, loadPrep, todayLocal } from "@/lib/prep/service";
 import { getSupabase } from "@/lib/supabase";
+import EmailInbox from "../invoices/EmailInbox";
 import PrepPlanner from "./PrepPlanner";
 import LiveRefresh from "@/components/live/LiveRefresh";
 
@@ -72,6 +73,10 @@ export default function PrepPage({ searchParams }: PageProps<"/prep">) {
       <PageHeader title="Prep" description="How many of each dish to expect, what to prep, and what you'll run short of. The forecast is plain math from your past sales; the AI only adjusts it when you tell it something about the day." />
       <LiveRefresh topics={["prep", "attention"]} />
       <AttentionBar tab="prep" />
+      {/* Catering requests by email: accepted ones are what the kitchen preps for */}
+      <Suspense fallback={<Skeleton className="mb-8 h-32 rounded-2xl" />}>
+        <EmailInbox kind="catering" />
+      </Suspense>
       <Suspense fallback={<PrepSkeleton />}>
         <Prep searchParams={searchParams as Promise<{ date?: string }>} />
       </Suspense>

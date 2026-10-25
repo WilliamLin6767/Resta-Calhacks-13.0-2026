@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatMoney } from "@/lib/format";
 import type { StockEvent } from "@/lib/inventory/service";
 import { countGap } from "@/lib/inventory/stock";
@@ -24,7 +25,15 @@ export default function StockEvents({ events, unitCost }: { events: StockEvent[]
     <ul className="divide-y divide-gray-100 rounded-2xl border border-brand-100 bg-white text-sm">
       {events.map((e) => (
         <li key={e.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
-          <span>{eventText(e)}</span>
+          <span>
+            {eventText(e)}
+            {/* A delivery links to the invoice it came from (scanned or emailed): the invoice is entered once, on Invoices */}
+            {e.kind === "delivery" && e.invoice_lines?.invoice_id && (
+              <Link href={`/invoices/${e.invoice_lines.invoice_id}`} className="ml-2 text-xs text-brand-700 underline">
+                {e.invoice_lines.invoices?.source === "email" ? "Emailed invoice" : "Invoice"}
+              </Link>
+            )}
+          </span>
           <span className="text-xs text-gray-400">
             {e.kind === "waste" && unitCost.get(e.ingredient_id) ? `${formatMoney(-Number(e.change) * Number(e.unit_cost ?? 0))} · ` : ""}
             {e.source ? `${e.source} · ` : ""}

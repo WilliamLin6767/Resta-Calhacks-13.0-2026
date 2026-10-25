@@ -47,7 +47,7 @@ export function CheckEmailNow() {
 }
 
 // Runs a made-up email through the real inbox
-export function SampleEmails() {
+export function SampleEmails({ only }: { only?: "invoice" | "order" } = {}) {
   const router = useRouter();
   const [busy, setBusy] = useState<"" | "invoice" | "order">("");
   const [error, setError] = useState("");
@@ -66,8 +66,8 @@ export function SampleEmails() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <button className={secondary} disabled={!!busy} onClick={() => run("invoice")}>Try a sample supplier email</button>
-        <button className={secondary} disabled={!!busy} onClick={() => run("order")}>Try a sample catering request</button>
+        {only !== "order" && <button className={secondary} disabled={!!busy} onClick={() => run("invoice")}>Try a sample supplier email</button>}
+        {only !== "invoice" && <button className={secondary} disabled={!!busy} onClick={() => run("order")}>Try a sample catering request</button>}
       </div>
       {busy && <div className="mt-3"><AiThinking label={busy === "invoice" ? "Reading the emailed invoice... (about 20 seconds)" : "Reading the catering request..."} /></div>}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
