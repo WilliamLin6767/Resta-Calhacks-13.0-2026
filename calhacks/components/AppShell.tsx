@@ -28,6 +28,9 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
   const open = openOn === pathname;
   const setOpen = (value: boolean) => setOpenOn(value ? pathname : null);
 
+  // The login page stands alone: no menu, and nothing that loads data before the owner logs in.
+  if (pathname === "/login") return <>{children}</>;
+
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-2 text-gray-900 md:hidden">

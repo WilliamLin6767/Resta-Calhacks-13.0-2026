@@ -2,6 +2,7 @@ import { liveEnabled } from "@/lib/live/client";
 import { resyncAll } from "@/lib/live/signal";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 const perVisitor = createRateLimiter({ limit: 5, windowMs: 60 * 1000 });
 
@@ -9,6 +10,8 @@ const perVisitor = createRateLimiter({ limit: 5, windowMs: 60 * 1000 });
 // pending counts from Supabase to Convex, and wakes every open screen. For after Convex was
 // off or missed something. Returns { ok: true, calls } or { ok: false, reason }.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   if (!liveEnabled()) return Response.json({ ok: false, reason: "convex not configured" });
   const limited = perVisitor(clientIp(request));
   if (!limited.ok) {

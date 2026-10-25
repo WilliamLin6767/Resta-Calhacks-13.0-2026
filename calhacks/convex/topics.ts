@@ -2,7 +2,7 @@
 // (the write routes bump these; <LiveRefresh> on each page listens to them).
 import { v } from "convex/values";
 
-export const TOPICS = ["overview", "inventory", "prep", "invoices", "suppliers", "menu", "calls", "attention"] as const;
+export const TOPICS = ["overview", "inventory", "prep", "invoices", "suppliers", "menu", "calls", "attention", "actions"] as const;
 export type Topic = (typeof TOPICS)[number];
 
 export const topicValidator = v.union(
@@ -14,4 +14,5 @@ export const topicValidator = v.union(
   v.literal("menu"),
   v.literal("calls"),
   v.literal("attention"),
+  v.literal("actions"),
 );

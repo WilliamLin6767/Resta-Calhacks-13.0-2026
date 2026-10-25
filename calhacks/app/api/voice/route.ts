@@ -1,37 +1,41 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { clientIp, createRateLimiter } from "@/lib/rateLimit";
-import { speak, transcribe } from "@/lib/voice/cartesia";
-import { replyToOwner, takeTurns, type DraftedOrder } from "@/lib/voice/reply";
+import { requireOwner } from "@/lib/auth";
+import { agentLimit } from "@/lib/agent/http";
+import { agentErrorResponse, runAgent, takeTurns, type RunResult } from "@/lib/agent/run";
+import { parseHistory } from "@/lib/agent/undo";
 import { signalAfter } from "@/lib/live/signal";
-
-const perVisitor = createRateLimiter({ limit: 80, windowMs: 10 * 60 * 1000 });
-const wholeApp = createRateLimiter({ limit: 500, windowMs: 24 * 60 * 60 * 1000 });
+import { clientIp } from "@/lib/rateLimit";
+import { speak, transcribe } from "@/lib/voice/cartesia";
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
-function historyFrom(form: FormData | null) {
-  if (!form) return [];
-  const raw = form.get("history");
-  if (typeof raw !== "string" || !raw) return [];
+// A JSON form field, or null.
+function jsonField(form: FormData | null, name: string): unknown {
+  const raw = form?.get(name);
+  if (typeof raw !== "string" || !raw) return null;
   try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    return JSON.parse(raw);
   } catch {
-    return [];
+    return null;
   }
 }
 
-// POST /api/voice  multipart file, plus history: the earlier turns as JSON.
+function historyFrom(form: FormData | null) {
+  const parsed = jsonField(form, "history");
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+// POST /api/voice  multipart file, plus history: the earlier turns as JSON, and changes: the
+// earlier changes as JSON. Returns { transcript, answer, audio, audioType, order, changes, links, proposals }.
+// Cartesia turns speech into text, the one agent (lib/agent/run.ts) answers, Cartesia speaks it.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const token = process.env.CARTESIA_API_KEY;
   if (!token) return errorResponse("CARTESIA_API_KEY is missing. Add it on the server, not as NEXT_PUBLIC.", 500);
-
-  const visitor = perVisitor(clientIp(request));
-  if (!visitor.ok) return errorResponse("You've used voice a lot in the last 10 minutes. Try again in a few minutes.", 429);
-  const app = wholeApp("voice");
-  if (!app.ok) return errorResponse("Voice has reached today's limit. Try again tomorrow.", 429);
+  const limited = agentLimit(request, "voice");
+  if (limited) return limited;
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
@@ -50,19 +54,13 @@ export async function POST(request: Request) {
   const messages = takeTurns([...historyFrom(form), said]) ?? takeTurns([said]);
   if (!messages) return errorResponse("I didn't catch that. Hold the button and try again.", 400);
 
-  let answer = "";
-  let order: DraftedOrder | null = null;
+  let result: RunResult;
   try {
-    const result = await replyToOwner(messages, true);
-    answer = result.answer;
-    order = result.order;
+    result = await runAgent({ surface: "voice", messages, identity: clientIp(request), history: parseHistory(jsonField(form, "changes")) });
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) return errorResponse("The Anthropic API key is missing or invalid.", 500);
-    if (err instanceof Anthropic.RateLimitError) return errorResponse("Too many AI requests right now. Wait a minute and try again.", 429);
-    const message = err instanceof Error ? err.message : "The assistant failed.";
-    const status = message.startsWith("The assistant declined") ? 422 : 502;
-    return errorResponse(message, status);
+    return agentErrorResponse(err);
   }
+  const { answer, order, changes, links, proposals } = result;
 
   let audio: string | null = null;
   try {
@@ -72,12 +70,6 @@ export async function POST(request: Request) {
     audio = null;
   }
 
-  if (order) signalAfter("/api/voice");
-  return Response.json({
-    transcript,
-    answer,
-    audio,
-    audioType: "audio/mpeg",
-    order,
-  });
+  if (order || changes.length) signalAfter("/api/voice");
+  return Response.json({ transcript, answer, audio, audioType: "audio/mpeg", order, changes, links, proposals });
 }

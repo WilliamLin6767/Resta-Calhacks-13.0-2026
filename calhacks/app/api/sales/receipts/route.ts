@@ -2,6 +2,7 @@ import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { saveReceipt } from "@/lib/sales/service";
 import { getSupabase } from "@/lib/supabase";
 import { signalAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME = /^\d{2}:\d{2}$/;
@@ -9,6 +10,8 @@ const TIME = /^\d{2}:\d{2}$/;
 // POST /api/sales/receipts   { receipt_number, date, time, channel, lines: [{ menu_item_id, qty, unit_price }], tax, tip, total }
 // Adds a checked receipt to sales as an order. Returns how stock changed.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const b = await request.json().catch(() => ({}));
   if (!DATE.test(b.date ?? "")) return errorResponse("The receipt needs a date.", 400);
   const lines = Array.isArray(b.lines)

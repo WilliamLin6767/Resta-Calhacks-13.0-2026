@@ -51,7 +51,7 @@ export async function publishToInstagram(input: { text: string; imageUrl: string
           schedulingType: "automatic",
           mode: "shareNow",
           assets: [{ image: { url: input.imageUrl, metadata: { altText: input.alt } } }],
-          metadata: { instagram: { type: "post", shouldShareToFeed: true, isAiGenerated: false } },
+          metadata: { instagram: { type: "post", shouldShareToFeed: true, isAiGenerated: true } },
         },
       },
     }),

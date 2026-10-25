@@ -59,7 +59,7 @@ export default function AssistantPanel() {
 
   if (!open) {
     // The Chat page is its own assistant, and its composer sits where this button would.
-    if (pathname === "/chat") return null;
+    if (pathname === "/chat" || pathname === "/login") return null;
     return (
       <button
         type="button"

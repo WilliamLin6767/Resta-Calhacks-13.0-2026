@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Badge from "@/components/Badge";
 import PostFrame from "@/lib/marketing/frame";
 import type { PostLayout } from "@/lib/marketing/copy";
@@ -22,6 +22,7 @@ export default function PostCard({
   error,
   externalLink,
   photoSrc = null,
+  stockCredit = null,
 }: {
   id: number;
   layout: PostLayout;
@@ -31,10 +32,11 @@ export default function PostCard({
   subhead: string;
   caption: string;
   hashtags: string[];
-  status: "draft" | "posted" | "failed";
+  status: "draft" | "posted" | "failed" | "publishing" | "archived";
   error: string | null;
   externalLink: string | null;
   photoSrc?: string | null;
+  stockCredit?: string | null; // a stock photo: its credit line, added to the caption when posted
 }) {
   const router = useRouter();
   const [dish, setDish] = useState(dishName);
@@ -48,11 +50,15 @@ export default function PostCard({
   const [showPhoto, setShowPhoto] = useState(true);
   const [mine, setMine] = useState<string | null>(photoSrc);
   const [uploading, setUploading] = useState(false);
-  const locked = status === "posted" || loading !== null || uploading;
+  const locked = status === "posted" || status === "publishing" || status === "archived" || loading !== null || uploading;
 
-  useEffect(() => {
+  // A new dish name brings the photo back (adjusting state during render, as React recommends,
+  // instead of in an effect).
+  const [photoFor, setPhotoFor] = useState(dish);
+  if (photoFor !== dish) {
+    setPhotoFor(dish);
     setShowPhoto(true);
-  }, [dish]);
+  }
 
   function payload() {
     return { id, dishName: dish, headline: title, subhead: line, caption: text, hashtags: tags };
@@ -101,7 +107,7 @@ export default function PostCard({
   }
 
   const tone = status === "posted" ? "green" : status === "failed" ? "red" : "gray";
-  const label = status === "posted" ? "Posted" : status === "failed" ? "Failed" : "Draft";
+  const label = { posted: "Posted", failed: "Failed", draft: "Draft", publishing: "Sending", archived: "Archived" }[status];
   const role = layout.startsWith("poll") ? "Poll · Trends" : layout.startsWith("boost") ? "Push · Analytics" : null;
 
   return (
@@ -128,9 +134,11 @@ export default function PostCard({
           <p className="font-medium text-gray-900">{dish || "Untitled"}</p>
           <span className="flex items-center gap-2">
             {role && <Badge tone="amber">{role}</Badge>}
+            {stockCredit && !mine?.includes("?v=") && <Badge tone="gray">Stock photo</Badge>}
             <Badge tone={tone}>{label}</Badge>
           </span>
         </div>
+        {stockCredit && !mine?.includes("?v=") && <p className="text-xs text-gray-500">{stockCredit}. Added to the caption when it posts.</p>}
         {status !== "posted" && (
           <label className="inline-flex cursor-pointer rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50">
             {uploading ? "Adding photo..." : mine ? "Replace photo" : "Use your photo"}

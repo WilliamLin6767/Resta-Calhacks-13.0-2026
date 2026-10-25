@@ -14,7 +14,7 @@ import { formatUnitCost } from "@/lib/purchasing/units";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import DisputePanel from "./DisputePanel";
 import { FlagButtons, LineFix, RecheckButton } from "./InvoiceActions";
-import ScannedLines, { FirstViewFlash } from "./ScannedLines";
+import ScannedLines, { AlreadyEntered, FirstViewFlash } from "./ScannedLines";
 import LiveRefresh from "@/components/live/LiveRefresh";
 
 // This page depends on the URL (/invoices/12), and the shared Sidebar reads the URL outside
@@ -67,6 +67,8 @@ async function Invoice({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <RecheckButton invoiceId={inv.id} />
       </div>
+
+      <AlreadyEntered invoiceId={inv.id} />
 
       {/* key: a status change starts the panel fresh */}
       <DisputePanel key={`${disputeRes.data?.id}-${disputeRes.data?.status}`} invoiceId={inv.id} dispute={disputeRes.data} billedWrong={billedWrong} supplier={supplier} />

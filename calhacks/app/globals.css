@@ -123,6 +123,13 @@
   --color-marketing-500: #b07a16;
   --color-marketing-600: #8c6110;
   --color-marketing-700: #6e4b0c;
+
+  --color-actions-50: #f1f3f5; /* graphite */
+  --color-actions-100: #e1e5ea;
+  --color-actions-200: #c3cbd5;
+  --color-actions-500: #556372;
+  --color-actions-600: #45515e;
+  --color-actions-700: #36404b;
 }
 
 /* The page panel carries data-section (components/SectionMain.tsx); inside it, brand-* and the
@@ -225,6 +232,15 @@
   --color-brand-600: var(--color-marketing-600);
   --color-brand-700: var(--color-marketing-700);
   --color-accent: var(--color-marketing-500);
+}
+[data-section="actions"] {
+  --color-brand-50: var(--color-actions-50);
+  --color-brand-100: var(--color-actions-100);
+  --color-brand-200: var(--color-actions-200);
+  --color-brand-500: var(--color-actions-500);
+  --color-brand-600: var(--color-actions-600);
+  --color-brand-700: var(--color-actions-700);
+  --color-accent: var(--color-actions-500);
 }
 
 /* A wash of the section's color across the top of the page panel. */

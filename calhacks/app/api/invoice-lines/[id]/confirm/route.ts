@@ -2,11 +2,14 @@ import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { confirmLine } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
 import { signalAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/invoice-lines/12/confirm
 //   body: { "ingredient_id": 5 }  or  { "new_ingredient_name": "Oxtail", "new_ingredient_unit": "lb" }
 // Says what an invoice line really is. Remembered for every future invoice from that supplier.
 export async function POST(request: Request, ctx: RouteContext<"/api/invoice-lines/[id]/confirm">) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const id = parseId((await ctx.params).id);
   if (!id) return errorResponse("Unknown invoice line.", 404);
   const body = await request.json().catch(() => ({}));

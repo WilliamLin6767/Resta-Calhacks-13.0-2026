@@ -1,9 +1,12 @@
 import { errorResponse, handleError, parseId } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
 import { signalAfter } from "@/lib/live/signal";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/invoice-flags/12/resolve   Marks a problem as dealt with.
-export async function POST(_request: Request, ctx: RouteContext<"/api/invoice-flags/[id]/resolve">) {
+export async function POST(request: Request, ctx: RouteContext<"/api/invoice-flags/[id]/resolve">) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const id = parseId((await ctx.params).id);
   if (!id) return errorResponse("Unknown flag.", 404);
   try {

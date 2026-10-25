@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import ErrorMessage from "@/components/ErrorMessage";
 import DraftButton from "@/components/marketing/DraftButton";
@@ -16,21 +17,24 @@ type Row = {
   subhead: string;
   caption: string;
   hashtags: string[] | null;
-  status: "draft" | "posted" | "failed";
+  status: "draft" | "posted" | "failed" | "publishing" | "archived";
   error: string | null;
   external_link: string | null;
+  photo_source?: string | null; // after 20_marketing_status.sql
+  credit?: string | null;
   created_at: string;
 };
 
 const LAYOUTS = new Set<PostLayout>(["plate", "special", "night", "boost", "boost-poster", "poll", "poll-poster"]);
 
-async function Posts() {
+async function Posts({ searchParams }: { searchParams: PageProps<"/marketing">["searchParams"] }) {
+  const showArchived = (await searchParams).archived === "1";
   const supabase = await getSupabase();
   const [restaurant, posts, uploads] = await Promise.all([
     supabase.from("restaurants").select("name").eq("id", RESTAURANT_ID).maybeSingle(),
     supabase
       .from("marketing_posts")
-      .select("id, layout, dish_name, headline, subhead, caption, hashtags, status, error, external_link, created_at")
+      .select("*") // every column, so the photo credit shows once 20_marketing_status.sql has added it
       .eq("restaurant_id", RESTAURANT_ID)
       .order("created_at", { ascending: false }),
     supabase.storage.from("marketing").list("posts", { limit: 100 }),
@@ -41,8 +45,9 @@ async function Posts() {
   }
 
   const rows = (posts.data ?? []) as Row[];
-  const current = rows.filter((row) => row.status !== "posted");
+  const current = rows.filter((row) => row.status !== "posted" && row.status !== "archived");
   const past = rows.filter((row) => row.status === "posted");
+  const archived = rows.filter((row) => row.status === "archived");
   if (rows.length === 0) {
     return <p className="text-sm text-gray-500">No posts yet. Draft this week and they show up here, ready to send.</p>;
   }
@@ -51,6 +56,7 @@ async function Posts() {
   const stamps = new Map((uploads.data ?? []).map((file) => [file.name.replace(/\.jpg$/, ""), file.updated_at || file.created_at || ""]));
   const card = (row: Row) => {
     const stamp = stamps.get(String(row.id));
+    const showFile = stamp !== undefined && row.photo_source !== "stock";
     return (
       <PostCard
         key={row.id}
@@ -65,7 +71,8 @@ async function Posts() {
         status={row.status}
         error={row.error}
         externalLink={row.external_link}
-        photoSrc={stamp === undefined ? null : `${ownPhotoUrl(row.id)}?v=${encodeURIComponent(stamp || String(row.id))}`}
+        photoSrc={showFile ? `${ownPhotoUrl(row.id)}?v=${encodeURIComponent(stamp || String(row.id))}` : null}
+        stockCredit={row.photo_source === "stock" ? (row.credit ?? "Stock photo, credit unknown") : null}
       />
     );
   };
@@ -78,11 +85,19 @@ async function Posts() {
         <div className="grid gap-4 lg:grid-cols-3">{current.map(card)}</div>
       )}
       {past.length > 0 && <PastPosts count={past.length}>{past.map(card)}</PastPosts>}
+      {archived.length > 0 && (
+        <div className="mt-6">
+          <Link href={showArchived ? "/marketing" : "/marketing?archived=1"} className="text-sm text-gray-600 underline-offset-2 hover:underline">
+            {showArchived ? "Hide archived" : `Show archived (${archived.length})`}
+          </Link>
+          {showArchived && <div className="mt-3 grid gap-4 lg:grid-cols-3">{archived.map(card)}</div>}
+        </div>
+      )}
     </div>
   );
 }
 
-export default function MarketingPage() {
+export default function MarketingPage({ searchParams }: PageProps<"/marketing">) {
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -93,7 +108,7 @@ export default function MarketingPage() {
         <DraftButton />
       </div>
       <Suspense fallback={<p className="text-sm text-gray-500">Loading...</p>}>
-        <Posts />
+        <Posts searchParams={searchParams} />
       </Suspense>
     </div>
   );

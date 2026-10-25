@@ -19,7 +19,7 @@ import type { WajoApi } from "@/lib/wajo/client";
 import { answerCaller, judgeCandidates, readCallResult, specialRequest } from "./ai";
 import { buildCallMessage } from "./brief";
 import { findCandidates, type Facts, type FactFlag, type NoPhone } from "./detect";
-import { dialTarget, otherNumberIn, type DialTarget } from "./phone";
+import { dialBlocked, dialTarget, otherNumberIn, type DialTarget } from "./phone";
 import {
   ACTIVE_STATUSES,
   BUSY_STATUSES,
@@ -349,6 +349,9 @@ export async function decideCall(
     if (!rejected) throw new CallError("This request was decided in the meantime.", 409);
     return rejected;
   }
+
+  const blocked = dialBlocked();
+  if (blocked) throw new CallError(blocked, 503);
 
   const brief = input.brief ? BriefSchema.parse(input.brief) : row.brief;
   // One call at a time: Wajo's agent works one task at a time.

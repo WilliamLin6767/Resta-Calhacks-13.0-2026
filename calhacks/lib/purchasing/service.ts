@@ -164,15 +164,52 @@ export async function runChecks(db: Db, invoiceId: number) {
     orderPrices,
   });
 
-  must(await db.from("invoice_flags").delete().eq("invoice_id", invoiceId), "clear old flags");
-  if (flags.length) must(await db.from("invoice_flags").insert(flags.map((f) => ({ ...f, invoice_id: invoiceId }))), "save the flags");
-  return flags;
+  // Keep what the owner already resolved: only open flags are replaced, and a finding that was
+  // resolved before (same line, same kind) isn't raised again.
+  const resolved = must(await db.from("invoice_flags").select("invoice_line_id, kind").eq("invoice_id", invoiceId).eq("resolved", true), "load resolved flags") as { invoice_line_id: number | null; kind: string }[];
+  const done = new Set(resolved.map((r) => `${r.invoice_line_id ?? "-"}:${r.kind}`));
+  must(await db.from("invoice_flags").delete().eq("invoice_id", invoiceId).eq("resolved", false), "clear old flags");
+  const fresh = flags.filter((f) => !done.has(`${f.invoice_line_id ?? "-"}:${f.kind}`));
+  if (fresh.length) must(await db.from("invoice_flags").insert(fresh.map((f) => ({ ...f, invoice_id: invoiceId }))), "save the flags");
+  return fresh;
 }
 
 // ---------- Saving a scanned invoice ----------
 
-export async function saveScannedInvoice(db: Db, read: ReadInvoice, source: "photo" | "email" | "manual" = "photo") {
+// "BAM-20702", "#bam 20702" and "BAM20702" are the same invoice number
+const invoiceNumberKey = (n: string) => n.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+// The same invoice already in the system: same supplier and invoice number, or with no number,
+// same supplier, date and total. The same invoice often arrives twice: emailed, then on paper
+// with the delivery.
+async function findSameInvoice(db: Db, supplierId: number | null, read: ReadInvoice): Promise<{ id: number; invoice_number: string | null } | null> {
+  if (!supplierId) return null;
+  const rows = must(
+    await db.from("invoices").select("id, invoice_number, invoice_date, total").eq("restaurant_id", RESTAURANT_ID).eq("supplier_id", supplierId).order("id"),
+    "look for the same invoice",
+  ) as { id: number; invoice_number: string | null; invoice_date: string; total: number | null }[];
+  const key = read.invoice_number ? invoiceNumberKey(read.invoice_number) : "";
+  if (key) return rows.find((r) => r.invoice_number && invoiceNumberKey(r.invoice_number) === key) ?? null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(read.invoice_date) || !read.total) return null;
+  return rows.find((r) => r.invoice_date === read.invoice_date && r.total != null && Math.abs(Number(r.total) - read.total) < 0.01) ?? null;
+}
+
+export type SavedInvoice = { id: number; duplicate: boolean; invoice_number: string | null };
+
+// Saves a read invoice, unless it's already in the system: then nothing is added again (no second
+// bill, stock or prices) and the original's id comes back with duplicate = true.
+export async function saveInvoiceOnce(db: Db, read: ReadInvoice, source: "photo" | "email" | "manual" = "photo"): Promise<SavedInvoice> {
   const supplierId = await findOrCreateSupplier(db, read.supplier_name);
+  const same = await findSameInvoice(db, supplierId, read);
+  if (same) return { id: same.id, duplicate: true, invoice_number: same.invoice_number };
+  return { id: await insertInvoice(db, read, source, supplierId), duplicate: false, invoice_number: read.invoice_number || null };
+}
+
+export async function saveScannedInvoice(db: Db, read: ReadInvoice, source: "photo" | "email" | "manual" = "photo") {
+  return (await saveInvoiceOnce(db, read, source)).id;
+}
+
+async function insertInvoice(db: Db, read: ReadInvoice, source: "photo" | "email" | "manual", supplierId: number | null) {
   const raw = read.lines
     .filter((l) => l.description.trim() && (l.qty_shipped || l.qty_ordered))
     .map((l) => ({

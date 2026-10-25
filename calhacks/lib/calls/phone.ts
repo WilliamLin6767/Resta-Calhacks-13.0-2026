@@ -41,6 +41,14 @@ export function dialTarget(
     : { dial: supplierNumber, supplier_number: supplierNumber, override: false };
 }
 
+// In production, calls only go out with a working DEMO_CALL_OVERRIDE_NUMBER, so a deployed demo
+// can never ring a real supplier from the sample data. Returns why dialing is blocked, or null.
+export function dialBlocked(env: Record<string, string | undefined> = process.env): string | null {
+  if (env.NODE_ENV !== "production") return null;
+  if (normalizePhone(env.DEMO_CALL_OVERRIDE_NUMBER)) return null;
+  return "Calls are off on this server: DEMO_CALL_OVERRIDE_NUMBER is missing or isn't a phone number, so a real supplier could be dialed. Set it to the demo phone and try again.";
+}
+
 // Every phone number written in a piece of text, normalized. Used to check
 // that the calling agent isn't asking to dial someone else.
 export function phoneNumbersIn(text: string): string[] {

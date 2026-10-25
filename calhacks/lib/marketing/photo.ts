@@ -4,10 +4,26 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { ask } from "@/lib/purchasing/ai";
 import { ownPhotoPath } from "@/lib/marketing/photoPath";
+import { RESTAURANT_ID } from "@/lib/supabase";
 
 // Brave Image Search. Needs BRAVE_SEARCH_API_KEY from the Search plan at api-dashboard.search.brave.com.
 export const BRAVE_IMAGE_SETUP = "Brave image search is not set up. Add BRAVE_SEARCH_API_KEY to .env.";
 export const BRAVE_IMAGE_REJECTED = "Brave image search rejected the request. Check BRAVE_SEARCH_API_KEY.";
+
+export type PhotoCredit = { creator: string | null; license: string; source_url: string | null };
+
+// "by" + "2.0" -> "CC BY 2.0"; cc0 and pdm have their own names. Kept for posts that already carry a credit.
+export function licenseLabel(license: string | null | undefined, version?: string | null): string {
+  const code = (license ?? "").toLowerCase();
+  if (code === "cc0") return "CC0";
+  if (code === "pdm") return "Public Domain Mark";
+  if (!code) return "license unknown";
+  return `CC ${code.toUpperCase()}${version ? ` ${version}` : ""}`;
+}
+
+export function creditLine(credit: PhotoCredit): string {
+  return `Photo: ${credit.creator?.trim() || "unknown creator"}, ${credit.license}`;
+}
 
 const RESULT_COUNT = 20;
 const MAX_CANDIDATES = 6;
@@ -199,8 +215,43 @@ async function storedPhoto(supabase: SupabaseClient, path: string): Promise<Buff
   return Buffer.from(await file.data.arrayBuffer());
 }
 
-// A new picture for this draft, stored on the post. The source URL is remembered so the next draft skips it.
+// Records where a post's photo came from. Before the credit columns exist this write fails, and the post simply has no credit.
+export async function recordPhoto(supabase: SupabaseClient, id: number, source: "owner" | "stock", credit: PhotoCredit | null) {
+  await supabase
+    .from("marketing_posts")
+    .update({
+      photo_source: source,
+      photo_creator: credit?.creator ?? null,
+      photo_license: credit?.license ?? null,
+      photo_source_url: credit?.source_url ?? null,
+      credit: source === "stock" && credit ? creditLine(credit) : null,
+    })
+    .eq("id", id)
+    .eq("restaurant_id", RESTAURANT_ID);
+}
+
+// The owner's own photo of this dish, from an earlier post: copied to the new post. True if found.
+export async function reuseOwnerPhoto(supabase: SupabaseClient, id: number, dish: string): Promise<boolean> {
+  const earlier = await supabase
+    .from("marketing_posts")
+    .select("id")
+    .eq("restaurant_id", RESTAURANT_ID)
+    .eq("photo_source", "owner")
+    .ilike("dish_name", dish)
+    .neq("id", id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const from = earlier.error ? null : earlier.data?.[0]?.id;
+  if (!from) return false;
+  const copied = await supabase.storage.from("marketing").copy(ownPhotoPath(from), ownPhotoPath(id));
+  if (copied.error) return false;
+  await recordPhoto(supabase, id, "owner", null);
+  return true;
+}
+
+// A new picture for this draft. An owner upload of this dish is reused; otherwise Brave picks a fresh photo.
 export async function saveFreshPhoto(supabase: SupabaseClient, id: number, dish: string, cuisine: string | null, usedUrls: string[]): Promise<void> {
+  if (await reuseOwnerPhoto(supabase, id, dish)) return;
   const found = await chooseDishPhoto({ dish, cuisine, usedUrls, search: searchBrave, download: downloadImage, writeQuery, judge });
   if (!found) return;
   const jpeg = await sharp(found.bytes).rotate().resize(1080, 1080, { fit: "cover", position: "attention" }).jpeg({ quality: 88 }).toBuffer();
