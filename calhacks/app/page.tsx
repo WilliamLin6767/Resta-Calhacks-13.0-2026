@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { DailyRevenueChart } from "@/components/analytics/Charts";
+import Today from "@/components/agent/Today";
 import AllAttention from "@/components/attention/AllAttention";
 import Badge, { type BadgeTone } from "@/components/Badge";
 import Card from "@/components/Card";
@@ -147,7 +148,8 @@ async function PriceIncreases() {
   );
 }
 
-// Card 5: AI suggestions nobody has acted on yet.
+// Card 5: AI suggestions nobody has acted on yet. These rows are seeded sample data (nothing in
+// the app writes ai_insights), so the card is labeled Demo data.
 async function AiSuggestions() {
   const supabase = await getSupabase();
   const { data, error } = await supabase
@@ -201,6 +203,7 @@ export default function OverviewPage() {
       </Suspense>
       <LiveRefresh topics={["overview", "attention"]} />
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
+      <Today />
       <AllAttention />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card
@@ -244,7 +247,7 @@ export default function OverviewPage() {
             <PriceIncreases />
           </Suspense>
         </Card>
-        <Card title="AI suggestions" className="hidden md:block">
+        <Card title="AI suggestions" className="hidden md:block" action={<Badge tone="gray">Demo data</Badge>}>
           <Suspense fallback={<SkeletonLines lines={5} />}>
             <AiSuggestions />
           </Suspense>

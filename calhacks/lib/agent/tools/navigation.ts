@@ -21,6 +21,8 @@ const PAGES = {
 export const navigationTools = [
   defineTool({
     name: "open_page",
+    tier: "read",
+    area: "navigation",
     description:
       "Give the owner a link to a page, with a short reason. Use it for anything that needs a photo or file (scan an invoice: invoices; count from a shelf photo or scan a receipt: inventory) " +
       "and for 'show me'. invoice_id opens one invoice; date (YYYY-MM-DD) opens that prep day.",
@@ -41,6 +43,8 @@ export const navigationTools = [
   }),
   defineTool({
     name: "undo_change",
+    tier: "record",
+    area: "navigation",
     description: "Undo a change made earlier in this conversation. Pass that change's undo payload exactly as it came back. Only stock counts and waste can be undone; anything else can't, so say so.",
     input: z.object({ undo: UndoSchema }),
     run: async ({ undo }, ctx) => {

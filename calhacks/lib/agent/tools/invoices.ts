@@ -44,6 +44,8 @@ const invoiceName = (i: InvoiceRef) => `${i.supplier} invoice ${i.invoice_number
 export const invoiceTools = [
   defineTool({
     name: "list_invoices",
+    tier: "read",
+    area: "invoices",
     description: "Supplier invoices, newest first, with total, status and open problems. status: 'unpaid', 'paid', 'all', or a status name.",
     input: z.object({ status: z.string().optional() }),
     run: async ({ status }, ctx) => {
@@ -54,6 +56,8 @@ export const invoiceTools = [
   }),
   defineTool({
     name: "get_invoice",
+    tier: "read",
+    area: "invoices",
     description: "One invoice in full: lines (with their ids and matches), open problems (with their ids), totals and whether it's paid. invoice: a number, or e.g. 'the latest Sysco invoice'.",
     input: z.object({ invoice: z.string() }),
     run: async ({ invoice }, ctx) => {
@@ -81,6 +85,8 @@ export const invoiceTools = [
   }),
   defineTool({
     name: "confirm_invoice_line",
+    tier: "record",
+    area: "invoices",
     description: "Say what an invoice line really is (remembered for that supplier's future invoices). line_id comes from get_invoice. Give ingredient (an existing one) or new_ingredient_name (and its unit).",
     input: z.object({ line_id: z.number().int().positive(), ingredient: z.string().optional(), new_ingredient_name: z.string().optional(), new_ingredient_unit: z.string().optional() }),
     run: async ({ line_id, ingredient, new_ingredient_name, new_ingredient_unit }, ctx) => {
@@ -104,6 +110,8 @@ export const invoiceTools = [
   }),
   defineTool({
     name: "resolve_invoice_flag",
+    tier: "record",
+    area: "invoices",
     description: "Mark one problem on an invoice as dealt with. flag_id comes from get_invoice.",
     input: z.object({ flag_id: z.number().int().positive() }),
     run: async ({ flag_id }, ctx) => {
@@ -118,6 +126,8 @@ export const invoiceTools = [
   }),
   defineTool({
     name: "check_invoice",
+    tier: "record",
+    area: "invoices",
     description: "Re-check an invoice: match lines that aren't matched yet (may use the AI) and run every check again. invoice: a number, or e.g. 'the latest Sysco invoice'.",
     input: z.object({ invoice: z.string() }),
     run: async ({ invoice }, ctx) => {
@@ -137,6 +147,8 @@ export const invoiceTools = [
   }),
   defineTool({
     name: "save_dispute_draft",
+    tier: "draft",
+    area: "invoices",
     description: "Edit the draft dispute email for an invoice (to, subject, body); it stays a draft and isn't sent. Only fields you pass change.",
     input: z.object({ invoice: z.string(), to_email: z.string().optional(), subject: z.string().optional(), body: z.string().optional() }),
     run: async ({ invoice, to_email, subject, body }, ctx) => {

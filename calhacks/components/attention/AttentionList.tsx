@@ -22,7 +22,7 @@ const STILL_MS = 300;
 type Stamp = "Done" | "Hidden";
 
 // One button. The item's first action is the main button; the rest are small links next to it.
-function ActionButton({ action, main, onDone }: { action: Action; main: boolean; onDone: () => void }) {
+export function ActionButton({ action, main, onDone }: { action: Action; main: boolean; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
   const cls = main ? mainClass : linkClass;

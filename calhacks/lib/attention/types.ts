@@ -30,7 +30,16 @@ export type Item = {
   detail?: string;
   actions: Action[];
   dismissable?: boolean; // alerts can be dismissed; approvals are approved or denied instead
+  // What it's worth, worked out in code (impact.ts). null when there's no defensible figure.
+  impact_usd_week?: number | null;
+  basis?: string; // how the figure was worked out, and what it assumes
+  evidence?: { label: string; value: string; href?: string }[];
+  confidence?: Confidence;
+  playbook?: string | null; // the loop's playbook for this kind of finding (lib/loop/playbooks)
 };
+
+// demo: worked out from data planted for the demo, labeled as such wherever it shows
+export type Confidence = "high" | "medium" | "low" | "demo";
 
 // What the tab's AI summary is written from: the to-do items plus a few key numbers
 export type TabFacts = { tab: Tab; numbers: Record<string, unknown>; items: { level: string; title: string; detail?: string }[] };

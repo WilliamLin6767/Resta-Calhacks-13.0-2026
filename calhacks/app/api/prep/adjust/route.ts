@@ -3,10 +3,13 @@ import { clientIp, parsePrepDate, prepAiLimit } from "@/lib/prep/http";
 import { loadPrep } from "@/lib/prep/service";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/prep/adjust   { "date": "2026-10-24", "note": "Cal home game, big crowd after 5pm" }
 // Returns Claude's per-dish factors for that day's forecast. Nothing is saved.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const body = await request.json().catch(() => ({}));
   const date = parsePrepDate(body.date);
   if (!date) return errorResponse("Pick a day in the next week.", 400);

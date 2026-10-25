@@ -1,5 +1,6 @@
 import { clientIp, createRateLimiter } from "@/lib/aiLimits";
 import { errorResponse } from "@/lib/purchasing/http";
+import { requireOwner } from "@/lib/auth";
 
 // Each check reads the Gmail inbox: a few a minute is plenty
 const perVisitor = createRateLimiter({ limit: 6, windowMs: 60 * 1000 });
@@ -8,6 +9,8 @@ const perVisitor = createRateLimiter({ limit: 6, windowMs: 60 * 1000 });
 // web app at GMAIL_CHECK_URL) to send new mail right away instead of within the minute. The emails
 // then arrive at /api/inbound/email as usual. Returns { sent }: how many new emails it found.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const url = process.env.GMAIL_CHECK_URL;
   const secret = process.env.INBOUND_EMAIL_SECRET;
   if (!url || !secret) return errorResponse("Checking now isn't set up: add GMAIL_CHECK_URL (see integrations/gmail/README.md).", 400);

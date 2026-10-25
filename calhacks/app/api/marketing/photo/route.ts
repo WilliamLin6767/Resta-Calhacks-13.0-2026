@@ -1,6 +1,8 @@
 import sharp from "sharp";
 import { ownPhotoPath, ownPhotoUrl } from "@/lib/marketing/photoPath";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
+import { recordPhoto } from "@/lib/marketing/photo";
 
 export const maxDuration = 30;
 
@@ -11,6 +13,8 @@ function errorResponse(message: string, status: number) {
 // POST /api/marketing/photo
 // Replaces the picture on one draft with a photo the owner uploaded.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   let form: FormData;
   try {
     form = await request.formData();
@@ -39,5 +43,7 @@ export async function POST(request: Request) {
 
   const uploaded = await supabase.storage.from("marketing").upload(ownPhotoPath(id), jpeg, { contentType: "image/jpeg", upsert: true });
   if (uploaded.error) return errorResponse(`${uploaded.error.message}. Has supabase/16_marketing.sql been run?`, 500);
+  // The owner's own photo: no stock credit, and it's used first for this dish in later drafts
+  await recordPhoto(supabase, id, "owner", null);
   return Response.json({ url: `${ownPhotoUrl(id)}?v=${Date.now()}` });
 }

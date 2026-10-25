@@ -164,9 +164,14 @@ export async function runChecks(db: Db, invoiceId: number) {
     orderPrices,
   });
 
-  must(await db.from("invoice_flags").delete().eq("invoice_id", invoiceId), "clear old flags");
-  if (flags.length) must(await db.from("invoice_flags").insert(flags.map((f) => ({ ...f, invoice_id: invoiceId }))), "save the flags");
-  return flags;
+  // Keep what the owner already resolved: only open flags are replaced, and a finding that was
+  // resolved before (same line, same kind) isn't raised again.
+  const resolved = must(await db.from("invoice_flags").select("invoice_line_id, kind").eq("invoice_id", invoiceId).eq("resolved", true), "load resolved flags") as { invoice_line_id: number | null; kind: string }[];
+  const done = new Set(resolved.map((r) => `${r.invoice_line_id ?? "-"}:${r.kind}`));
+  must(await db.from("invoice_flags").delete().eq("invoice_id", invoiceId).eq("resolved", false), "clear old flags");
+  const fresh = flags.filter((f) => !done.has(`${f.invoice_line_id ?? "-"}:${f.kind}`));
+  if (fresh.length) must(await db.from("invoice_flags").insert(fresh.map((f) => ({ ...f, invoice_id: invoiceId }))), "save the flags");
+  return fresh;
 }
 
 // ---------- Saving a scanned invoice ----------

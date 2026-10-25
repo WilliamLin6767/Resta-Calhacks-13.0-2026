@@ -2,6 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { z } from "zod";
 import type { Digest } from "@/lib/analytics";
+import type { AssistantChart } from "@/lib/assistant";
 import type { DraftRestock } from "@/lib/purchasing/restock";
 
 // How to reverse a change, when it can be. undo_change only accepts a payload that came back in
@@ -24,9 +25,30 @@ export type AgentLink = { href: string; label: string; reason: string };
 
 export type DraftedOrder = Extract<DraftRestock, { drafted: true }>;
 
+// Where the agent is answering: the owner chat (typed or spoken), the analytics panel, or the
+// autonomous loop (Phase 5), which only gets read and draft tools.
+export const SURFACES = ["chat", "voice", "panel", "loop"] as const;
+export type Surface = (typeof SURFACES)[number];
+
+// What a tool may do:
+//   read    looks things up
+//   draft   makes something that waits for the owner (a draft order, a pending call request)
+//   record  changes an internal record right away, logged, with undo where possible
+//   commit  spends money, changes prices, contacts someone outside or moves money: only ever a
+//           proposal the owner approves on a card (Phase 3)
+export const TIERS = ["read", "draft", "record", "commit"] as const;
+export type Tier = (typeof TIERS)[number];
+
+export type Area =
+  | "inventory" | "prep" | "invoices" | "purchasing" | "suppliers" | "calls"
+  | "menu" | "sales" | "marketing" | "findings" | "analytics" | "navigation";
+
+// A Commit action waiting for the owner's tap (filled in by Phase 3's approval gate).
+export type Proposal = { action_id: number; tool: string; title: string; summary: string };
+
 export type AgentCtx = {
   db: SupabaseClient;
-  kind: "chat" | "panel"; // the owner chat (typed or voice) or the analytics assistant panel
+  surface: Surface;
   spoken: boolean; // voice: counts and waste are saved with source "voice"
   identity: string; // who's asking, for the AI routes' rate limits (the visitor's address)
   days: number; // the analytics period the agent is looking at
@@ -34,12 +56,32 @@ export type AgentCtx = {
   history: Change[]; // changes returned earlier in this conversation (sent back by the client)
   changes: Change[]; // collected: every change a tool made in this answer
   links: AgentLink[]; // collected: pages to show as links
+  charts: AssistantChart[]; // collected: charts the panel shows (show_chart)
+  proposals: Proposal[]; // collected: Commit actions waiting for approval
   order: DraftedOrder | null; // a purchase order draft_restock made, for the chat's Approve button
+  loop?: LoopCtx; // the loop surface: the case being investigated (lib/loop/engine.ts)
+};
+
+// What the loop's agent ends with (submit_proposal): checked in code against the playbook.
+export type Submission = { recommendation: string; why: string; action_tools: string[]; args: Record<string, Record<string, unknown>> };
+export type LoopCtx = {
+  caseId: number;
+  playbook: string;
+  allowed: string[];
+  submission: Submission | null;
+  // The case's own dollars and evidence, shown on a proposal that has none of its own
+  impact?: { amount_usd: number | null; per: "week" | "once"; basis: string } | null;
+  evidence?: { label: string; value: string; href?: string }[];
+  // Checks a Commit tool's arguments at submit time: why they're wrong, or null
+  checkArgs?: (tool: string, args: Record<string, unknown>) => string | null;
 };
 
 export type AgentTool<S extends z.ZodType = z.ZodType> = {
   name: string;
   description: string;
+  tier: Tier;
+  area: Area;
+  surfaces?: Surface[]; // only on these surfaces (default: all that its tier allows)
   input: S;
   run: (input: z.infer<S>, ctx: AgentCtx) => Promise<string>;
 };

@@ -2,6 +2,7 @@ import { readPostEdit } from "@/lib/marketing/edit";
 import { ensureDishPhoto } from "@/lib/marketing/photo";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 const perVisitor = createRateLimiter({ limit: 30, windowMs: 60 * 1000 });
 
@@ -12,6 +13,8 @@ function errorResponse(message: string, status: number, headers?: HeadersInit) {
 // POST /api/marketing/save
 // Stores edits to a draft. Does not publish.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   let body: { id?: unknown } & Parameters<typeof readPostEdit>[0];
   try {
     body = await request.json();

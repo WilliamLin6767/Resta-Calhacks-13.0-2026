@@ -6,6 +6,7 @@ import { aiLimited } from "@/lib/inventory/http";
 import { signalAfter } from "@/lib/live/signal";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // The sample invoice image: from disk when it's there, else from this site (on Vercel, public
 // files are served but not bundled with the function)
@@ -23,6 +24,8 @@ async function sampleInvoice(origin: string) {
 // Runs a made-up email through the same inbox as a real one, so the feature can be tried without
 // sending mail: a Bay Area Meat Co. invoice (a supplier on file), or a catering request for an office lunch.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const { kind } = await request.json().catch(() => ({}));
   if (kind !== "invoice" && kind !== "order") return errorResponse("Say which sample: invoice or order.", 400);
   const limited = aiLimited(request);

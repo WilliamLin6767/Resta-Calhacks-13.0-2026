@@ -11,6 +11,7 @@ import { SECTIONS } from "@/lib/nav";
 const KEYWORDS: Record<string, string[]> = {
   "/": ["home", "dashboard", "today", "needs"],
   "/chat": ["talk", "voice", "restock", "message"],
+  "/actions": ["approve", "approval", "proposal", "log", "case", "run now"],
   "/inventory": ["stock", "count", "waste", "delivery", "shelf", "receipt"],
   "/prep": ["forecast", "prep list", "tomorrow", "kitchen"],
   "/invoices": ["bill", "receipt", "order", "purchase", "scan", "po"],
@@ -56,6 +57,18 @@ const PAGES: Item[] = [
     ),
     words: [m.question],
   })),
+  {
+    kind: "page" as const,
+    id: "logout",
+    label: "Log out",
+    href: "/login",
+    icon: (
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+        <NavIcon icon="home" size={16} />
+      </span>
+    ),
+    words: ["sign out", "logout", "lock"],
+  },
 ];
 
 function matches(item: Item, query: string) {
@@ -124,7 +137,10 @@ export default function CommandPalette() {
   function run(item: Item | undefined) {
     if (!item) return;
     hide();
-    if (item.kind === "page") {
+    if (item.id === "logout") {
+      // Clear the session cookie, then go to the login page.
+      fetch("/api/logout", { method: "POST" }).finally(() => router.replace("/login"));
+    } else if (item.kind === "page") {
       router.push(item.href);
     } else {
       setAssistantOpen(true);

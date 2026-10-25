@@ -2,6 +2,7 @@ import { AiError } from "@/lib/purchasing/ai";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { scanMenuTrends } from "@/lib/trends/scan";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // One scan a minute. Yelp plus two social runs is a long Apify job.
 export const maxDuration = 300;
@@ -25,6 +26,8 @@ function tooMany(retryAfterSeconds: number) {
 // Finds dishes on Yelp and social posts, then keeps the ones that fit the current pantry.
 // Does not write menu_items.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   if (!process.env.APIFY_TOKEN) {
     return errorResponse("APIFY_TOKEN is missing. Add it to the server env file. It is not sent to the browser.", 500);
   }

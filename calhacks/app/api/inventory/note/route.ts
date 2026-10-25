@@ -3,10 +3,13 @@ import { aiLimited, toProposal } from "@/lib/inventory/http";
 import { loadInventory } from "@/lib/inventory/service";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/inventory/note   { "text": "40 pounds of bones, two cases of limes, tossed 3 lb sprouts" }
 // Returns proposed counts and waste for the owner to check. Nothing is saved.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const body = await request.json().catch(() => ({}));
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 2000) : "";
   if (!text) return errorResponse("Say or type what you counted or threw out.", 400);

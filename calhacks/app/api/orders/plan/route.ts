@@ -5,11 +5,14 @@ import { parsePlanRequest } from "@/lib/purchasing/planHttp";
 import { buildPlan } from "@/lib/purchasing/planService";
 import { loadCash } from "@/lib/bank/service";
 import { getSupabase } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 // POST /api/orders/plan   { "kind": "low" }  or  { "kind": "prep", "date": "2026-10-24", "factors": { "1": 1.3 } }
 // Which supplier to order each item from, compared on price, delivery date and minimums, with Claude's
 // explanation. Nothing is saved. If the AI part fails, the plan still comes back without it.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const req = parsePlanRequest(await request.json().catch(() => ({})));
   if (!req) return errorResponse("Say what to plan: low stock, or a prep day in the next week.", 400);
   try {

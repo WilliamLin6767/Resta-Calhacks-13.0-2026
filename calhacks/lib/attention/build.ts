@@ -15,6 +15,8 @@ import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
 import { amountToPay } from "@/lib/purchasing/disputes";
 import { loadOrders } from "@/lib/purchasing/service";
 import { RESTAURANT_ID } from "@/lib/supabase";
+import type { Digest } from "@/lib/analytics";
+import { billingImpact, cheaperImpact, deliveryImpact, menuPriceImpact, NO_FIGURE, payoutImpact, priceRiseImpact, stockoutImpact, wasteImpact } from "./impact";
 import type { Item, Tab, TabFacts } from "./types";
 
 type Db = SupabaseClient;
@@ -47,9 +49,40 @@ const BILLING_PHRASE: Record<string, string> = {
 
 export type Built = { items: Item[]; facts: TabFacts };
 
+// What running out of each ingredient costs: the dishes that use it (units a day from the last 30
+// days, margin per plate) and how long until its supplier can deliver. Null if anything is missing,
+// so the bar still shows, just without dollars.
+async function stockoutInputs(db: Db) {
+  const [recipes, dishes, digest, ingredients, suppliers] = await Promise.all([
+    db.from("recipe_items").select("menu_item_id, ingredient_id, qty"),
+    db.from("menu_items").select("id, name").eq("restaurant_id", RESTAURANT_ID).eq("active", true),
+    db.rpc("analytics_digest", { p_restaurant_id: RESTAURANT_ID, p_days: 30 }),
+    db.from("ingredients").select("id, preferred_supplier_id").eq("restaurant_id", RESTAURANT_ID),
+    db.from("suppliers").select("id, lead_time_days").eq("restaurant_id", RESTAURANT_ID),
+  ]);
+  if (recipes.error || dishes.error || digest.error || ingredients.error || suppliers.error || !digest.data) return null;
+  const menu = new Map(((digest.data as Digest).menu ?? []).map((m) => [m.name, m]));
+  const days = (digest.data as Digest).period?.days ?? 30;
+  const dishName = new Map((dishes.data as { id: number; name: string }[]).map((d) => [d.id, d.name]));
+  const lead = new Map((suppliers.data as { id: number; lead_time_days: number | null }[]).map((s) => [s.id, Math.max(1, Number(s.lead_time_days ?? 1))]));
+  const preferred = new Map((ingredients.data as { id: number; preferred_supplier_id: number | null }[]).map((i) => [i.id, i.preferred_supplier_id]));
+  return {
+    dishesFor(ingredientId: number) {
+      return (recipes.data as { menu_item_id: number; ingredient_id: number }[])
+        .filter((r) => r.ingredient_id === ingredientId)
+        .flatMap((r) => {
+          const name = dishName.get(r.menu_item_id);
+          const row = name ? menu.get(name) : undefined;
+          return row && row.unit_margin !== null ? [{ name: row.name, unitsPerDay: row.units / days, margin: row.unit_margin }] : [];
+        });
+    },
+    leadDays: (ingredientId: number) => lead.get(preferred.get(ingredientId) ?? -1) ?? 1,
+  };
+}
+
 // ---------- Inventory: what's running out, and restock orders to approve and send ----------
 async function inventory(db: Db): Promise<Built> {
-  const [{ lines, events, wasteWeek }, orders] = await Promise.all([loadInventory(db), loadOrders(db)]);
+  const [{ lines, events, wasteWeek }, orders, cost] = await Promise.all([loadInventory(db), loadOrders(db), stockoutInputs(db).catch(() => null)]);
   const items: Item[] = [];
   const out = lines.filter((l) => l.status === "out");
   const low = lines.filter((l) => l.status === "low").sort((a, b) => (a.days_left ?? 99) - (b.days_left ?? 99));
@@ -59,15 +92,31 @@ async function inventory(db: Db): Promise<Built> {
       key: `out:${l.id}`, fingerprint: "out", tab: "inventory", level: "act", dismissable: true,
       title: `You're out of ${l.name.toLowerCase()}`, detail: `You use about ${fmt(l.daily_use)} ${l.unit} a day.`,
       actions: [{ kind: "plan", label: "Plan a restock order", request: { kind: "low" } }],
+      ...(cost ? stockoutImpact(cost.dishesFor(l.id), cost.leadDays(l.id)) : NO_FIGURE),
+      evidence: [{ label: "Daily use", value: `${fmt(l.daily_use)} ${l.unit}`, href: "/inventory" }],
     });
   }
   if (low.length) {
+    // Only what runs out before its supplier can deliver costs anything
+    const each = cost ? low.map((l) => stockoutImpact(cost.dishesFor(l.id), cost.leadDays(l.id) - (l.days_left ?? 0))) : [];
+    const total = each.reduce((s, i) => s + (i.impact_usd_week ?? 0), 0);
+    const first = each.find((i) => i.impact_usd_week !== null);
     items.push({
       key: "low", fingerprint: low.map((l) => l.id).join(","), tab: "inventory", dismissable: true,
       level: low.some((l) => (l.days_left ?? 99) < 1) ? "act" : "watch",
       title: low.length === 1 ? `Order more ${low[0].name.toLowerCase()}` : `Order more of ${low.length} items`,
       detail: `${low[0].name} runs out ${runsOut(low[0].days_left)}${low.length > 1 ? `, ${listShort(low.slice(1).map((l) => l.name.toLowerCase()), 2)} soon after` : ""}.`,
       actions: [{ kind: "plan", label: "Plan restock orders", request: { kind: "low" } }],
+      ...(first ? { impact_usd_week: Math.round(total * 100) / 100, basis: `For each item that runs out before a delivery can arrive: ${first.basis}`, confidence: "medium" as const, playbook: "stockout_risk" } : NO_FIGURE),
+      evidence: low.slice(0, 4).map((l) => ({ label: l.name, value: `${fmt(l.estimated)} ${l.unit} left, ${runsOut(l.days_left).replace(/^in /, "")}` })),
+    });
+  }
+  if (wasteWeek >= 10) {
+    items.push({
+      key: "waste", fingerprint: wasteWeek.toFixed(0), tab: "inventory", level: "watch", dismissable: true,
+      title: `${cash(wasteWeek)} of food thrown out this week`, detail: "The waste log shows what's thrown out most; prep less of it.",
+      actions: [{ kind: "link", label: "See the waste log", href: "/inventory/changes" }],
+      ...wasteImpact(wasteWeek),
     });
   }
   for (const o of orders) {
@@ -168,15 +217,33 @@ async function prep(db: Db): Promise<Built> {
 }
 
 // ---------- Invoices: disputes to send, lines to confirm, savings ----------
+// Supplier price changes (from the analytics digest), each ingredient's stock line for its weekly
+// use, and each supplier's order minimum, for the dollars on the Invoices tab.
+async function marketInputs(db: Db) {
+  const [digest, inventory, suppliers] = await Promise.all([
+    db.rpc("analytics_digest", { p_restaurant_id: RESTAURANT_ID, p_days: 30 }),
+    loadInventory(db),
+    db.from("suppliers").select("name, min_order_amount").eq("restaurant_id", RESTAURANT_ID),
+  ]);
+  return {
+    changes: new Map(((digest.data as Digest | null)?.price_changes ?? []).map((c) => [c.ingredient.toLowerCase(), c])),
+    lines: new Map(inventory.lines.map((l) => [l.id, l])),
+    minOrder: new Map(((suppliers.data ?? []) as { name: string; min_order_amount: number | null }[]).map((s) => [s.name, Number(s.min_order_amount ?? 0)])),
+  };
+}
+
 async function invoices(db: Db): Promise<Built> {
   const since = addDays(todayLocal(), -45);
-  const res = await db.from("invoices")
-    .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, money_impact, resolved), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
-    .eq("restaurant_id", RESTAURANT_ID).gte("invoice_date", since).order("invoice_date", { ascending: false });
+  const [res, market] = await Promise.all([
+    db.from("invoices")
+      .select("id, invoice_number, invoice_date, total, status, suppliers(name), invoice_flags(kind, severity, message, money_impact, resolved, ingredient_id), invoice_lines(needs_review), invoice_disputes(status, amount_claimed, to_email, sent_at, created_at)")
+      .eq("restaurant_id", RESTAURANT_ID).gte("invoice_date", since).order("invoice_date", { ascending: false }),
+    marketInputs(db).catch(() => ({ changes: new Map(), lines: new Map(), minOrder: new Map() }) as Awaited<ReturnType<typeof marketInputs>>),
+  ]);
   if (res.error) throw new Error(`Could not load invoices: ${res.error.message}`);
   type Row = {
     id: number; invoice_number: string | null; invoice_date: string; total: number | null; status: string; suppliers: { name: string } | null;
-    invoice_flags: { kind: string; severity: string; message: string; money_impact: number | null; resolved: boolean }[];
+    invoice_flags: { kind: string; severity: string; message: string; money_impact: number | null; resolved: boolean; ingredient_id: number | null }[];
     invoice_lines: { needs_review: boolean }[];
     invoice_disputes: { status: string; amount_claimed: number; to_email: string | null; sent_at: string | null; created_at: string }[];
   };
@@ -197,12 +264,15 @@ async function invoices(db: Db): Promise<Built> {
         title: `${supplier} overcharged you ${cash(wrong)}`,
         detail: `Invoice ${name} has ${listShort([...new Set(open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).map((f) => BILLING_PHRASE[f.kind] ?? "a billing error"))], 2)}.`,
         actions: [{ kind: "link", label: "Draft a dispute email", href }],
+        ...billingImpact(wrong),
+        evidence: open.filter((f) => BILLING_ERROR_KINDS.has(f.kind)).slice(0, 4).map((f) => ({ label: BILLING_PHRASE[f.kind] ?? f.kind, value: f.message, href })),
       });
     } else if (dispute?.status === "draft") {
       items.push({
         key: `dispute-draft:${inv.id}`, fingerprint: "draft", tab: "invoices", level: "act",
         title: `Send the dispute email to ${supplier}`, detail: `It asks for a ${cash(dispute.amount_claimed)} credit on ${name}. It's written; just check it.`,
         actions: [{ kind: "link", label: "Review and send", href }],
+        ...billingImpact(Number(dispute.amount_claimed)),
       });
     } else if (dispute?.status === "sent" && dispute.sent_at && Date.now() - Date.parse(dispute.sent_at) > 5 * 86400_000) {
       items.push({
@@ -221,11 +291,35 @@ async function invoices(db: Db): Promise<Built> {
     }
     for (const f of open.filter((x) => x.kind === "cheaper_elsewhere")) {
       savings += Number(f.money_impact ?? 0);
+      const line = f.ingredient_id ? market.lines.get(f.ingredient_id) : undefined;
+      const change = line ? market.changes.get(line.name.toLowerCase()) : undefined;
+      const gap = change && change.current_unit_cost !== null && change.cheapest_unit_cost !== null ? change.current_unit_cost - change.cheapest_unit_cost : null;
       items.push({
         key: `cheaper:${inv.id}:${f.message.slice(0, 40)}`, fingerprint: String(f.money_impact), tab: "invoices", level: "info", dismissable: true,
         title: `${f.message.split(":")[0]}: save ${cash(Number(f.money_impact ?? 0))} with another supplier`, actions: [{ kind: "link", label: "See the invoice", href }],
+        ...(line && gap !== null && gap > 0 ? cheaperImpact(gap, line.daily_use * 7, line.unit, market.minOrder.get(change!.cheapest_supplier ?? "") ?? 0) : NO_FIGURE),
       });
     }
+  }
+  // Supplier price rises in the last 30 days, at the supplier we buy from
+  for (const c of market.changes.values()) {
+    if (!c.is_current_supplier || !(c.change_pct > 0) || c.current_unit_cost === null) continue;
+    const line = [...market.lines.values()].find((l) => l.name.toLowerCase() === c.ingredient.toLowerCase());
+    if (!line || !(line.daily_use > 0)) continue;
+    const oldUnit = c.previous_price && c.current_price ? (c.current_unit_cost * c.previous_price) / c.current_price : null;
+    if (oldUnit === null) continue;
+    items.push({
+      key: `price-rise:${line.id}`, fingerprint: `${c.current_price}:${c.since}`, tab: "invoices", level: "watch", dismissable: true,
+      title: `${c.supplier} raised ${c.ingredient.toLowerCase()} ${c.change_pct}%`,
+      detail: `${money(c.previous_price!)} to ${money(c.current_price!)} since ${shortDate(c.since)}.${c.cheapest_supplier ? ` ${c.cheapest_supplier} is cheaper.` : ""}`,
+      actions: [{ kind: "link", label: "Compare suppliers", href: "/suppliers" }],
+      ...priceRiseImpact(c.current_unit_cost, oldUnit, line.daily_use * 7, line.unit),
+      evidence: [
+        { label: "Price", value: `${money(c.previous_price!)} to ${money(c.current_price!)}`, href: "/suppliers" },
+        ...(c.cheapest_supplier && c.cheapest_unit_cost !== null ? [{ label: "Cheaper", value: `${c.cheapest_supplier} at ${money(c.cheapest_unit_cost)}/${line.unit}` }] : []),
+        { label: "Dishes", value: c.dishes.slice(0, 4).join(", ") },
+      ],
+    });
   }
   // Email inbox: customer orders to confirm, and invoices from addresses that aren't a supplier's
   const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, order_id, customer_order")
@@ -300,6 +394,8 @@ async function menu(db: Db): Promise<Built> {
         },
         { kind: "link", label: "Change one", href: "/menu" },
       ],
+      ...menuPriceImpact(raises.reduce((t, s) => t + s.extra_profit, 0), 30),
+      evidence: raises.slice(0, 4).map((s) => ({ label: s.dish.name, value: `cost ${money(s.cost_before)} to ${money(s.cost_now)}, food cost ${s.food_cost_pct}%`, href: "/menu" })),
     });
   }
   for (const s of suggestions.filter((x) => x.action === "review" && x.new_price)) {
@@ -316,6 +412,7 @@ async function menu(db: Db): Promise<Built> {
       title: `Charge more on DoorDash and Uber Eats (${delivery.prices.length} dishes)`,
       detail: `The apps keep ${delivery.fee_pct}% of each order. About ${cash(delivery.extra_profit)} more a month.`,
       actions: [{ kind: "post", label: "Approve", path: "/api/menu/delivery-prices", primary: true }, { kind: "link", label: "See the prices", href: "/menu" }],
+      ...deliveryImpact(delivery.extra_profit, 30),
     });
   }
   const pending = changes.filter((c) => (Object.keys(SYSTEMS) as System[]).some((s) => !c[`${s}_updated`]));
@@ -357,6 +454,7 @@ async function accounting(db: Db): Promise<Built> {
           : `${PLATFORMS[c.week.platform]}'s ${cash(reported)} payout never reached your bank`,
         detail: `${cash(reported - (c.deposit?.amount ?? 0))} missing, week of ${shortDate(c.week.period_start)}. Your orders, their statement and your bank were checked separately.`,
         actions: [{ kind: "copy", label: "Copy a note for their support", text: bankNote(c, restaurant, bank.account.last4) }],
+        ...payoutImpact(reported - (c.deposit?.amount ?? 0)),
       });
     }
     if (bank.cash.spare < 0) {
@@ -399,6 +497,7 @@ async function accounting(db: Db): Promise<Built> {
   for (const c of checks.filter((x) => x.status === "short" || x.status === "missing")) {
     items.push({
       key: `payout:${c.platform}:${c.period_start}`, fingerprint: c.difference.toFixed(2), tab: "accounting", level: "act", dismissable: true,
+      ...payoutImpact(-c.difference),
       title: `${PLATFORMS[c.platform]} owes you ${cash(-c.difference)}`,
       detail: c.status === "missing"
         ? `They never paid for the week of ${shortDate(c.period_start)}.`
@@ -446,6 +545,8 @@ const BUILDERS: Record<Tab, (db: Db) => Promise<Built>> = { inventory, prep, inv
 
 export async function buildTab(db: Db, tab: Tab): Promise<Built> {
   const built = await BUILDERS[tab](db);
+  // Every item carries the impact fields; most have no defensible dollar figure (null, low)
+  built.items = built.items.map((i) => ({ impact_usd_week: null, basis: "", evidence: [], confidence: "low", playbook: null, ...i }));
   // The summary is written from the items too (without the buttons)
   built.facts.items = built.items.map((i) => ({ level: i.level, title: i.title, detail: i.detail }));
   return built;

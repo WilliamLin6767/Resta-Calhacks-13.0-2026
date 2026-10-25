@@ -16,6 +16,8 @@ function nowTime() {
 export const salesTools = [
   defineTool({
     name: "list_sales_receipts",
+    tier: "read",
+    area: "sales",
     description: "Customer receipts added to sales recently (scanned or entered), newest first.",
     input: z.object({}),
     run: async (_input, ctx) => {
@@ -26,6 +28,8 @@ export const salesTools = [
   }),
   defineTool({
     name: "record_sale",
+    tier: "record",
+    area: "sales",
     description: "Add a sale to today's sales by dish name. Prices come from the menu unless the owner says one. qty: whole dishes. channel: dine_in (default) or takeout.",
     input: z.object({
       dishes: z.array(z.object({ dish: z.string(), qty: z.number().int().min(1).max(100), price: z.number().min(0).optional() })).min(1).max(30),

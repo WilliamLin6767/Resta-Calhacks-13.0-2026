@@ -45,13 +45,13 @@ vi.mock("@/lib/purchasing/restock", async (orig) => ({ ...(await orig<typeof imp
 vi.mock("@/lib/purchasing/planService", () => ({ draftPlan: m.draftPlan }));
 vi.mock("@/lib/calls/service", () => ({ createOwnerRequest: m.createOwnerRequest, scanForCalls: m.scanForCalls, listCalls: m.listCalls, supabaseStore: () => ({ get: vi.fn() }) }));
 vi.mock("@/lib/attention/service", () => ({ loadBar: m.loadBar, dismiss: m.dismiss }));
-vi.mock("@/lib/pricing/service", () => ({ loadPricing: m.loadPricing, applyDeliveryPrices: m.applyDeliveryPrices }));
+vi.mock("@/lib/pricing/service", async (orig) => ({ ...(await orig<typeof import("@/lib/pricing/service")>()), loadPricing: m.loadPricing, applyDeliveryPrices: m.applyDeliveryPrices }));
 vi.mock("@/lib/market/refresh", () => ({ refreshUsda: m.refreshUsda, refreshThomasNet: m.refreshThomasNet }));
 vi.mock("@/lib/analyticsReport", () => ({ reportLimit: m.reportLimit, runReport: m.runReport }));
 vi.mock("@/lib/live/signal", () => ({ signalAfter: m.signalAfter, syncCallsAfter: m.syncCallsAfter }));
 vi.mock("@/app/analytics/data", () => ({ loadAnalytics: vi.fn(async () => ({ error: "not in tests" })) }));
 
-const { AGENT_TOOLS, buildTools, createCtx } = await import("@/lib/agent/registry");
+const { AGENT_TOOLS, buildTools, createCtx, toolsFor } = await import("@/lib/agent/registry");
 type Ctx = ReturnType<typeof createCtx>;
 
 // A Supabase stand-in: every filter returns the query, awaiting it gives the table's rows,
@@ -76,7 +76,7 @@ function fakeDb(tables: Record<string, unknown[]> = {}) {
 
 function ctxWith(tables: Record<string, unknown[]> = {}, extra: Partial<Ctx> = {}) {
   const fake = fakeDb(tables);
-  return { ctx: { ...createCtx({ db: fake.db, kind: "chat", identity: `test-${Math.random()}` }), ...extra }, updates: fake.updates };
+  return { ctx: { ...createCtx({ db: fake.db, surface: "chat", identity: `test-${Math.random()}` }), ...extra }, updates: fake.updates };
 }
 
 async function run(name: string, input: unknown, ctx: Ctx) {
@@ -265,26 +265,21 @@ describe("drafts and calls", () => {
 });
 
 describe("other writes", () => {
-  it("dismiss_needs_you asks which alert, then hides one", async () => {
+  // Phase 2 renamed dismiss_needs_you to dismiss_finding (same behavior)
+  it("dismiss_finding asks which finding, then hides one", async () => {
     const item = (key: string, title: string) => ({ key, fingerprint: `${key}-fp`, tab: "inventory", level: "watch", title, actions: [], dismissable: true });
     m.loadBar.mockResolvedValue({ items: [item("low:1", "Limes are low"), item("low:2", "Onions are low")] });
     const { ctx } = ctxWith();
-    expect((await run("dismiss_needs_you", { item: "low", tab: "inventory" }, ctx)).ok).toBe(false);
+    expect((await run("dismiss_finding", { item: "low", tab: "inventory" }, ctx)).ok).toBe(false);
     expect(m.dismiss).not.toHaveBeenCalled();
-    await run("dismiss_needs_you", { item: "limes are low", tab: "inventory" }, ctx);
+    await run("dismiss_finding", { item: "limes are low", tab: "inventory" }, ctx);
     expect(m.dismiss).toHaveBeenCalledWith(ctx.db, "low:1", "low:1-fp");
   });
 
-  it("refresh_delivery_prices applies once, and not at all when every price is fine", async () => {
-    const { ctx } = ctxWith();
-    m.loadPricing.mockResolvedValueOnce({ delivery: { prices: [] } });
-    await run("refresh_delivery_prices", {}, ctx);
-    expect(m.applyDeliveryPrices).not.toHaveBeenCalled();
-    m.loadPricing.mockResolvedValueOnce({ delivery: { prices: [{ name: "Pho Tai", delivery_price: 16.5, new_delivery_price: 19.95 }] } });
-    m.applyDeliveryPrices.mockResolvedValue(1);
-    const r = await run("refresh_delivery_prices", {}, ctx);
-    expect(m.applyDeliveryPrices).toHaveBeenCalledTimes(1);
-    expect(r.change.label).toBe("1 delivery-app price raised: Pho Tai $16.50 to $19.95");
+  // Phase 2 changed this on purpose: raising delivery prices changes real prices, so it is no
+  // longer a tool that runs right away (it comes back in Phase 3 as a Commit proposal).
+  it("refresh_delivery_prices is no longer a tool", () => {
+    expect(AGENT_TOOLS.some((t) => t.name === "refresh_delivery_prices")).toBe(false);
   });
 
   it("refresh_market_prices runs only the one asked for", async () => {
@@ -332,16 +327,39 @@ describe("undo_change", () => {
 
 describe("buildTools", () => {
   it("has unique names, and every tool has a description", () => {
-    const tools = buildTools(createCtx({ db: fakeDb().db, kind: "chat", identity: "x" }));
+    const tools = buildTools(createCtx({ db: fakeDb().db, surface: "chat", identity: "x" }));
     const names = tools.map((t) => t.name);
     expect(new Set(names).size).toBe(names.length);
     for (const t of tools) expect((t as { description?: string }).description?.length ?? 0, t.name).toBeGreaterThan(20);
     for (const name of ["get_dashboard_summary", "set_stock_count", "log_waste", "propose_call", "open_page", "undo_change"]) expect(names).toContain(name);
   });
 
+  // Phase 3 added the Commit tools (proposals only); the loop still can't see them (below).
+  it("gives every tool a tier and an area, and the Commit tools are the approval gate's", () => {
+    for (const t of AGENT_TOOLS) {
+      expect(["read", "draft", "record", "commit"], t.name).toContain(t.tier);
+      expect(t.area, t.name).toBeTruthy();
+    }
+    expect(AGENT_TOOLS.filter((t) => t.tier === "commit").map((t) => t.name)).toEqual(expect.arrayContaining(["place_call", "set_menu_price", "publish_post", "approve_purchase_order"]));
+  });
+
+  it("gives the loop surface only read and draft tools", () => {
+    const loop = toolsFor("loop");
+    expect(loop.length).toBeGreaterThan(10);
+    expect(loop.filter((t) => t.tier !== "read" && t.tier !== "draft").map((t) => t.name)).toEqual([]);
+    const names = buildTools(createCtx({ db: fakeDb().db, surface: "loop", identity: "x" })).map((t) => t.name);
+    for (const name of ["set_stock_count", "log_waste", "record_sale", "undo_change", "dismiss_finding"]) expect(names).not.toContain(name);
+    for (const name of ["profit_opportunities", "restock_options", "draft_restock", "propose_call"]) expect(names).toContain(name);
+  });
+
+  it("shows charts only on the panel", () => {
+    expect(toolsFor("panel").map((t) => t.name)).toContain("show_chart");
+    for (const s of ["chat", "voice", "loop"] as const) expect(toolsFor(s).map((t) => t.name)).not.toContain("show_chart");
+  });
+
   it("turns a thrown error into Error text instead of throwing", async () => {
     m.loadInventory.mockRejectedValueOnce(new Error("Supabase is down"));
-    const tool = buildTools(createCtx({ db: fakeDb().db, kind: "chat", identity: "x" })).find((t) => t.name === "list_inventory")!;
+    const tool = buildTools(createCtx({ db: fakeDb().db, surface: "chat", identity: "x" })).find((t) => t.name === "list_inventory")!;
     await expect(tool.run({})).resolves.toBe("Error: Supabase is down");
   });
 });

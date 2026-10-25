@@ -1,10 +1,13 @@
 import { AiError } from "@/lib/purchasing/ai";
+import { loadDishes, loadDishSales, loadRecipes } from "@/lib/agent/evidence";
+import { ASSUMED_PROMO_LIFT, dishStockUnits, forecastDishWeek } from "@/lib/agent/investigate";
+import { loadInventory, todayLocal } from "@/lib/inventory/service";
 import { draftPosts, voiceFor } from "@/lib/marketing/draft";
 import { saveFreshPhoto } from "@/lib/marketing/photo";
-import { ownPhotoPath } from "@/lib/marketing/photoPath";
 import { planWeek, type MenuPerformance } from "@/lib/marketing/targets";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
+import { requireOwner } from "@/lib/auth";
 
 export const maxDuration = 180;
 
@@ -28,12 +31,14 @@ function menuPerformance(rows: unknown, fallbackNames: string[]): MenuPerformanc
   if (Array.isArray(rows)) {
     for (const row of rows) {
       if (!row || typeof row !== "object" || typeof (row as { name?: unknown }).name !== "string") continue;
-      const item = row as { name: string; units?: number; units_change_pct?: number | null; class?: string | null };
+      const item = row as { name: string; units?: number; units_change_pct?: number | null; class?: string | null; unit_margin?: number | null; food_cost_pct?: number | null };
       parsed.push({
         name: item.name,
         units: Number(item.units ?? 0),
         units_change_pct: typeof item.units_change_pct === "number" ? item.units_change_pct : null,
         class: item.class && MENU_CLASSES.has(item.class) ? (item.class as MenuPerformance["class"]) : null,
+        margin_usd: typeof item.unit_margin === "number" ? item.unit_margin : null,
+        food_cost_pct: typeof item.food_cost_pct === "number" ? item.food_cost_pct : null,
       });
     }
   }
@@ -41,9 +46,47 @@ function menuPerformance(rows: unknown, fallbackNames: string[]): MenuPerformanc
   return fallbackNames.map((name) => ({ name, units: 0, units_change_pct: null, class: null }));
 }
 
+// Days since each dish was last posted, and whether stock covers a promotion week (the same
+// check as campaign_options: today's stock against next week's forecast x the assumed lift).
+// Left unknown if anything can't load, so drafting still works.
+async function withPostingAndStock(supabase: Awaited<ReturnType<typeof getSupabase>>, menu: MenuPerformance[]): Promise<MenuPerformance[]> {
+  try {
+    const [posts, dishes, recipes, inventory, sales] = await Promise.all([
+      supabase.from("marketing_posts").select("dish_name, posted_at").eq("restaurant_id", RESTAURANT_ID).eq("status", "posted"),
+      loadDishes(supabase),
+      loadRecipes(supabase),
+      loadInventory(supabase),
+      loadDishSales(supabase, 56),
+    ]);
+    const lastPosted = new Map<string, number>();
+    for (const p of (posts.data ?? []) as { dish_name: string; posted_at: string | null }[]) {
+      if (!p.posted_at) continue;
+      const k = p.dish_name.trim().toLowerCase();
+      lastPosted.set(k, Math.max(lastPosted.get(k) ?? 0, Date.parse(p.posted_at)));
+    }
+    const canMake = dishStockUnits(recipes, new Map(inventory.lines.map((l) => [l.id, l.estimated])));
+    const week = forecastDishWeek(sales, dishes, todayLocal());
+    return menu.map((m) => {
+      const dish = dishes.find((d) => d.name.trim().toLowerCase() === m.name.trim().toLowerCase());
+      const posted = lastPosted.get(m.name.trim().toLowerCase());
+      const units = dish ? canMake.get(dish.id) : undefined;
+      return {
+        ...m,
+        posted_days_ago: posted ? Math.floor((Date.now() - posted) / 86400_000) : null,
+        stock_covers: dish && units !== undefined ? units >= (week.get(dish.id) ?? 0) * ASSUMED_PROMO_LIFT : null,
+      };
+    });
+  } catch {
+    return menu;
+  }
+}
+
 // POST /api/marketing/draft
-// One post pushes a quiet dish from Analytics. The others poll dishes from Trends.
+// One post pushes a quiet dish from Analytics. The others poll dishes from Trends. The previous
+// unposted drafts are archived (never deleted), with their photos.
 export async function POST(request: Request) {
+  const denied = requireOwner(request);
+  if (denied) return denied;
   const supabase = await getSupabase();
   const probe = await supabase.from("marketing_posts").select("id").limit(1);
   if (probe.error) {
@@ -68,8 +111,9 @@ export async function POST(request: Request) {
 
   const digestMenu = digest.error ? [] : ((digest.data as { menu?: unknown } | null)?.menu ?? []);
   const offset = Math.floor(Date.now() / 1000);
+  const performance = await withPostingAndStock(supabase, menuPerformance(digestMenu, menu.data.map((item) => item.name)));
   const slots = planWeek(
-    menuPerformance(digestMenu, menu.data.map((item) => item.name)),
+    performance,
     recommendations.error ? [] : (recommendations.data ?? []).map((item) => item.dish_name),
     offset,
   );
@@ -89,13 +133,15 @@ export async function POST(request: Request) {
     return errorResponse(err instanceof Error ? err.message : "Could not draft posts.", 502);
   }
 
-  const stale = await supabase.from("marketing_posts").select("id").eq("restaurant_id", RESTAURANT_ID).neq("status", "posted");
-  if (stale.error) return errorResponse(stale.error.message, 500);
-  const staleIds = (stale.data ?? []).map((row) => row.id);
-  if (staleIds.length > 0) {
-    const removed = await supabase.from("marketing_posts").delete().in("id", staleIds);
-    if (removed.error) return errorResponse(removed.error.message, 500);
-    await supabase.storage.from("marketing").remove(staleIds.map((id) => ownPhotoPath(id)));
+  // The last set of drafts is archived, never deleted: its edits and photos stay (Show archived).
+  const archived = await supabase
+    .from("marketing_posts")
+    .update({ status: "archived", archived_at: new Date().toISOString() })
+    .eq("restaurant_id", RESTAURANT_ID)
+    .in("status", ["draft", "failed"]);
+  if (archived.error) {
+    const notSetUp = /marketing_posts_status|check constraint|archived_at|schema cache/i.test(archived.error.message);
+    return errorResponse(notSetUp ? "New drafts would replace the current ones. Run supabase/20_marketing_status.sql first so old drafts are archived instead of deleted." : archived.error.message, notSetUp ? 409 : 500);
   }
 
   const inserted = await supabase
