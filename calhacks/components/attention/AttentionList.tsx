@@ -7,6 +7,7 @@ import OrderPlan from "@/components/OrderPlan";
 import Fold, { Chevron } from "@/components/ui/Fold";
 import { useReducedMotion } from "@/components/ui/useReducedMotion";
 import { useToast } from "@/components/ui/Toaster";
+import { isApprovalAction, itemSection } from "@/lib/approvals/sections";
 import { TAB_LABELS, type Action, type Item } from "@/lib/attention/types";
 
 const DOT = { act: "bg-red-500", watch: "bg-amber-400", info: "bg-gray-300" };
@@ -85,15 +86,20 @@ function Row({
   leaving,
   onDismiss,
   onDone,
+  approveHere,
 }: {
   item: Item;
   showTab: boolean;
+  approveHere: boolean;
   stamp?: Stamp;
   leaving: boolean;
   onDismiss: (i: Item) => void;
   onDone: (i: Item, action: Action) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Approvals are decided on the Actions page only; here the item keeps its other buttons and links there
+  const decideElsewhere = !approveHere && item.actions.some(isApprovalAction);
+  const actions = decideElsewhere ? item.actions.filter((a) => !isApprovalAction(a)) : item.actions;
   return (
     <li className={`relative ${leaving ? "ticket-out overflow-hidden" : ""}`}>
       {/* "Done" / "Hidden", stamped on the row before it leaves */}
@@ -118,7 +124,8 @@ function Row({
         <div className="pb-3 pl-5 pr-1">
           {item.detail && <p className="text-sm text-gray-600">{item.detail}</p>}
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {item.actions.map((action, i) => <ActionButton key={i} action={action} main={i === 0} onDone={() => onDone(item, action)} />)}
+            {decideElsewhere && <Link href={`/actions#${itemSection(item)}`} className={`${mainClass} inline-block`}>Decide in Actions</Link>}
+            {actions.map((action, i) => <ActionButton key={i} action={action} main={!decideElsewhere && i === 0} onDone={() => onDone(item, action)} />)}
             {showTab && <Link href={TAB_LABELS[item.tab].href} className={linkClass}>Open {TAB_LABELS[item.tab].label}</Link>}
             {item.dismissable && (
               <button onClick={() => onDismiss(item)} className="text-sm text-gray-400 hover:text-gray-700 sm:text-[13px]" title="Hide this until something changes">
@@ -133,7 +140,8 @@ function Row({
 }
 
 // Folded by default: one line with the counts. Open it for the list, decisions first.
-export default function AttentionList({ items, showTab = false, limit = 4 }: { items: Item[]; showTab?: boolean; limit?: number }) {
+// approveHere: the Actions page, the one place approvals are decided.
+export default function AttentionList({ items, showTab = false, limit = 4, approveHere = false }: { items: Item[]; showTab?: boolean; limit?: number; approveHere?: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const reduced = useReducedMotion();
@@ -182,7 +190,7 @@ export default function AttentionList({ items, showTab = false, limit = 4 }: { i
   }
 
   const row = (item: Item) => (
-    <Row key={item.key} item={item} showTab={showTab} stamp={stamps[item.key]} leaving={leaving.has(item.key)} onDismiss={dismiss} onDone={done} />
+    <Row key={item.key} item={item} showTab={showTab} approveHere={approveHere} stamp={stamps[item.key]} leaving={leaving.has(item.key)} onDismiss={dismiss} onDone={done} />
   );
 
   if (visible.length === 0) return <p className="text-sm text-gray-600">Nothing needs a decision right now.</p>;

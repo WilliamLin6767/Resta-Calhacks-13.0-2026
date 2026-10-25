@@ -39,10 +39,12 @@ async function proposeAction(
       evidence: [...(p.evidence ?? []), ...(ctx.loop.evidence ?? [])].slice(0, 8),
     };
   }
+  // Opened from a cross-department discovery: say so, so the Actions page files it under Mixed
+  if (ctx.discovery) p = { ...p, evidence: [...(p.evidence ?? []), { label: "From discovery", value: ctx.discovery, href: `/intelligence#${ctx.discovery}` }].slice(-8) };
   try {
     const row = await propose(supabaseActions(ctx.db), { tool, ...p, source: ctx.surface === "loop" ? "loop" : "agent", surface: ctx.surface, case_id: ctx.loop?.caseId ?? null }, KNOWN);
     ctx.proposals.push({ action_id: row.id, tool, title: row.title, summary: row.summary });
-    return json({ ok: true, proposed: { action_id: row.id, title: row.title, summary: row.summary }, facts, note: "Waiting for the owner to tap Approve on the card. Nothing has happened yet." });
+    return json({ ok: true, proposed: { action_id: row.id, title: row.title, summary: row.summary }, facts, note: "Waiting for the owner to approve it on the Actions page. Nothing has happened yet." });
   } catch (err) {
     if (err instanceof ActionTableMissing) return `Error: approvals aren't set up yet (supabase/18_agent_actions.sql hasn't been run), so this can't be proposed. The owner can do it on its page.`;
     throw err;

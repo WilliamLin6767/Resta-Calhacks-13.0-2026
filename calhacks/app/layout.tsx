@@ -59,7 +59,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem("resta-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}})()`,
+            // Dark mode, and a collapsed menu (components/Sidebar.tsx), before the first paint.
+            __html: `(function(){try{var d=document.documentElement;if(localStorage.getItem("resta-theme")==="dark")d.classList.add("dark");if(localStorage.getItem("resta-nav")==="collapsed")d.dataset.nav="collapsed"}catch(e){}})()`,
           }}
         />
       </head>

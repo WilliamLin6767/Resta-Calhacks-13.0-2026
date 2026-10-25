@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import ActionCard from "@/components/agent/ActionCard";
 import { LIVE_RESTAURANT_ID, useLiveOn, useLiveQuery } from "@/components/live/useLiveQuery";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
+import { sectionOfTool } from "@/lib/approvals/sections";
 import { useToast } from "@/components/ui/Toaster";
 import TypingDots from "@/components/ui/TypingDots";
 import MicButton from "@/components/voice/MicButton";
@@ -32,7 +32,6 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   order?: Order | null;
-  approved?: boolean;
   changes?: Change[];
   links?: PageLink[];
   proposals?: Proposal[]; // actions waiting for the owner tap (cards)
@@ -209,27 +208,6 @@ export default function ChatPage() {
     }
   }
 
-  async function approve(messageId: number, orderId: number) {
-    setBusy(true);
-    setError("");
-    try {
-      const res = await fetch(`/api/purchase-orders/${orderId}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "approved" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Could not approve the order.");
-      setMessages((current) => current.map((message) => (message.id === messageId ? { ...message, approved: true } : message)));
-      router.refresh();
-      toast({ message: "Order approved", tone: "success" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not approve the order.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   // The Undo button under a change: the same code as the agent's undo_change.
   async function undo(messageId: number, index: number, change: Change) {
     setBusy(true);
@@ -293,11 +271,14 @@ export default function ChatPage() {
                   ))}
                 </p>
               )}
-              {/* Actions the agent proposed: they run only when the owner taps Approve */}
+              {/* Actions the agent proposed: they wait on the Actions page, the one place approvals are decided */}
               {(message.proposals?.length ?? 0) > 0 && (
                 <div className="mt-3 space-y-2 border-t border-gray-200 pt-3">
                   {message.proposals!.map((p) => (
-                    <ActionCard key={p.action_id} action={{ id: p.action_id, title: p.title, summary: p.summary }} />
+                    <p key={p.action_id} className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium text-gray-900">{p.title}</span>
+                      <Link href={`/actions#${sectionOfTool(p.tool)}`} className="text-sm font-medium text-brand-700 hover:underline">Waiting for you in Actions</Link>
+                    </p>
                   ))}
                 </div>
               )}
@@ -310,18 +291,12 @@ export default function ChatPage() {
                     ))}
                   </ul>
                   <p className="mt-1">About {money(message.order.total)}. Waiting for your approval.</p>
-                  {message.approved ? (
-                    <p className="mt-2 font-medium">Approved. Open Invoices to text the order.</p>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => approve(message.id, message.order!.orderId)}
-                      className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                  )}
+                  <Link
+                    href="/actions#purchasing"
+                    className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
+                  >
+                    Approve in Actions
+                  </Link>
                 </div>
               )}
             </div>

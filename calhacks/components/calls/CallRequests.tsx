@@ -4,8 +4,9 @@
 // purchase order), or for a whole page. Pending: approve, edit or reject.
 // Calling: live status. Done: the outcome, transcript and suggested actions.
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { followCalls } from "@/components/live/followedCalls";
 import { LIVE_RESTAURANT_ID, useLiveOn, useLiveQuery } from "@/components/live/useLiveQuery";
 import EmptyState from "@/components/ui/EmptyState";
@@ -286,6 +287,10 @@ function SwitchSuggestion({ check, supplier, busy, onCheckAgain }: { check: Swit
   );
 }
 
+// Approving or rejecting a call only happens on the Actions page (every approval waits there);
+// everywhere else a waiting call shows what it will do and a link to approve it in Actions.
+const ApproveHere = createContext(false);
+
 // `compact` (older finished calls): the summary and buttons only, the rest behind "More details".
 function CallCard({ call, onChanged, compact = false }: { call: CallView; onChanged: (c?: Partial<CallView>) => void; compact?: boolean }) {
   const [editing, setEditing] = useState(false);
@@ -296,6 +301,7 @@ function CallCard({ call, onChanged, compact = false }: { call: CallView; onChan
   const [error, setError] = useState("");
   const status = STATUS[call.status];
   const step = callStep(call);
+  const approveHere = useContext(ApproveHere);
 
   async function act(path: string, body: unknown) {
     setBusy(true);
@@ -355,6 +361,11 @@ function CallCard({ call, onChanged, compact = false }: { call: CallView; onChan
               <BriefView brief={call.brief} />
             </details>
           )}
+          {!approveHere ? (
+            <p className="mt-3 text-sm">
+              <Link href="/actions#purchasing" className="font-medium text-brand-700 hover:underline">Waiting for your OK in Actions</Link>
+            </p>
+          ) : (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               className={primary}
@@ -373,6 +384,7 @@ function CallCard({ call, onChanged, compact = false }: { call: CallView; onChan
               Reject
             </button>
           </div>
+          )}
         </>
       )}
 
@@ -469,6 +481,9 @@ export default function CallRequests({
   action,
   view = "fold",
   moreHref = "/suppliers/calls",
+  approveHere = false,
+  waitingOnly = false,
+  skipIds = [],
 }: {
   contextType?: ContextType;
   contextId?: number;
@@ -480,6 +495,39 @@ export default function CallRequests({
   // and a link to `moreHref` with them all (the tabs). full: everything (that page).
   view?: "fold" | "preview" | "full";
   moreHref?: string;
+  approveHere?: boolean; // the Actions page: the Approve and Reject buttons
+  waitingOnly?: boolean; // only calls waiting for the owner or under way
+  skipIds?: number[]; // calls already shown as an action card (a proposed place_call or reject_call)
+}) {
+  return (
+    <ApproveHere.Provider value={approveHere}>
+      <CallList {...{ contextType, contextId, supplierId, title, hideWhenEmpty, action, view, moreHref, waitingOnly, skipIds }} />
+    </ApproveHere.Provider>
+  );
+}
+
+function CallList({
+  contextType,
+  contextId,
+  supplierId,
+  title,
+  hideWhenEmpty,
+  action,
+  view,
+  moreHref,
+  waitingOnly,
+  skipIds,
+}: {
+  contextType?: ContextType;
+  contextId?: number;
+  supplierId?: number;
+  title: string;
+  hideWhenEmpty: boolean;
+  action?: React.ReactNode;
+  view: "fold" | "preview" | "full";
+  moreHref: string;
+  waitingOnly: boolean;
+  skipIds: number[];
 }) {
   const router = useRouter();
   const [calls, setCalls] = useState<CallView[] | null>(null);
@@ -569,9 +617,9 @@ export default function CallRequests({
     router.refresh(); // badges in server-rendered lists
   };
 
-  if (hideWhenEmpty && calls !== null && calls.length === 0 && !error) return null;
-  const all = calls ?? [];
   const isFinished = (c: CallView) => FINISHED_STATUSES.includes(c.status) && !watched.has(c.id);
+  const all = (calls ?? []).filter((c) => !skipIds.includes(c.id) && (!waitingOnly || (c.status !== "rejected" && !isFinished(c))));
+  if (hideWhenEmpty && calls !== null && all.length === 0 && !error) return null;
   // Waiting for the owner's OK or under way, newest first (as the API sends them).
   const open = all.filter((c) => c.status !== "rejected" && !isFinished(c));
   // Done or didn't work: their own list, most important first.

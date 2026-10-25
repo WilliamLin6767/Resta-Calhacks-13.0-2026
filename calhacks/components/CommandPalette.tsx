@@ -10,6 +10,7 @@ import { PROFILE, SECTIONS } from "@/lib/nav";
 // Extra words that find a section, besides its name.
 const KEYWORDS: Record<string, string[]> = {
   "/": ["home", "dashboard", "today", "needs"],
+  "/intelligence": ["mission control", "discoveries", "insights", "operating picture", "context"],
   "/chat": ["talk", "voice", "restock", "message"],
   "/actions": ["approve", "approval", "proposal", "log", "case", "run now"],
   "/inventory": ["stock", "count", "waste", "delivery", "shelf", "receipt"],

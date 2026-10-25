@@ -3,22 +3,28 @@
 // mirror. Nothing in lib/agent/tools imports this file: the model can only propose.
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { clearPicture } from "@/lib/intelligence/load";
 import { signalAction } from "@/lib/live/signal";
 import { actNow, approve, execute, reject, supabaseActions, type ActionRow, type ActionStore, type NewAction } from "./actions";
 import { executorsFor } from "./executors";
 
-// Every status change is mirrored to Convex (id, status, tool and time only) for open screens.
+// Every status change is mirrored to Convex (id, status, tool and time only) for open screens,
+// and makes the operating picture rebuild on its next read.
 function liveStore(store: ActionStore): ActionStore {
   return {
     ...store,
     async insert(row) {
       const made = await store.insert(row);
+      clearPicture();
       signalAction(made);
       return made;
     },
     async update(id, from, patch, notExpiredAt) {
       const row = await store.update(id, from, patch, notExpiredAt);
-      if (row) signalAction(row);
+      if (row) {
+        clearPicture();
+        signalAction(row);
+      }
       return row;
     },
   };

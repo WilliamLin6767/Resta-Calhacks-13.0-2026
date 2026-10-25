@@ -5,6 +5,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AGENT_TOOLS, createCtx } from "@/lib/agent/registry";
 import { runAgent } from "@/lib/agent/run";
+import { clearPicture } from "@/lib/intelligence/load";
 import { signalAfter } from "@/lib/live/signal";
 import { tick, type EngineDeps, type TickReport } from "./engine";
 import { PLAYBOOKS } from "./playbooks";
@@ -102,6 +103,7 @@ export async function runTick(db: SupabaseClient): Promise<TickReport> {
   const probe = await db.from("cases").select("id").limit(1);
   if (probe.error) throw new CasesTableMissing(`The loop isn't set up: run supabase/19_cases.sql. (${probe.error.message})`);
   const report = await tick(loopDeps(db));
+  clearPicture(); // the Intelligence page and the agent see the new cases on their next read
   if (report.detected.length || report.proposed.length || report.measuring.length || report.closed.length || report.dismissed.length) signalAfter("/api/loop/tick");
   return report;
 }
