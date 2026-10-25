@@ -26,13 +26,16 @@ const daily = createRateLimiter({ limit: 100, windowMs: 24 * 60 * 60 * 1000 });
 
 // A 429 response when over the limit, or null to go ahead.
 export function aiRateLimit(request: Request): Response | null {
-  for (const result of [perVisitor(clientIp(request)), daily("all")] as RateLimitResult[]) {
-    if (!result.ok) {
-      return Response.json(
-        { error: `Too many AI requests. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minutes.` },
-        { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } }
-      );
-    }
-  }
-  return null;
+  const result = callsAiLimit(clientIp(request));
+  if (result.ok) return null;
+  return Response.json(
+    { error: `Too many AI requests. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minutes.` },
+    { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } }
+  );
+}
+
+// The same limits for a visitor by address (the chat agent's scan_for_calls and propose_call)
+export function callsAiLimit(identity: string): RateLimitResult {
+  for (const result of [perVisitor(identity), daily("all")] as RateLimitResult[]) if (!result.ok) return result;
+  return { ok: true };
 }

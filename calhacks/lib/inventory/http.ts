@@ -8,8 +8,14 @@ const perVisitorLimit = createRateLimiter({ limit: 15, windowMs: 10 * 60 * 1000 
 const dailyLimit = createRateLimiter({ limit: 150, windowMs: 24 * 60 * 60 * 1000 });
 
 export function aiLimited(request: Request): Response | null {
-  for (const result of [perVisitorLimit(clientIp(request)), dailyLimit("all")]) {
-    if (!result.ok) return errorResponse(`Too many AI requests. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minutes.`, 429);
+  const limited = aiLimitFor(clientIp(request));
+  return limited ? errorResponse(limited, 429) : null;
+}
+
+// The same limits for a visitor by address (the chat agent's tools): the reason, or null to go ahead
+export function aiLimitFor(identity: string): string | null {
+  for (const result of [perVisitorLimit(identity), dailyLimit("all")]) {
+    if (!result.ok) return `Too many AI requests. Try again in ${Math.ceil(result.retryAfterSeconds / 60)} minutes.`;
   }
   return null;
 }

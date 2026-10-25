@@ -7,19 +7,22 @@ import NavIcon from "@/components/NavIcon";
 import { useCallCounts } from "@/components/useCallCounts";
 import { SECTIONS, sectionFor } from "@/lib/nav";
 
-// The desktop menu: half an oval on the left edge of the screen, like a wheel cut down the
-// middle. Only a sliver shows until the mouse (or keyboard focus) reaches it; then it pops out.
-// Scrolling over it turns the wheel: the sections travel around the oval one step at a time,
-// and the one that stops at the pointer opens. Clicking a section opens it straight away.
+// The desktop menu: a shallow arc on the left edge of the screen, the visible rim of a big
+// wheel whose center is off the screen to the left. Only the tip of the arc shows until the
+// mouse (or keyboard focus) reaches it; then it slides out. Scrolling over it turns the wheel:
+// the section icons travel along the arc one step at a time, and the one that stops in the
+// middle shows its label in a pill and opens. Clicking a section opens it straight away.
 // Phones use the drawer instead.
 
-const WIDTH = 300; // the half oval: how far it reaches into the screen...
-const HALF_HEIGHT = 290; // ...and half its height
-const PATH_X = 70; // the oval path the sections travel on (inside the edge, leaving room for labels)
-const PATH_Y = 210;
-const STEP = 24; // degrees between sections on that path
-const DOTS_INSET = 14; // the turning dots on the rim, this far inside the edge
-const SLIVER = 20; // px of the oval left showing while it's tucked away
+const HALF_HEIGHT = 300; // the arc meets the screen edge this far above and below the middle...
+const DEPTH = 130; // ...and bulges this far into the screen at the middle
+const R = (HALF_HEIGHT ** 2 + DEPTH ** 2) / (2 * DEPTH); // the wheel's radius (about 411)
+const C = R - DEPTH; // its center, this far off the screen to the left (about 281)
+const PATH_R = R - 50; // the circle the section icons travel on, inside the curve
+const STEP = 8; // degrees between sections on that path (about 50 px apart)
+const DOTS_INSET = 14; // the turning dots on the rim, this far inside the curve
+const SLIVER = 20; // px of the arc left showing while it's tucked away
+const PILL_PAD = 6; // the active pill starts this far before its icon
 const OPEN_DELAY = 450; // ms the wheel must rest before the section under the pointer opens
 const SCROLL_STEP = 50; // wheel delta (px) per section; trackpads add up small deltas
 const SCROLL_COOLDOWN = 90; // ms between steps, so a trackpad flick doesn't fly past everything
@@ -114,6 +117,7 @@ export default function NavWheel() {
   };
 
   const hasCalls = Object.values(callCounts).some((n) => n > 0);
+  const focusCalls = SECTIONS[focus].calls ? (callCounts[SECTIONS[focus].calls] ?? 0) : 0;
   const turn = focus * STEP; // how far the wheel has turned, in degrees
 
   return (
@@ -135,39 +139,54 @@ export default function NavWheel() {
         }}
         className="fixed top-1/2 left-0 z-40 hidden md:block"
       >
-        {/* The half oval. Everything inside is placed relative to the middle of its flat edge. */}
+        {/* The arc's box. It doesn't catch the mouse itself: only the arc shape, the icons and
+            the active pill do, so the page around the curve stays clickable. */}
         <div
           ref={wheelRef}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={close}
           style={{
-            width: WIDTH,
+            width: DEPTH,
             height: HALF_HEIGHT * 2,
             top: -HALF_HEIGHT,
-            borderRadius: `0 ${WIDTH}px ${WIDTH}px 0 / 0 ${HALF_HEIGHT}px ${HALF_HEIGHT}px 0`,
-            translate: open ? "0 0" : `${-(WIDTH - SLIVER)}px 0`,
+            translate: open ? "0 0" : `${-(DEPTH - SLIVER)}px 0`,
           }}
-          className={`wheel-move absolute left-0 bg-gray-900 text-white ring-1 ring-white/10 ${open ? "shadow-2xl shadow-black/60" : ""}`}
+          className="wheel-move pointer-events-none absolute left-0 text-white"
         >
+          <svg
+            aria-hidden="true"
+            width={DEPTH}
+            height={HALF_HEIGHT * 2}
+            viewBox={`0 0 ${DEPTH} ${HALF_HEIGHT * 2}`}
+            className="absolute inset-0 overflow-visible transition-[filter] duration-300"
+            style={{ filter: open ? "drop-shadow(0 20px 30px rgb(0 0 0 / 0.55))" : "none" }}
+          >
+            <path d={`M0,0 A${R},${R} 0 0 1 0,${HALF_HEIGHT * 2} Z`} className="pointer-events-auto fill-gray-900" />
+            <path d={`M0,0 A${R},${R} 0 0 1 0,${HALF_HEIGHT * 2}`} fill="none" className="stroke-white/10" strokeWidth="1" />
+          </svg>
+
           {/* Tucked away: a bar in the current section's color marks the edge to hover,
               with a red dot when supplier calls are waiting. */}
           <span
             aria-hidden="true"
             className={`absolute h-12 w-1.5 -translate-y-1/2 rounded-full transition-opacity duration-200 ${SECTIONS[current].solid} ${open ? "opacity-0" : "opacity-100"}`}
-            style={{ left: WIDTH - SLIVER / 2 - 3, top: HALF_HEIGHT }}
+            style={{ left: DEPTH - SLIVER / 2 - 3, top: HALF_HEIGHT }}
           />
           {hasCalls && (
             <span
               aria-hidden="true"
               className={`absolute h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-900 transition-opacity duration-200 ${open ? "opacity-0" : "opacity-100"}`}
-              style={{ left: WIDTH - SLIVER / 2 - 5, top: HALF_HEIGHT - 40 }}
+              style={{ left: DEPTH - SLIVER / 2 - 5, top: HALF_HEIGHT - 40 }}
             />
           )}
 
-          <div className={`absolute left-0 transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} style={{ top: HALF_HEIGHT }}>
-            {/* Dots around the rim turn with the wheel, so a step reads as a turn. */}
+          {/* Everything below is placed around the wheel's center, off the screen to the left. */}
+          <div className={`absolute transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`} style={{ left: -C, top: HALF_HEIGHT }}>
+            {/* Dots around the rim turn with the wheel, so a step reads as a turn. Only the ones
+                on the visible part of the arc show. */}
             {DOTS.map((at) => {
               const angle = at - turn;
+              const x = -C + (R - DOTS_INSET) * Math.cos((angle * Math.PI) / 180);
               return (
                 <span
                   key={at}
@@ -176,23 +195,16 @@ export default function NavWheel() {
                   style={
                     {
                       "--wheel-a": `${angle}deg`,
-                      "--rx": `${WIDTH - DOTS_INSET}px`,
-                      "--ry": `${HALF_HEIGHT - DOTS_INSET}px`,
-                      opacity: Math.abs(angle) < 85 ? 0.25 : 0,
+                      "--rx": `${R - DOTS_INSET}px`,
+                      "--ry": `${R - DOTS_INSET}px`,
+                      opacity: Math.abs(angle) < 90 && x > 6 ? 0.25 : 0,
                     } as React.CSSProperties
                   }
                 />
               );
             })}
 
-            {/* The pointer: whatever section stops here opens. It pulses a little at each step.
-                The arrows beside it, by the flat edge, say the wheel scrolls. */}
-            <span
-              key={focus}
-              aria-hidden="true"
-              className="wheel-tick absolute h-12 w-[222px] -translate-y-1/2 rounded-full bg-white/10 ring-1 ring-white/15"
-              style={{ left: PATH_X - 12 }}
-            />
+            {/* The arrows by the screen edge say the wheel scrolls. */}
             <svg
               aria-hidden="true"
               width="12"
@@ -204,10 +216,30 @@ export default function NavWheel() {
               strokeLinecap="round"
               strokeLinejoin="round"
               className="absolute -translate-y-1/2 text-white/40"
-              style={{ left: 26 }}
+              style={{ left: 26 + C }}
             >
               <path d="M2 7l4-4 4 4 M2 13l4 4 4-4" />
             </svg>
+
+            {/* The active section's pill: it starts behind its icon and runs past the curve into
+                the page, with the label (and any waiting calls). It pulses a little at each step.
+                The links below carry the labels for screen readers. */}
+            <div
+              key={focus}
+              aria-hidden="true"
+              onClick={() => go(focus)}
+              className={`wheel-tick absolute flex h-11 w-max min-w-[190px] -translate-y-1/2 cursor-pointer items-center gap-2 rounded-full bg-gray-800 pr-4 text-sm font-semibold whitespace-nowrap text-white shadow-lg shadow-black/40 ring-1 ring-white/10 ${
+                open ? "pointer-events-auto" : ""
+              }`}
+              style={{ left: PATH_R - 16 - PILL_PAD, paddingLeft: PILL_PAD + 32 + 10 }}
+            >
+              {SECTIONS[focus].label}
+              {focusCalls > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
+                  {focusCalls}
+                </span>
+              )}
+            </div>
 
             {SECTIONS.map((link, i) => {
               const d = i - focus;
@@ -222,9 +254,8 @@ export default function NavWheel() {
                   style={
                     {
                       "--wheel-a": `${d * STEP}deg`,
-                      "--rx": `${PATH_X}px`,
-                      "--ry": `${PATH_Y}px`,
-                      opacity: shown ? [1, 0.7, 0.45, 0.25][far] : 0,
+                      "--rx": `${PATH_R}px`,
+                      "--ry": `${PATH_R}px`,
                     } as React.CSSProperties
                   }
                 >
@@ -239,18 +270,30 @@ export default function NavWheel() {
                       e.preventDefault();
                       go(i);
                     }}
-                    className={`absolute flex origin-left -translate-y-1/2 items-center gap-2.5 whitespace-nowrap font-semibold transition-[scale,color] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${
-                      shown ? "" : "pointer-events-none"
-                    } ${active ? "scale-100 text-base text-white" : "scale-90 text-sm text-white/60 hover:text-white"}`}
+                    className={`group absolute -translate-1/2 rounded-[10px] transition-[scale] duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${
+                      shown && open ? "pointer-events-auto" : ""
+                    } ${active ? "scale-100" : "scale-90"}`}
                   >
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] transition-colors duration-300 ${active ? `${link.solid} text-white` : link.soft}`}>
+                    <span
+                      className={`relative flex h-8 w-8 items-center justify-center rounded-[10px] transition-[color,background-color,opacity] duration-300 ${active ? `${link.solid} text-white` : link.soft}`}
+                      style={{ opacity: shown ? [1, 0.7, 0.45, 0.25][far] : 0 }}
+                    >
                       <NavIcon icon={link.icon} size={18} />
+                      {calls > 0 && !active && (
+                        <span aria-hidden="true" className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-900" />
+                      )}
                     </span>
-                    {link.label}
-                    {calls > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white">
-                        {calls}
-                        <span className="sr-only"> supplier call{calls === 1 ? "" : "s"} to approve</span>
+                    <span className="sr-only">
+                      {link.label}
+                      {calls > 0 && ` (${calls} supplier call${calls === 1 ? "" : "s"} to approve)`}
+                    </span>
+                    {/* Hovering an icon that isn't active shows its name beside it. */}
+                    {!active && shown && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded-md bg-gray-800 px-2 py-1 text-xs font-semibold whitespace-nowrap text-white opacity-0 shadow-md ring-1 ring-white/10 transition-opacity duration-150 group-hover:opacity-100"
+                      >
+                        {link.label}
                       </span>
                     )}
                   </Link>

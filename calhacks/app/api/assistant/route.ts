@@ -3,7 +3,6 @@ import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { loadCompare } from "@/app/analytics/compareData";
 import { loadAnalytics } from "@/app/analytics/data";
-import type { Digest } from "@/lib/analytics";
 import {
   ASSISTANT_SYSTEM_PROMPT,
   AssistantRequestSchema,
@@ -16,7 +15,6 @@ import {
   type AssistantChart,
   type AssistantResponse,
 } from "@/lib/assistant";
-import { createOwnerRequest } from "@/lib/calls/service";
 import {
   BREAKDOWNS,
   BREAKDOWN_IDS,
@@ -29,8 +27,9 @@ import {
   type MetricId,
 } from "@/lib/compare";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
-import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
-import { syncCallsAfter } from "@/lib/live/signal";
+import { getSupabase } from "@/lib/supabase";
+import { buildTools, createCtx } from "@/lib/agent/registry";
+import { signalAfter } from "@/lib/live/signal";
 
 // Change this one line to try a different Claude model.
 const AI_MODEL = "claude-sonnet-5-5";
@@ -50,6 +49,10 @@ function errorResponse(message: string, status: number, headers?: HeadersInit) {
 // The metric and breakdown lists, written into the tool descriptions so the model knows its options.
 const METRIC_LIST = METRIC_IDS.map((id) => `- ${id}: ${METRICS[id].label}. ${METRICS[id].description}`).join("\n");
 const BREAKDOWN_LIST = BREAKDOWN_IDS.map((id) => `- ${id}: ${BREAKDOWNS[id].label}`).join("\n");
+// The panel can change things too (the shared agent tools), with the same rules as the chat.
+const CHANGE_RULES =
+  "After any change, say what changed in one short sentence, with the old and new amounts. If a tool returns ask, say only that question. " +
+  "Never say something changed unless a tool returned ok: true for it. For anything that needs a photo or a file, use open_page.";
 const PAIR_RULE = "net_revenue, orders and avg_ticket are per order, so they can't be split by dish or category.";
 
 // POST /api/assistant  body: { days, messages, explain?, page? }
@@ -100,10 +103,10 @@ export async function POST(request: Request) {
     messages.push({ role: "user", content });
   }
 
-  // 5. Tools. Every number and chart comes from the database through these.
+  // 5. Tools. Every number and chart comes from the database through these: the app's shared
+  //    agent tools (lib/agent/registry.ts, including get_dashboard_summary) plus the chart tools.
   const charts: AssistantChart[] = [];
-  const digestWithoutDaily: Partial<Digest> = { ...digest };
-  delete digestWithoutDaily.daily;
+  const ctx = createCtx({ db: await getSupabase(), kind: "panel", identity: clientIp(request), days, digest });
 
   // Runs analytics_compare for the request's period. Returns an "Error: ..." string for the model on failure.
   async function runCompare(metric: MetricId, breakdown: BreakdownId): Promise<CompareResult | string> {
@@ -117,19 +120,8 @@ export async function POST(request: Request) {
 
   const compareInput = z.object({ metric: z.enum(METRIC_IDS), breakdown: z.enum(BREAKDOWN_IDS) });
 
-  // Supplier calls the assistant proposed in this answer. It never dials: only the owner's
-  // "Approve and call" on the request does (lib/calls/service.ts decideCall).
-  let proposedCalls = 0;
-
   const tools = [
-    betaZodTool({
-      name: "get_dashboard_summary",
-      description:
-        "The whole dashboard summary for the period: KPIs (this period vs the one before), weekday and hour patterns, channels, menu, costs, supplier price changes, and notes that explain every calculation. " +
-        `Metrics you can compare with compare_data:\n${METRIC_LIST}\nBreakdowns:\n${BREAKDOWN_LIST}`,
-      inputSchema: z.object({}),
-      run: async () => JSON.stringify(digestWithoutDaily),
-    }),
+    ...buildTools(ctx),
     betaZodTool({
       name: "compare_data",
       description:
@@ -155,35 +147,6 @@ export async function POST(request: Request) {
           note: shown ? "The owner can see this chart." : `Not shown: already showing ${MAX_CHARTS} charts.`,
           rows: result.rows,
         });
-      },
-    }),
-    betaZodTool({
-      name: "propose_call",
-      description:
-        "Propose a phone call to one of the restaurant's suppliers, when the owner asks for one (for example 'call Valley Butcher and ask if they can deliver Saturday'). " +
-        "This only adds a request that the owner must review and approve on the Suppliers page; it does not call anyone. Tell the owner that. At most one per answer.",
-      inputSchema: z.object({
-        supplier_name: z.string().describe("The supplier's name as the owner said it"),
-        request: z.string().describe("What to ask or arrange on the call, in the owner's words"),
-      }),
-      run: async (input) => {
-        if (proposedCalls >= 1) return "Error: already proposed a call in this answer.";
-        const db = await getSupabase();
-        const { data: suppliers, error } = await db.from("suppliers").select("id, name").eq("restaurant_id", RESTAURANT_ID);
-        if (error) return `Error: ${error.message}`;
-        const wanted = input.supplier_name.trim().toLowerCase();
-        const matches = (suppliers ?? []).filter((s) => s.name.toLowerCase().includes(wanted) || wanted.includes(s.name.toLowerCase()));
-        if (!wanted || matches.length !== 1) {
-          return `Error: ${matches.length > 1 ? "more than one" : "no"} supplier matches "${input.supplier_name}". Suppliers: ${(suppliers ?? []).map((s) => s.name).join(", ")}. Ask the owner which one.`;
-        }
-        try {
-          const made = await createOwnerRequest(db, { supplier_id: matches[0].id, text: input.request.slice(0, 1000) }, "ai");
-          proposedCalls += 1;
-          syncCallsAfter(db, [made.id], "/api/assistant");
-          return `Added a call request "${made.title}" for ${matches[0].name}. It waits for the owner's approval on the Suppliers page; nothing has been dialed.`;
-        } catch (err) {
-          return `Error: ${err instanceof Error ? err.message : String(err)}`;
-        }
       },
     }),
   ];
@@ -219,7 +182,7 @@ export async function POST(request: Request) {
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low" },
-      system: [ASSISTANT_SYSTEM_PROMPT, contextLine, screenText].filter(Boolean).join("\n\n"),
+      system: [ASSISTANT_SYSTEM_PROMPT, CHANGE_RULES, contextLine, screenText].filter(Boolean).join("\n\n"),
       messages,
       tools,
     });
@@ -251,6 +214,7 @@ export async function POST(request: Request) {
   if (!answer) return errorResponse("The assistant didn't come up with an answer. Try asking another way.", 502);
 
   // 8. The answer plus any charts it asked to show.
+  if (ctx.changes.length) signalAfter("/api/assistant");
   const body: AssistantResponse = { answer, charts };
   return Response.json(body);
 }
