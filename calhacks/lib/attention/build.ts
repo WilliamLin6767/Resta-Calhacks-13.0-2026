@@ -228,10 +228,10 @@ async function invoices(db: Db): Promise<Built> {
     }
   }
   // Email inbox: customer orders to confirm, and invoices from addresses that aren't a supplier's
-  const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, customer_order")
-    .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review"]).order("created_at", { ascending: false }).limit(10);
+  const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, order_id, customer_order")
+    .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review", "confirmed"]).order("created_at", { ascending: false }).limit(15);
   type InboxItem = {
-    id: number; from_email: string; from_name: string | null; kind: string; status: string;
+    id: number; from_email: string; from_name: string | null; kind: string; status: string; order_id: number | null;
     customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[]; duplicate_of?: number } | null;
   };
   for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
@@ -249,11 +249,24 @@ async function invoices(db: Db): Promise<Built> {
       const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
       items.push({
         key: `email-order:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
-        title: `Confirm ${o.customer_name}'s emailed order (${cash(o.total)})`,
-        detail: `${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}${when ? `, pickup ${when}` : ""}. Confirming adds it as a sale.`,
-        actions: [{ kind: "post", label: "Confirm the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
+        title: `Accept ${o.customer_name}'s emailed order (${cash(o.total)})`,
+        detail: `${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}${when ? `, pickup ${when}` : ""}. Accepting holds it; it's counted as a sale when it's paid for.`,
+        actions: [{ kind: "post", label: "Accept the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href }],
       });
-    } else if (e.kind === "supplier_invoice") {
+    } else if (e.status === "confirmed" && o && !e.order_id) {
+      // Accepted: once the pickup day comes, ask how it was paid, so it's counted once
+      if (o.pickup_date && o.pickup_date > todayLocal()) continue;
+      items.push({
+        key: `email-pickup:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
+        title: `Did ${o.customer_name} pick up their ${cash(o.total)} order?`,
+        detail: `Rang up at the register (or will scan its receipt)? Choose that, so it isn't counted twice.${o.pickup_time ? ` Pickup was ${o.pickup_time}.` : ""}`,
+        actions: [
+          { kind: "post", label: "Picked up and paid", path: `/api/inbound/${e.id}/picked-up`, primary: true },
+          { kind: "post", label: "Rang up at the register", path: `/api/inbound/${e.id}/register` },
+          { kind: "link", label: "See the email", href },
+        ],
+      });
+    } else if (e.kind === "supplier_invoice" && e.status === "needs_review") {
       items.push({
         key: `email-invoice:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
         title: `An invoice came from ${e.from_name || e.from_email}, who isn't one of your suppliers`,

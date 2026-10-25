@@ -45,7 +45,9 @@ export const ROUTE_TOPICS = {
   "/api/inbound/email": [...INVOICES, "menu"],
   "/api/inbound/sample": [...INVOICES, "menu"],
   "/api/inbound/[id]/read": [...INVOICES, "menu"],
-  "/api/inbound/[id]/confirm": [...STOCK, "invoices", "menu"],
+  "/api/inbound/[id]/confirm": ["invoices", "attention"], // accepted: not a sale yet
+  "/api/inbound/[id]/picked-up": [...STOCK, "invoices", "menu"], // recorded as a sale
+  "/api/inbound/[id]/register": ["invoices", "attention"],
   "/api/inbound/[id]/decline": ["invoices", "attention"],
 
   // Only when the reply drafted a purchase order

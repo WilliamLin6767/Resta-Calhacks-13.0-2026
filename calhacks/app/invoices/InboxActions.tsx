@@ -43,39 +43,44 @@ export function SampleEmails() {
   );
 }
 
-// The owner's buttons on one email: read an unknown sender's invoice, or confirm/decline an order
-export function InboxButtons({ id, actions, replyHref }: { id: number; actions: ("read" | "confirm" | "decline")[]; replyHref?: string }) {
+export type InboxAction = "read" | "confirm" | "picked-up" | "register" | "decline" | "cancel";
+
+const LABEL: Record<InboxAction, string> = {
+  read: "Read the invoice",
+  confirm: "Accept the order",
+  "picked-up": "Picked up and paid",
+  register: "Rang up at the register",
+  decline: "Decline",
+  cancel: "Cancel the order",
+};
+
+// The owner's buttons on one email: read an unknown sender's invoice; accept or decline an order;
+// then, once it's paid for, record it here (picked up) or close it (rung up at the register)
+export function InboxButtons({ id, actions, replyHref }: { id: number; actions: InboxAction[]; replyHref?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  async function run(action: "read" | "confirm" | "decline") {
+  async function run(action: InboxAction) {
     setBusy(action);
     setError("");
     try {
-      const data = await post(`/api/inbound/${id}/${action}`);
+      const data = await post(`/api/inbound/${id}/${action === "cancel" ? "decline" : action}`);
       if (action === "read" && data.invoice_id) router.push(`/invoices/${data.invoice_id}`);
-      else {
-        if (action === "confirm") setConfirmed(true);
-        router.refresh();
-      }
+      else router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy("");
     }
   }
-  const label = { read: "Read the invoice", confirm: "Confirm the order", decline: "Decline" };
   return (
     <div className="mt-2 flex flex-wrap items-center gap-3">
       {actions.map((a, i) => (
         <button key={a} className={i === 0 ? primary : secondary} disabled={!!busy} onClick={() => run(a)}>
-          {busy === a ? "Saving..." : label[a]}
+          {busy === a ? "Saving..." : LABEL[a]}
         </button>
       ))}
-      {(confirmed || (replyHref && !actions.length)) && replyHref && (
-        <a href={replyHref} className="text-sm text-brand-700 underline">Email the customer a confirmation</a>
-      )}
+      {replyHref && <a href={replyHref} className="text-sm text-brand-700 underline">Email the customer a confirmation</a>}
       {error && <span className="text-sm text-red-600">{error}</span>}
     </div>
   );

@@ -1,17 +1,21 @@
 // Email inbox on top of Supabase (server only).
 //   receiveEmail  - an email arrived: save it once, then sort it
-//     supplier on file + invoice  -> read and saved like a scanned invoice
+//     supplier on file + invoice  -> read and saved like a scanned invoice (once: a second copy is skipped)
 //     unknown sender + invoice    -> held until the owner says to read it
-//     customer order              -> waits for the owner to confirm
+//     customer order              -> waits for the owner to accept it
 //     anything else               -> ignored
 //   readHeldInvoice - the owner trusts an unknown sender's invoice
-//   confirmOrder / declineOrder - the owner's answer to a customer's order
+//   A customer order, step by step (statuses for kind customer_order):
+//     to_confirm --accept--> confirmed (accepted, not a sale yet)
+//       --picked up and paid--> done, recorded here as a sale (its dishes come off stock)
+//       --rang up at the register--> done, not recorded here: the register's sale counts instead
+//     declineOrder: turn it down, or cancel an accepted one
 //   loadInbox     - the latest emails, for the Invoices page
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { todayLocal } from "@/lib/accounting/service";
 import { createRateLimiter } from "@/lib/aiLimits";
 import { readInvoice, readInvoiceText, type ReadInvoice } from "@/lib/purchasing/ai";
-import { saveScannedInvoice } from "@/lib/purchasing/service";
+import { saveInvoiceOnce, type SavedInvoice } from "@/lib/purchasing/service";
 import { loadMenu, saveReceipt } from "@/lib/sales/service";
 import { RESTAURANT_ID } from "@/lib/supabase";
 import { readEmail } from "./ai";
@@ -48,7 +52,7 @@ async function findRepeat(db: Db, id: number, fromEmail: string, lines: { menu_i
   const since = new Date(Date.now() - REPEAT_WINDOW_HOURS * 3600_000).toISOString();
   const earlier = must(
     await db.from("inbound_emails").select("id, customer_order").eq("restaurant_id", RESTAURANT_ID).eq("from_email", fromEmail)
-      .eq("kind", "customer_order").in("status", ["to_confirm", "confirmed"]).neq("id", id).gte("created_at", since).order("id"),
+      .eq("kind", "customer_order").in("status", ["to_confirm", "confirmed", "done"]).neq("id", id).gte("created_at", since).order("id"),
     "look for a repeated order",
   ) as { id: number; customer_order: CustomerOrder | null }[];
   const key = orderKey(lines);
@@ -73,9 +77,17 @@ async function update(db: Db, id: number, fields: Record<string, unknown>) {
   must(await db.from("inbound_emails").update(fields).eq("id", id), "update the email");
 }
 
+// Saved once: if the same invoice is already in the system (a resend, or the paper copy was scanned
+// first), nothing is added again and the email points at the original
 async function saveInvoice(db: Db, read: ReadInvoice) {
   if (!read.lines.length) throw new Error("No product lines found, so it may not be an invoice.");
-  return saveScannedInvoice(db, read, "email");
+  return saveInvoiceOnce(db, read, "email");
+}
+
+function invoiceNote(saved: SavedInvoice, what: string) {
+  return saved.duplicate
+    ? `Already in the system${saved.invoice_number ? ` (${saved.invoice_number})` : ""}, so it wasn't added twice: no second bill, stock or prices.`
+    : what;
 }
 
 // Saves the email once (a resend with the same Message-ID is skipped), then sorts it.
@@ -102,20 +114,18 @@ async function sortEmail(db: Db, id: number, e: InboundEmail) {
   const suppliers = must(await db.from("suppliers").select("id, name, email").eq("restaurant_id", RESTAURANT_ID), "load suppliers") as SupplierRef[];
   const supplier = matchSupplier(e.from_email, suppliers);
   const file = invoiceAttachment(e.attachments);
-
-  // A supplier on file with a PDF or photo attached: read it straight away
-  if (supplier && file) {
-    const invoiceId = await saveInvoice(db, await readInvoice(bytesOf(file.content), file.type));
-    return update(db, id, { kind: "supplier_invoice", status: "done", supplier_id: supplier.id, invoice_id: invoiceId, note: `Read ${file.name} from ${supplier.name}.` });
-  }
-
   const menu = await loadMenu(db);
+  // Sorted first even for a supplier with an attachment: a statement or an order confirmation
+  // with a PDF isn't a new invoice
   const read = await readEmail({ from: `${e.from_name} <${e.from_email}>`, subject: e.subject, text: e.text, attachments: e.attachments.map((a) => a.name) }, menu, todayLocal());
 
   if (read.kind === "supplier_invoice") {
     if (supplier) {
-      const invoiceId = await saveInvoice(db, await readInvoiceText(e.text));
-      return update(db, id, { kind: "supplier_invoice", status: "done", supplier_id: supplier.id, invoice_id: invoiceId, note: `Read the invoice in the email from ${supplier.name}.` });
+      const saved = await saveInvoice(db, file ? await readInvoice(bytesOf(file.content), file.type) : await readInvoiceText(e.text));
+      return update(db, id, {
+        kind: "supplier_invoice", status: "done", supplier_id: supplier.id, invoice_id: saved.id,
+        note: invoiceNote(saved, file ? `Read ${file.name} from ${supplier.name}.` : `Read the invoice in the email from ${supplier.name}.`),
+      });
     }
     // Not a supplier on file: anyone can send an email, so the owner decides before it's read
     return update(db, id, {
@@ -142,23 +152,29 @@ async function sortEmail(db: Db, id: number, e: InboundEmail) {
     if (repeat) order.duplicate_of = repeat;
     return update(db, id, {
       kind: "customer_order", status: "to_confirm", customer_order: order,
-      note: repeat ? `Order from ${order.customer_name}, the same as one they sent earlier.` : `Order from ${order.customer_name}: confirm it to add it as a sale.`,
+      note: repeat ? `Order from ${order.customer_name}, the same as one they sent earlier.` : `Order from ${order.customer_name}. Accept it to hold it for pickup.`,
     });
   }
 
-  return update(db, id, { kind: "other", status: "ignored", note: read.reason ? `Not an invoice or an order: ${read.reason}` : "Not an invoice or an order." });
+  // A supplier's attachment that isn't an invoice (a statement, an order confirmation) is left alone too
+  return update(db, id, {
+    kind: "other", status: "ignored", supplier_id: supplier?.id ?? null,
+    note: read.reason ? `Not a new invoice or an order: ${read.reason}` : "Not a new invoice or an order.",
+  });
 }
 
-async function loadRow(db: Db, id: number) {
+type Row = { id: number; from_email: string; kind: string; status: string; body: string | null; held_file: string | null; held_file_type: string | null; customer_order: CustomerOrder | null; order_id: number | null };
+
+async function loadRow(db: Db, id: number): Promise<Row> {
   const row = must(
-    await db.from("inbound_emails").select("id, from_email, kind, status, body, held_file, held_file_type, customer_order").eq("id", id).eq("restaurant_id", RESTAURANT_ID).maybeSingle(),
+    await db.from("inbound_emails").select("id, from_email, kind, status, body, held_file, held_file_type, customer_order, order_id").eq("id", id).eq("restaurant_id", RESTAURANT_ID).maybeSingle(),
     "find that email",
-  ) as { id: number; from_email: string; kind: string; status: string; body: string | null; held_file: string | null; held_file_type: string | null; customer_order: CustomerOrder | null } | null;
+  ) as Row | null;
   if (!row) throw new Error("That email isn't in the inbox.");
   return row;
 }
 
-// The owner trusts an unknown sender: read the held invoice, and remember the address for that
+// The owner trusts an unknown sender: read the held invoice (once), and remember the address for that
 // supplier if they have none on file, so their next invoice is read straight away.
 export async function readHeldInvoice(db: Db, id: number) {
   const row = await loadRow(db, id);
@@ -166,33 +182,56 @@ export async function readHeldInvoice(db: Db, id: number) {
   const read = row.held_file && row.held_file_type
     ? await readInvoice(bytesOf(row.held_file), row.held_file_type)
     : await readInvoiceText(row.body ?? "");
-  const invoiceId = await saveInvoice(db, read);
-  const inv = must(await db.from("invoices").select("supplier_id").eq("id", invoiceId).single(), "find the new invoice") as { supplier_id: number | null };
+  const saved = await saveInvoice(db, read);
+  const inv = must(await db.from("invoices").select("supplier_id").eq("id", saved.id).single(), "find the invoice") as { supplier_id: number | null };
   if (inv.supplier_id) {
     await db.from("suppliers").update({ email: row.from_email }).eq("id", inv.supplier_id).is("email", null);
   }
-  await update(db, id, { status: "done", invoice_id: invoiceId, supplier_id: inv.supplier_id, held_file: null, held_file_type: null, note: "Read after you checked the sender." });
-  return invoiceId;
-}
-
-// Confirmed: the order becomes a takeout sale (its dishes come off stock), at the pickup time if given
-export async function confirmOrder(db: Db, id: number) {
-  const row = await loadRow(db, id);
-  if (row.status !== "to_confirm" || !row.customer_order) throw new Error("This order isn't waiting for you.");
-  const o = row.customer_order;
-  const now = new Date().toLocaleTimeString("en-GB", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit" });
-  const saved = await saveReceipt(db, {
-    receipt_number: `EMAIL-${id}`, date: o.pickup_date || todayLocal(), time: o.pickup_time || now, channel: "takeout",
-    lines: o.lines.map((l) => ({ menu_item_id: l.menu_item_id, qty: l.qty, unit_price: l.unit_price })), tax: 0, tip: 0, total: o.total,
-  }, "manual");
-  await update(db, id, { status: "confirmed", order_id: saved.order_id, note: `Confirmed: ${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}, $${o.total.toFixed(2)}.` });
+  await update(db, id, {
+    status: "done", invoice_id: saved.id, supplier_id: inv.supplier_id, held_file: null, held_file_type: null,
+    note: invoiceNote(saved, "Read after you checked the sender."),
+  });
   return saved;
 }
 
+const isOrder = (row: Row) => row.kind === "customer_order" && row.customer_order;
+// Accepted and not finished: waiting for the customer to pick up
+const isAccepted = (row: Row) => isOrder(row) && row.status === "confirmed" && !row.order_id;
+
+// Accept: the order is held for pickup. It isn't a sale yet: it's recorded when it's paid for.
+export async function acceptOrder(db: Db, id: number) {
+  const row = await loadRow(db, id);
+  if (!isOrder(row) || row.status !== "to_confirm") throw new Error("This order isn't waiting for you.");
+  await update(db, id, { status: "confirmed", note: "Accepted. When they pick up, mark it picked up and paid, or rung up at the register." });
+}
+
+// Picked up and paid, not through the register: record the sale here, now (its dishes come off stock)
+export async function orderPickedUp(db: Db, id: number) {
+  const row = await loadRow(db, id);
+  if (!isAccepted(row)) throw new Error("Accept the order first. If it's already done, it was recorded once.");
+  const o = row.customer_order!;
+  const now = new Date().toLocaleTimeString("en-GB", { timeZone: "America/Los_Angeles", hour: "2-digit", minute: "2-digit" });
+  const saved = await saveReceipt(db, {
+    receipt_number: `EMAIL-${id}`, date: todayLocal(), time: now, channel: "takeout",
+    lines: o.lines.map((l) => ({ menu_item_id: l.menu_item_id, qty: l.qty, unit_price: l.unit_price })), tax: 0, tip: 0, total: o.total,
+  }, "manual");
+  await update(db, id, { status: "done", order_id: saved.order_id, note: `Picked up and paid: recorded as a $${o.total.toFixed(2)} sale.` });
+  return saved;
+}
+
+// Paid through the register (or its receipt will be scanned): close it without recording it again
+export async function orderAtRegister(db: Db, id: number) {
+  const row = await loadRow(db, id);
+  if (!isAccepted(row)) throw new Error("Accept the order first. If it's already done, it was recorded once.");
+  await update(db, id, { status: "done", note: "Rung up at the register, so the sale comes from there, not recorded twice." });
+}
+
+// Turn down an order or an unknown sender's invoice, or cancel an accepted order before it's paid
 export async function declineOrder(db: Db, id: number) {
   const row = await loadRow(db, id);
-  if (row.status !== "to_confirm" && row.status !== "needs_review") throw new Error("This email isn't waiting for you.");
-  await update(db, id, { status: "declined", held_file: null, note: "Declined." });
+  const waiting = row.status === "to_confirm" || row.status === "needs_review";
+  if (!waiting && !isAccepted(row)) throw new Error("This email isn't waiting for you.");
+  await update(db, id, { status: "declined", held_file: null, note: row.status === "confirmed" ? "Cancelled." : "Declined." });
 }
 
 export async function loadInbox(db: Db, limit = 15): Promise<InboxRow[]> {
