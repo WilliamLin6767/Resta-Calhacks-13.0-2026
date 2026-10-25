@@ -51,14 +51,15 @@ describe("session cookie", () => {
 });
 
 describe("authConfig", () => {
-  it("is open without a password, in development and production alike", () => {
+  it("is open unless REQUIRE_LOGIN=1, in development and production alike", () => {
     expect(authConfig({ NODE_ENV: "development" })).toEqual({ mode: "open" });
     expect(authConfig({ NODE_ENV: "production" })).toEqual({ mode: "open" });
-    expect(authConfig({ NODE_ENV: "production", OWNER_PASSWORD: "" })).toEqual({ mode: "open" });
+    expect(authConfig({ NODE_ENV: "production", OWNER_PASSWORD: "x", SESSION_SECRET: SECRET })).toEqual({ mode: "open" }); // a leftover password alone keeps it open
   });
-  it("needs a long session secret once a password is set", () => {
-    expect(authConfig({ NODE_ENV: "development", OWNER_PASSWORD: "x", SESSION_SECRET: "short" }).mode).toBe("broken");
-    expect(authConfig({ NODE_ENV: "production", OWNER_PASSWORD: "x", SESSION_SECRET: SECRET })).toEqual({ mode: "on", password: "x", secret: SECRET });
+  it("needs a password and a long session secret once login is required", () => {
+    expect(authConfig({ REQUIRE_LOGIN: "1", OWNER_PASSWORD: "x", SESSION_SECRET: "short" }).mode).toBe("broken");
+    expect(authConfig({ REQUIRE_LOGIN: "1" }).mode).toBe("broken");
+    expect(authConfig({ REQUIRE_LOGIN: "1", OWNER_PASSWORD: "x", SESSION_SECRET: SECRET })).toEqual({ mode: "on", password: "x", secret: SECRET });
   });
 });
 
@@ -78,6 +79,7 @@ describe("allow list", () => {
 describe("proxy", () => {
   afterEach(() => vi.unstubAllEnvs());
   const on = () => {
+    vi.stubEnv("REQUIRE_LOGIN", "1");
     vi.stubEnv("OWNER_PASSWORD", "pho tai");
     vi.stubEnv("SESSION_SECRET", SECRET);
   };
@@ -103,6 +105,7 @@ describe("proxy", () => {
   });
 
   it("serves nothing when a password is set but the session secret is too short", () => {
+    vi.stubEnv("REQUIRE_LOGIN", "1");
     vi.stubEnv("OWNER_PASSWORD", "pho tai");
     vi.stubEnv("SESSION_SECRET", "short");
     expect(proxy(req("/")).status).toBe(503);

@@ -8,7 +8,7 @@
 
 - **SQL:** run `supabase/17` to `21` in order in the Supabase SQL editor. `21_demo_loop.sql` plants the labeled demo orders. It's written for a demo between Oct 25 and Oct 28, 2026.
 - **`.env.local` (or Vercel):**
-  - Optional: `OWNER_PASSWORD` and `SESSION_SECRET` (32+ characters) turn on the login. Without them the site is open to anyone with the link.
+  - There is no login: anyone with the link can use the site (for the judges). To require one, set `REQUIRE_LOGIN=1` plus `OWNER_PASSWORD` and `SESSION_SECRET` (32+ characters).
   - `SUPABASE_SECRET_KEY`
   - `ANTHROPIC_API_KEY`
   - `WAJO_API_KEY`
