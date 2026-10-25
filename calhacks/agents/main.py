@@ -39,13 +39,14 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
 
 from desks import DeskReply, DeskRequest, _seed, money_desk, stock_desk  # noqa: E402
 
-PORT = int(os.getenv("AGENT_PORT", "8000"))
+PORT = int(os.getenv("AGENT_PORT", "8010"))
 MODEL = os.getenv("ASI1_MODEL", "asi1")
 llm = AsyncOpenAI(base_url="https://api.asi1.ai/v1", api_key=os.getenv("ASI1_API_KEY")) if os.getenv("ASI1_API_KEY") else None
 
 chat_agent = Agent(
     name="pho-berkeley-back-of-house",
     seed=_seed("CHAT_AGENT_SEED"),
+    port=PORT,  # the Bureau's port, so the Agentverse inspector finds it at 127.0.0.1:PORT
     mailbox=True,  # reachable from ASI:One through Agentverse while this process runs
     publish_agent_details=True,
     description="Back-of-house assistant for Pho Berkeley, a small Vietnamese restaurant: what needs the owner today, low stock, "
