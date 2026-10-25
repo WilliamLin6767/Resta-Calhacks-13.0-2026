@@ -52,7 +52,6 @@ async function Recommendations() {
   const menuNames = (menu.data ?? []).map((item) => item.name);
   const rows = ((data ?? []) as Recommendation[]).sort(compareRecommendations);
   const scanned = rows.map((row) => row.scraped_at).sort().at(-1);
-  const top = rows.find((row) => row.new_ingredient_count <= NEW_INGREDIENT_CAP);
 
   return (
     <section className="mb-10">
@@ -74,7 +73,6 @@ async function Recommendations() {
                 <div>
                   <p className="font-medium">
                     {row.dish_name}
-                    {row === top && <span className="ml-2 rounded-full bg-brand-600 px-2 py-0.5 text-xs font-medium text-white">Add this</span>}
                     {!ready && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">More shopping</span>}
                   </p>
                   <p className="mt-1 text-sm tabular-nums text-gray-600">
