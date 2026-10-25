@@ -32,6 +32,7 @@ export type Item = {
   dismissable?: boolean; // alerts can be dismissed; approvals are approved or denied instead
   // What it's worth, worked out in code (impact.ts). null when there's no defensible figure.
   impact_usd_week?: number | null;
+  impact_once?: boolean; // a one-time amount (money owed or billed in error), not a weekly figure
   basis?: string; // how the figure was worked out, and what it assumes
   evidence?: { label: string; value: string; href?: string }[];
   confidence?: Confidence;

@@ -32,7 +32,7 @@ export default function TodayList({ items }: { items: Item[] }) {
               {item.impact_usd_week !== null && item.impact_usd_week !== undefined && (
                 <p className="text-sm font-semibold whitespace-nowrap text-gray-900" title={item.basis}>
                   {money(item.impact_usd_week)}
-                  <span className="font-normal text-gray-500"> a week</span>
+                  <span className="font-normal text-gray-500">{item.impact_once ? " once" : " a week"}</span>
                 </p>
               )}
             </div>

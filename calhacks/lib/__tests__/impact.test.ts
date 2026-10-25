@@ -51,10 +51,11 @@ describe("finding formulas", () => {
     expect(stockoutImpact([], 3).impact_usd_week).toBeNull();
   });
 
-  it("waste and missing payouts; payouts are labeled demo", () => {
+  it("waste is weekly; a missing payout is owed once, checked against orders and the bank", () => {
     expect(wasteImpact(42.5)).toMatchObject({ impact_usd_week: 42.5, confidence: "medium" });
-    expect(payoutImpact(86.4)).toMatchObject({ impact_usd_week: 86.4, confidence: "demo" });
-    expect(payoutImpact(86.4).basis).toContain("demo");
+    expect(wasteImpact(42.5).impact_once).toBeUndefined();
+    expect(payoutImpact(86.4)).toMatchObject({ impact_usd_week: 86.4, impact_once: true, confidence: "high" });
+    expect(payoutImpact(86.4).basis).not.toContain("demo");
   });
 });
 

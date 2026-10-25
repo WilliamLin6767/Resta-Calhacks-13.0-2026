@@ -64,7 +64,7 @@ function OperatingPicture({ p }: { p: Picture }) {
             {p.findings.slice(0, 4).map((f) => (
               <li key={f.key} className="flex items-baseline justify-between gap-4 py-2 text-sm">
                 <span className="text-gray-800">{f.title}</span>
-                <span className="shrink-0 text-gray-500 tabular-nums">{f.impact_usd_week !== null ? `${money(f.impact_usd_week)}/wk` : f.level === "act" ? "Needs a decision" : ""}</span>
+                <span className="shrink-0 text-gray-500 tabular-nums">{f.impact_usd_week !== null ? `${money(f.impact_usd_week)}${f.impact_once ? " once" : "/wk"}` : f.level === "act" ? "Needs a decision" : ""}</span>
               </li>
             ))}
           </ul>

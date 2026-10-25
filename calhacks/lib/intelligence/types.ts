@@ -38,7 +38,7 @@ export type MoneyLite = {
 };
 export type PostLite = { dish_name: string | null; status: string; created_at: string; posted_at: string | null };
 export type ActionLite = { id: number; case_id: number | null; tool: string; title: string; status: string; source: string; created_at: string; done_at: string | null };
-export type FindingLite = { key: string; title: string; tab: string; level: string; impact_usd_week: number | null };
+export type FindingLite = { key: string; title: string; tab: string; level: string; impact_usd_week: number | null; impact_once?: boolean };
 
 export type Loaded = {
   now: string; // ISO
