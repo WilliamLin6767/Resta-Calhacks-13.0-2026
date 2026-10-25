@@ -6,6 +6,7 @@ import PastPosts from "@/components/marketing/PastPosts";
 import PostCard from "@/components/marketing/PostCard";
 import PageHeader from "@/components/PageHeader";
 import type { PostLayout } from "@/lib/marketing/copy";
+import { ownPhotoUrl } from "@/lib/marketing/photoPath";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 
 type Row = {
@@ -52,25 +53,29 @@ async function Posts({ searchParams }: { searchParams: PageProps<"/marketing">["
   }
 
   const name = restaurant.data?.name ?? "Pho Berkeley";
-  const ownPhotos = new Set((uploads.data ?? []).map((file) => file.name.replace(/\.jpg$/, "")));
-  const card = (row: Row) => (
-    <PostCard
-      key={row.id}
-      id={row.id}
-      layout={LAYOUTS.has(row.layout as PostLayout) ? (row.layout as PostLayout) : "plate"}
-      restaurant={name}
-      dishName={row.dish_name}
-      headline={row.headline}
-      subhead={row.subhead}
-      caption={row.caption}
-      hashtags={row.hashtags ?? []}
-      status={row.status}
-      error={row.error}
-      externalLink={row.external_link}
-      ownPhoto={ownPhotos.has(String(row.id)) && row.photo_source !== "stock"}
-      stockCredit={row.photo_source === "stock" ? (row.credit ?? "Stock photo, credit unknown") : null}
-    />
-  );
+  const stamps = new Map((uploads.data ?? []).map((file) => [file.name.replace(/\.jpg$/, ""), file.updated_at || file.created_at || ""]));
+  const card = (row: Row) => {
+    const stamp = stamps.get(String(row.id));
+    const showFile = stamp !== undefined && row.photo_source !== "stock";
+    return (
+      <PostCard
+        key={row.id}
+        id={row.id}
+        layout={LAYOUTS.has(row.layout as PostLayout) ? (row.layout as PostLayout) : "plate"}
+        restaurant={name}
+        dishName={row.dish_name}
+        headline={row.headline}
+        subhead={row.subhead}
+        caption={row.caption}
+        hashtags={row.hashtags ?? []}
+        status={row.status}
+        error={row.error}
+        externalLink={row.external_link}
+        photoSrc={showFile ? `${ownPhotoUrl(row.id)}?v=${encodeURIComponent(stamp || String(row.id))}` : null}
+        stockCredit={row.photo_source === "stock" ? (row.credit ?? "Stock photo, credit unknown") : null}
+      />
+    );
+  };
 
   return (
     <div>

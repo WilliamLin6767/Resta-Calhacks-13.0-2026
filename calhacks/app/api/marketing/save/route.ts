@@ -1,5 +1,4 @@
 import { readPostEdit } from "@/lib/marketing/edit";
-import { ensureDishPhoto } from "@/lib/marketing/photo";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import { requireOwner } from "@/lib/auth";
@@ -34,14 +33,10 @@ export async function POST(request: Request) {
   }
 
   const supabase = await getSupabase();
-  const existing = await supabase.from("marketing_posts").select("id, status, dish_name").eq("id", id).eq("restaurant_id", RESTAURANT_ID).maybeSingle();
+  const existing = await supabase.from("marketing_posts").select("id, status").eq("id", id).eq("restaurant_id", RESTAURANT_ID).maybeSingle();
   if (existing.error) return errorResponse(existing.error.message, 500);
   if (!existing.data) return errorResponse("That post is no longer here.", 404);
   if (existing.data.status === "posted") return errorResponse("This post was already sent.", 409);
-
-  if (existing.data.dish_name !== edit.dishName) {
-    await ensureDishPhoto(supabase, edit.dishName).catch(() => null);
-  }
 
   const saved = await supabase
     .from("marketing_posts")

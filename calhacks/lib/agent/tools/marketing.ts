@@ -69,7 +69,7 @@ export const marketingTools = [
         .single();
       if (inserted.error) return `Error: ${inserted.error.message}`;
       const id = (inserted.data as { id: number }).id;
-      await saveFreshPhoto(ctx.db, id, post.dish_name, id).catch(() => undefined);
+      await saveFreshPhoto(ctx.db, id, post.dish_name, restaurant.data?.cuisine ?? null, []).catch(() => undefined);
       return changed(
         ctx,
         { kind: "campaign_drafted", label: `Drafted post #${id}: ${post.headline} (${pitch}), waiting on Marketing`, before: null, after: id },
