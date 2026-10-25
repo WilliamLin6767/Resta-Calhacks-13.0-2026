@@ -227,6 +227,29 @@ async function invoices(db: Db): Promise<Built> {
       });
     }
   }
+  // Email inbox: customer orders to confirm, and invoices from addresses that aren't a supplier's
+  const inbox = await db.from("inbound_emails").select("id, from_email, from_name, kind, status, customer_order")
+    .eq("restaurant_id", RESTAURANT_ID).in("status", ["to_confirm", "needs_review"]).order("created_at", { ascending: false }).limit(10);
+  type InboxItem = { id: number; from_email: string; from_name: string | null; kind: string; status: string; customer_order: { customer_name: string; total: number; pickup_date: string; pickup_time: string; lines: unknown[] } | null };
+  for (const e of (inbox.error ? [] : inbox.data) as InboxItem[]) { // no inbox yet (17_email.sql not run): nothing to show
+    const o = e.customer_order;
+    if (e.status === "to_confirm" && o) {
+      const when = [o.pickup_date, o.pickup_time].filter(Boolean).join(" at ");
+      items.push({
+        key: `email-order:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
+        title: `Confirm ${o.customer_name}'s emailed order (${cash(o.total)})`,
+        detail: `${o.lines.length} dish${o.lines.length === 1 ? "" : "es"}${when ? `, pickup ${when}` : ""}. Confirming adds it as a sale.`,
+        actions: [{ kind: "post", label: "Confirm the order", path: `/api/inbound/${e.id}/confirm`, primary: true }, { kind: "link", label: "See the email", href: "/invoices" }],
+      });
+    } else if (e.kind === "supplier_invoice") {
+      items.push({
+        key: `email-invoice:${e.id}`, fingerprint: e.status, tab: "invoices", level: "act",
+        title: `An invoice came from ${e.from_name || e.from_email}, who isn't one of your suppliers`,
+        detail: "Read it only if you trust the sender.",
+        actions: [{ kind: "link", label: "Check it", href: "/invoices" }],
+      });
+    }
+  }
   return { items, facts: { tab: "invoices", items: [], numbers: { since, billed_wrong_open: money(billedWrong), possible_savings: money(savings) } } };
 }
 
