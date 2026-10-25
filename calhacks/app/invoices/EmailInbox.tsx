@@ -4,7 +4,7 @@ import PreviewSection from "@/components/ui/Preview";
 import { confirmationEmail, loadInbox, type InboxRow } from "@/lib/email/service";
 import { formatMoney } from "@/lib/format";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
-import { InboxButtons, SampleEmails } from "./InboxActions";
+import { InboxButtons, SampleEmails, type InboxAction } from "./InboxActions";
 
 export const INBOX_HREF = "/invoices/inbox";
 // How many emails the Invoices tab shows; the rest are on /invoices/inbox
@@ -14,14 +14,36 @@ const STATUS: Record<InboxRow["status"], { label: string; className: string }> =
   new: { label: "Reading", className: "bg-gray-100 text-gray-700" },
   done: { label: "Added", className: "bg-green-50 text-green-800" },
   needs_review: { label: "Check the sender", className: "bg-amber-50 text-amber-800" },
-  to_confirm: { label: "Confirm", className: "bg-red-50 text-red-700" },
+  to_confirm: { label: "To accept", className: "bg-red-50 text-red-700" },
   confirmed: { label: "Confirmed", className: "bg-green-50 text-green-800" },
   declined: { label: "Declined", className: "bg-gray-100 text-gray-600" },
   ignored: { label: "Skipped", className: "bg-gray-100 text-gray-600" },
   error: { label: "Couldn't read", className: "bg-red-50 text-red-700" },
 };
 const KIND = { supplier_invoice: "Supplier invoice", customer_order: "Customer order", other: "Other", unknown: "Email" };
-const WAITING = new Set<InboxRow["status"]>(["to_confirm", "needs_review"]);
+
+// An accepted customer order (held for pickup, not a sale yet)
+const isAccepted = (e: InboxRow) => e.kind === "customer_order" && e.status === "confirmed" && !e.order_id;
+// Still needs the owner: to accept or decline, check a sender, or say how an accepted order was paid
+const needsOwner = (e: InboxRow) => e.status === "to_confirm" || e.status === "needs_review" || isAccepted(e);
+
+function statusOf(e: InboxRow) {
+  if (e.kind === "customer_order") {
+    if (isAccepted(e)) return { label: "Accepted", className: "bg-blue-50 text-blue-800" };
+    if (e.status === "done" || e.status === "confirmed") return { label: "Done", className: "bg-green-50 text-green-800" };
+  }
+  if (e.kind === "supplier_invoice" && e.status === "done" && e.note?.startsWith("Already in the system")) {
+    return { label: "Already added", className: "bg-gray-100 text-gray-700" };
+  }
+  return STATUS[e.status];
+}
+
+function actionsOf(e: InboxRow): InboxAction[] {
+  if (e.status === "to_confirm") return e.customer_order?.duplicate_of ? ["decline", "confirm"] : ["confirm", "decline"];
+  if (isAccepted(e)) return ["picked-up", "register", "cancel"];
+  if (e.status === "needs_review") return e.kind === "supplier_invoice" ? ["read", "decline"] : ["decline"];
+  return [];
+}
 
 function when(iso: string) {
   return new Date(iso).toLocaleString("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -49,8 +71,8 @@ function summary(e: InboxRow) {
 function StatusChip({ e }: { e: InboxRow }) {
   return (
     <>
-      <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${STATUS[e.status].className}`}>{STATUS[e.status].label}</span>
-      {e.customer_order?.duplicate_of && WAITING.has(e.status) && (
+      <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${statusOf(e).className}`}>{statusOf(e).label}</span>
+      {e.customer_order?.duplicate_of && e.status === "to_confirm" && (
         <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-800">Possible repeat</span>
       )}
     </>
@@ -61,8 +83,7 @@ function StatusChip({ e }: { e: InboxRow }) {
 
 function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
   const o = e.customer_order;
-  const actions: ("read" | "confirm" | "decline")[] =
-    e.status === "to_confirm" ? ["confirm", "decline"] : e.status === "needs_review" && e.kind === "supplier_invoice" ? ["read", "decline"] : e.status === "needs_review" ? ["decline"] : [];
+  const actions = actionsOf(e);
   return (
     <li id={`email-${e.id}`} className="scroll-mt-4 py-4">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
@@ -73,7 +94,7 @@ function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
         <span className="ml-auto text-xs text-gray-400">{when(e.created_at)}</span>
       </div>
       {e.note && <p className="mt-1 text-sm text-gray-600">{e.note}</p>}
-      {o?.duplicate_of && WAITING.has(e.status) && (
+      {o?.duplicate_of && e.status === "to_confirm" && (
         <p className="mt-1 text-sm text-amber-800">
           The same order from the same person came in earlier (<a href={`#email-${o.duplicate_of}`} className="underline">see it</a>). Decline this one if it&apos;s a repeat.
         </p>
@@ -92,8 +113,14 @@ function FullRow({ e, restaurant }: { e: InboxRow; restaurant: string }) {
         </div>
       )}
       {e.invoice_id && <Link href={`/invoices/${e.invoice_id}`} className="mt-1 inline-block text-sm text-brand-700 underline">Open the invoice</Link>}
-      {(actions.length > 0 || e.status === "confirmed") && (
-        <InboxButtons id={e.id} actions={actions} replyHref={o && o.lines.length ? confirmationEmail(o, restaurant) : undefined} />
+      {isAccepted(e) && (
+        <p className="mt-2 text-sm text-gray-600">
+          When it&apos;s paid for, pick one so it&apos;s counted once: <span className="font-medium">Picked up and paid</span> records the sale here.
+          If you ring it up at the register or scan its receipt, choose <span className="font-medium">Rang up at the register</span>.
+        </p>
+      )}
+      {actions.length > 0 && (
+        <InboxButtons id={e.id} actions={actions} replyHref={isAccepted(e) && o && o.lines.length ? confirmationEmail(o, restaurant) : undefined} />
       )}
     </li>
   );
@@ -122,7 +149,6 @@ export async function FullInbox() {
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
-  const waiting = data.rows.filter((e) => WAITING.has(e.status));
   return (
     <section className="rounded-2xl border border-brand-100 bg-white p-5">
       <p className="mb-3 text-sm text-gray-600"><Intro /></p>
@@ -130,12 +156,10 @@ export async function FullInbox() {
       {data.rows.length === 0 ? (
         <p className="mt-4 text-sm text-gray-500">No emails yet.</p>
       ) : (
-        <>
-          {/* Waiting for the owner first, then everything else, newest first */}
-          <ul className="mt-3 divide-y divide-gray-100">
-            {[...waiting, ...data.rows.filter((e) => !WAITING.has(e.status))].map((e) => <FullRow key={e.id} e={e} restaurant={data.restaurant} />)}
-          </ul>
-        </>
+        // Waiting for the owner first, then everything else, newest first
+        <ul className="mt-3 divide-y divide-gray-100">
+          {[...data.rows.filter(needsOwner), ...data.rows.filter((e) => !needsOwner(e))].map((e) => <FullRow key={e.id} e={e} restaurant={data.restaurant} />)}
+        </ul>
       )}
     </section>
   );
@@ -150,8 +174,8 @@ export default async function EmailInboxPreview() {
   } catch (err) {
     return <ErrorMessage message={err instanceof Error ? err.message : String(err)} />;
   }
-  const waiting = data.rows.filter((e) => WAITING.has(e.status));
-  const top = [...waiting, ...data.rows.filter((e) => !WAITING.has(e.status))].slice(0, PREVIEW);
+  const waiting = data.rows.filter(needsOwner);
+  const top = [...waiting, ...data.rows.filter((e) => !needsOwner(e))].slice(0, PREVIEW);
   return (
     <PreviewSection
       id="inbox"

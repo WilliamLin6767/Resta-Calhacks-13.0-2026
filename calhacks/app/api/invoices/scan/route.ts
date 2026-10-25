@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { scanForCalls } from "@/lib/calls/service";
 import { readInvoice } from "@/lib/purchasing/ai";
 import { errorResponse, handleError } from "@/lib/purchasing/http";
-import { saveScannedInvoice } from "@/lib/purchasing/service";
+import { saveInvoiceOnce } from "@/lib/purchasing/service";
 import { getSupabase } from "@/lib/supabase";
 import { ROUTE_TOPICS } from "@/lib/live/routeTopics";
 import { signalAfter, syncCalls } from "@/lib/live/signal";
@@ -11,7 +11,8 @@ const MAX_BYTES = 15 * 1024 * 1024;
 
 // POST /api/invoices/scan   form data: file = a photo or PDF of a supplier invoice
 // Claude reads it; we match each line to an ingredient, check it, save it, and
-// record the new prices (so food cost and margins update). Returns { id }.
+// record the new prices (so food cost and margins update). Returns { id }, or
+// { id, duplicate: true } when the same invoice is already in the system (nothing is added twice).
 export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
     const read = await readInvoice(await file.arrayBuffer(), mediaType);
     if (!read.lines.length) return errorResponse("No product lines found. Is this a supplier invoice?", 422);
     const supabase = await getSupabase();
-    const id = await saveScannedInvoice(supabase, read, "photo");
+    const saved = await saveInvoiceOnce(supabase, read, "photo");
+    // Already in the system (often emailed first): nothing was added again, so there's nothing new to check
+    if (saved.duplicate) return Response.json({ id: saved.id, duplicate: true, invoice_number: saved.invoice_number });
+    const id = saved.id;
     // A new invoice can mean a billing error worth a call: look for calls after responding,
     // so the upload isn't slower. They only show up as pending requests to approve.
     after(() =>
