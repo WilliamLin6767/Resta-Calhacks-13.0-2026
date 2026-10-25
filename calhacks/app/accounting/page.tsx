@@ -66,8 +66,8 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
           <NessieBadge />
         </div>
         <p className="mb-3 mt-1 text-sm text-gray-600">
-          Connect a bank account to check that delivery payouts actually arrived, and to see the cash left after upcoming bills. For the demo this
-          is a simulated account from Capital One&apos;s Nessie banking API, with no real money.
+          Connect the restaurant&apos;s bank account through Capital One&apos;s Nessie banking API to check that delivery payouts actually arrived, and
+          to see the cash left after upcoming bills.
         </p>
         <SetupBank />
       </section>
@@ -78,7 +78,7 @@ function BankSection({ bank }: { bank: Bank | { error: string } }) {
     <section className="mb-8 rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Bank check</h2>
-        <p className="text-xs text-gray-500">{account.nickname}</p>
+        <p className="text-xs text-gray-500">{account.nickname.replace(/\s*\(simulated\)/i, "")}</p>
       </div>
       <NessieBanner last4={account.last4} deposits={bank.checks.filter((c) => c.deposit).length} />
       <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">

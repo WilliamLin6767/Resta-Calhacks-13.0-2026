@@ -25,8 +25,8 @@ import {
 import { useAnimateOnce } from "@/components/ui/useAnimateOnce";
 import { MENU_CLASSES, SERIES_COLORS as SERIES, type ChannelRow, type Digest, type MenuRow } from "@/lib/analytics";
 import { formatMoney } from "@/lib/format";
-const GRID = "#e5e7eb";
-const AXIS = { fontSize: 12, fill: "#52514e" };
+const GRID = "var(--chart-grid)";
+const AXIS = { fontSize: 12, fill: "var(--chart-axis)" };
 
 const money = (value: unknown) => formatMoney(Number(value));
 const shortMoney = (value: unknown) => `$${Math.round(Number(value)).toLocaleString("en-US")}`;
@@ -56,7 +56,7 @@ export function WeekdayChart({ rows }: { rows: Digest["by_weekday"] }) {
         <CartesianGrid stroke={GRID} vertical={false} />
         <XAxis dataKey="weekday" tick={AXIS} tickFormatter={(d: string) => d.slice(0, 3)} />
         <YAxis tick={AXIS} tickFormatter={shortMoney} width={64} />
-        <Tooltip formatter={money} cursor={{ fill: "#f3f4f6" }} />
+        <Tooltip formatter={money} cursor={{ fill: "var(--chart-cursor)" }} />
         <Bar dataKey="avg_revenue" name="Avg revenue" fill={SERIES[0]} radius={[4, 4, 0, 0]} isAnimationActive={animate} />
       </BarChart>
     </ResponsiveContainer>
@@ -73,7 +73,7 @@ export function HourChart({ rows }: { rows: Digest["by_hour"] }) {
         <CartesianGrid stroke={GRID} vertical={false} />
         <XAxis dataKey="label" tick={AXIS} />
         <YAxis tick={AXIS} width={40} />
-        <Tooltip cursor={{ fill: "#f3f4f6" }} />
+        <Tooltip cursor={{ fill: "var(--chart-cursor)" }} />
         <Bar dataKey="avg_orders" name="Avg orders" fill={SERIES[0]} radius={[4, 4, 0, 0]} isAnimationActive={animate} />
       </BarChart>
     </ResponsiveContainer>
@@ -206,13 +206,13 @@ export function CostBreakdownChart({ costs }: { costs: Digest["costs"] }) {
         <CartesianGrid stroke={GRID} horizontal={false} />
         <XAxis type="number" tick={AXIS} tickFormatter={shortMoney} />
         <YAxis type="category" dataKey="name" tick={AXIS} width={96} />
-        <Tooltip formatter={money} cursor={{ fill: "#f3f4f6" }} />
+        <Tooltip formatter={money} cursor={{ fill: "var(--chart-cursor)" }} />
         <Bar
           dataKey="amount"
           name="Amount"
           fill={SERIES[0]}
           radius={[0, 4, 4, 0]}
-          label={{ position: "right", fontSize: 12, fill: "#52514e", formatter: shortMoney }}
+          label={{ position: "right", fontSize: 12, fill: "var(--chart-axis)", formatter: shortMoney }}
           isAnimationActive={animate}
         />
       </BarChart>

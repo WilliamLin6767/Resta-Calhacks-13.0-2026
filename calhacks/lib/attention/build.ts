@@ -481,7 +481,7 @@ async function accounting(db: Db): Promise<Built> {
       items.push({
         key: "savings", fingerprint: String(move.amount), tab: "accounting", level: "info", dismissable: true,
         title: `You could move ${cash(move.amount)} to savings and stay above your reserve`,
-        detail: `The lowest day in the next two weeks would still be ${cash(move.lowest_after)}. Simulated account, not real money.`,
+        detail: `The lowest day in the next two weeks would still be ${cash(move.lowest_after)}. Moves through Capital One Nessie.`,
         actions: [{ kind: "post", label: `Move ${cash(move.amount)} to savings`, path: "/api/bank/savings", body: { amount: move.amount }, primary: true }],
       });
     }
@@ -527,7 +527,7 @@ async function accounting(db: Db): Promise<Built> {
         apps_owe: money(owed), payout_weeks_checked: checks.length, payout_problems: checks.filter((c) => c.status === "short" || c.status === "missing").length,
         overdue_total: money(bills.overdue.reduce((s, b) => s + b.total, 0)), due_this_week: money(bills.due_soon.reduce((s, b) => s + b.total, 0)),
         ...(bank.connected
-          ? { simulated_bank_balance: money(bank.cash.balance), cash_after_bills: money(bank.cash.after_bills), cash_reserve: money(bank.cash.reserve), not_in_bank: money(bank.owed) }
+          ? { bank_balance: money(bank.cash.balance), cash_after_bills: money(bank.cash.after_bills), cash_reserve: money(bank.cash.reserve), not_in_bank: money(bank.owed) }
           : {}),
         ...(plan
           ? {

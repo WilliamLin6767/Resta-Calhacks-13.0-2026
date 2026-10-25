@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const amount = Number(b.amount);
   if (!Number.isFinite(amount)) return errorResponse("Send an amount.", 400);
   try {
-    await ownerAction(await getSupabase(), { tool: "bank_savings", title: `Move ${amount.toFixed(2)} to savings`, summary: `Moved ${amount.toFixed(2)} to savings on the Accounting page (simulated bank).`, args: { amount } }, sessionLabel(request));
+    await ownerAction(await getSupabase(), { tool: "bank_savings", title: `Move ${amount.toFixed(2)} to savings`, summary: `Moved ${amount.toFixed(2)} to savings on the Accounting page.`, args: { amount } }, sessionLabel(request));
     return Response.json({ ok: true });
   } catch (err) {
     if (err instanceof NessieError) return errorResponse(err.message, err.status);

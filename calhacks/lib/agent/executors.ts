@@ -170,14 +170,14 @@ export function executorsFor(db: SupabaseClient): Record<string, Executor> {
       const amount = num(row, "amount");
       enforce(checkReserve(amount));
       await setReserve(db, amount);
-      return { reserve: amount, simulated: true, href: "/accounting" };
+      return { reserve: amount, href: "/accounting" };
     },
 
     async bank_savings(row) {
       const amount = num(row, "amount");
       enforce(checkMoneyMove(amount));
       await moveToSavings(db, amount);
-      return { moved: amount, simulated: true, href: "/accounting" };
+      return { moved: amount, href: "/accounting" };
     },
   };
 }

@@ -361,23 +361,23 @@ export const commitTools = [
   defineTool({
     name: "bank_reserve",
     ...commit("analytics"),
-    description: "Propose a new cash reserve for the simulated bank account (the amount the cash plan keeps aside).",
+    description: "Propose a new cash reserve for the bank account (the amount the cash plan keeps aside).",
     input: z.object({ amount: z.number().positive() }),
     run: async ({ amount }, ctx) => {
       const limit = checkMoneyMove(amount);
       if (!limit.ok) return `Error: ${limit.reason}`;
-      return proposeAction(ctx, "bank_reserve", { title: `Set the cash reserve to ${money(amount)}`, summary: `Keep ${money(amount)} aside in the (simulated) operating account; the cash plan warns below it.`, args: { amount } });
+      return proposeAction(ctx, "bank_reserve", { title: `Set the cash reserve to ${money(amount)}`, summary: `Keep ${money(amount)} aside in the operating account; the cash plan warns below it.`, args: { amount } });
     },
   }),
   defineTool({
     name: "bank_savings",
     ...commit("analytics"),
-    description: "Propose moving money from the simulated operating account to savings. Check get_cash_plan first; it suggests a safe amount.",
+    description: "Propose moving money from the operating account to savings. Check get_cash_plan first; it suggests a safe amount.",
     input: z.object({ amount: z.number().positive() }),
     run: async ({ amount }, ctx) => {
       const limit = checkMoneyMove(amount);
       if (!limit.ok) return `Error: ${limit.reason}`;
-      return proposeAction(ctx, "bank_savings", { title: `Move ${money(amount)} to savings`, summary: `Move ${money(amount)} from the operating account to savings (simulated Capital One Nessie accounts).`, args: { amount }, impact: { amount_usd: amount, per: "once", basis: "The amount moved." } });
+      return proposeAction(ctx, "bank_savings", { title: `Move ${money(amount)} to savings`, summary: `Move ${money(amount)} from the operating account to savings (Capital One Nessie accounts).`, args: { amount }, impact: { amount_usd: amount, per: "once", basis: "The amount moved." } });
     },
   }),
 ];
