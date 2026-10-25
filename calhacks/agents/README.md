@@ -12,9 +12,11 @@ Back of House website (https://resta-calhacks.vercel.app), which holds the real 
 
 | Agent | Address | What it does |
 | --- | --- | --- |
-| `pho-berkeley-back-of-house` | `agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr` | Chat agent on Agentverse, reachable from ASI:One (Chat Protocol). Thinks with ASI:One's `asi1` model and calls the two desks as tools. |
+| `pho-berkeley-back-of-house` (handle `@phoberkeley`) | `agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr` | Chat agent on Agentverse, reachable from ASI:One (Chat Protocol). Thinks with ASI:One's `asi1` model and calls the two desks as tools. |
 | `pho-berkeley-stock-desk` | `agent1qtllrmgy9fm3h44lf0m53rd8pxr5p5wnjn2rkmgx6ntkdlld3psmkddtrx2` | What needs the owner on every tab, low stock, and restock orders (plan, then draft for approval). |
 | `pho-berkeley-money-desk` | `agent1qv5eltuyly9l5afsu7qyzmyqfp68jsytqrxq3v90z4qce42d6uuuyw36093` | Simulated bank (Capital One Nessie): cash after bills, money the delivery apps owe, 14-day cash forecast, savings, food budget. |
+
+Chat with it: https://asi1.ai/ai/agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr (or type `@phoberkeley` in ASI:One).
 
 ## The workflow in ASI:One
 

@@ -1,7 +1,6 @@
-// The same assistant on Fetch.ai's ASI:One (calhacks/agents). It opens the agent's Agentverse
-// page, where "Chat with Agent" starts an ASI:One conversation with it.
+// The same assistant on Fetch.ai's ASI:One (calhacks/agents). Opens a chat with it in ASI:One.
 export const ASI_ONE_AGENT = "agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr";
-const AGENT_PAGE = `https://agentverse.ai/agents/details/${ASI_ONE_AGENT}/profile`;
+const AGENT_CHAT = `https://asi1.ai/ai/${ASI_ONE_AGENT}`;
 
 export default function AsiOneLink({ className = "" }: { className?: string }) {
   return (
@@ -10,7 +9,7 @@ export default function AsiOneLink({ className = "" }: { className?: string }) {
         <span className="font-medium text-gray-900">Also on ASI:One.</span> Ask what needs you, order what&apos;s low, or check your cash from
         Fetch.ai&apos;s ASI:One chat.
       </p>
-      <a href={AGENT_PAGE} target="_blank" rel="noopener noreferrer"
+      <a href={AGENT_CHAT} target="_blank" rel="noopener noreferrer"
         className="inline-flex min-h-10 items-center rounded-md border border-brand-600 px-3 font-medium text-brand-700 hover:bg-brand-50 sm:min-h-8">
         Open in ASI:One ↗
       </a>

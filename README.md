@@ -14,6 +14,6 @@ Live site: https://resta-calhacks.vercel.app
 
 | Agent | Address |
 | --- | --- |
-| `pho-berkeley-back-of-house` (chat agent, ASI:One) | `agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr` |
+| `pho-berkeley-back-of-house` (chat agent on ASI:One, handle `@phoberkeley`) | `agent1qdsckutanf4g4q4clt4nfazwf4qn25nqtnsp8z4d65ahrf8hfn2kza9n5pr` |
 | `pho-berkeley-stock-desk` | `agent1qtllrmgy9fm3h44lf0m53rd8pxr5p5wnjn2rkmgx6ntkdlld3psmkddtrx2` |
 | `pho-berkeley-money-desk` | `agent1qv5eltuyly9l5afsu7qyzmyqfp68jsytqrxq3v90z4qce42d6uuuyw36093` |
