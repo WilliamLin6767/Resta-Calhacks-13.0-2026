@@ -622,4 +622,131 @@ html.dark [class~="border-brand-100"] {
   border-color: color-mix(in srgb, var(--color-brand-500) 40%, #343a4a);
 }
 
+/* The desktop menu (components/Sidebar.tsx, inside AppShell's .rail). "Collapse menu" puts
+   data-nav="collapsed" on <html> (remembered; the head script in app/layout.tsx sets it before
+   the first paint): the menu shrinks to its icons, and hovering it, or tabbing into it, slides
+   the full menu out over the page without moving the page. Right after the owner collapses it
+   (data-hold), it stays shut until the pointer leaves, so the click visibly does something. */
+.rail {
+  width: 18rem;
+}
+.rail-nav {
+  width: 18rem;
+}
+.rail-dot {
+  display: none;
+}
+.rail-word {
+  max-width: 8rem;
+}
+html[data-nav="collapsed"] .rail {
+  width: 76px;
+}
+html[data-nav="collapsed"] .rail .rail-nav {
+  width: 76px;
+}
+html[data-nav="collapsed"] .rail .rail-fade {
+  opacity: 0;
+}
+html[data-nav="collapsed"] .rail .rail-word {
+  max-width: 0;
+  padding-left: 0;
+  opacity: 0;
+}
+html[data-nav="collapsed"] .rail .rail-dot {
+  display: block;
+}
+html[data-nav="collapsed"] .rail .rail-heading {
+  height: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+html[data-nav="collapsed"] .rail .rail-group {
+  margin-top: 0.5rem;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-nav {
+  width: 18rem;
+  box-shadow: 0 12px 40px rgb(16 24 40 / 0.16);
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-fade {
+  opacity: 1;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-word {
+  max-width: 8rem;
+  padding-left: 0.5rem;
+  opacity: 1;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-dot {
+  display: none;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-heading {
+  height: auto;
+  margin-bottom: 0.25rem;
+  overflow: visible;
+  opacity: 1;
+}
+html[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-group {
+  margin-top: 1rem;
+}
+.rail-toggle-icon {
+  rotate: 0deg;
+}
+html[data-nav="collapsed"] .rail-toggle-icon {
+  rotate: 180deg;
+}
+.rail-label-open {
+  display: none;
+}
+html[data-nav="collapsed"] .rail-label-open {
+  display: inline;
+}
+html[data-nav="collapsed"] .rail-label-close {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Collapsing eases the page over; the hover slide-out waits a beat so passing the pointer over
+     the icons on the way somewhere else doesn't fling it open. */
+  html.nav-ready .rail {
+    transition: width 280ms var(--ease-out-soft);
+  }
+  html.nav-ready .rail-nav {
+    transition:
+      width 260ms var(--ease-out-soft),
+      box-shadow 260ms ease;
+  }
+  html.nav-ready .rail-fade {
+    transition: opacity 180ms ease;
+  }
+  .rail-toggle-icon {
+    transition: rotate 280ms var(--ease-out-soft);
+  }
+  /* The word fades in only once the menu has finished opening, and goes at once when it closes. */
+  html.nav-ready .rail-word {
+    transition:
+      opacity 200ms ease 240ms,
+      max-width 200ms var(--ease-out-soft),
+      padding-left 200ms var(--ease-out-soft);
+  }
+  html.nav-ready[data-nav="collapsed"] .rail-word {
+    transition:
+      opacity 120ms ease,
+      max-width 200ms var(--ease-out-soft),
+      padding-left 200ms var(--ease-out-soft);
+  }
+  html.nav-ready[data-nav="collapsed"] .rail:not([data-hold]):is(:hover, :has(:focus-visible)) .rail-word {
+    transition:
+      opacity 200ms ease 360ms,
+      max-width 200ms var(--ease-out-soft) 120ms,
+      padding-left 200ms var(--ease-out-soft) 120ms;
+  }
+  html[data-nav="collapsed"] .rail:not([data-hold]):hover .rail-nav {
+    transition-delay: 120ms;
+  }
+  html[data-nav="collapsed"] .rail:not([data-hold]):hover .rail-fade {
+    transition-delay: 160ms;
+  }
+}
+
 

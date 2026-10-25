@@ -20,7 +20,7 @@ function isActive(pathname: string, href: string) {
 }
 
 // Phone: top bar, a drawer menu, and a bottom bar.
-// Desktop: the section list stays open on the left. The logo at its top opens Overview.
+// Desktop: the section list on the left, which can be collapsed to its icons. The logo at its top opens Overview.
 export default function AppShell({ restaurant, children }: { restaurant: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   // The page the menu was opened on: going to another page closes it.
@@ -84,8 +84,9 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         </div>
       </div>
 
-      <aside className="sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
-        <Sidebar restaurant={restaurant} />
+      {/* .rail: the menu's width, which collapses to its icons (globals.css) */}
+      <aside className="rail sticky top-0 z-30 hidden h-dvh shrink-0 md:block">
+        <Sidebar restaurant={restaurant} collapsible />
       </aside>
       {/* Keeps running supplier calls moving when no calls panel on this page shows them (Convex only) */}
       <CallDriver />

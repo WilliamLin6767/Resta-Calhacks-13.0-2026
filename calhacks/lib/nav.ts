@@ -28,20 +28,52 @@ export type Section = {
   soft: string; // tile otherwise
 };
 
-export const SECTIONS: Section[] = [
-  { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-100 text-overview-700" },
-  { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-100 text-chat-700" },
-  { href: "/actions", label: "Actions", icon: "check", theme: "actions", solid: "bg-actions-500", soft: "bg-actions-100 text-actions-700" },
-  { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-100 text-inventory-700" },
-  { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-100 text-prep-700" },
-  { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-100 text-invoices-700" },
-  { href: "/suppliers", label: "Suppliers", icon: "truck", calls: "suppliers", theme: "suppliers", solid: "bg-suppliers-500", soft: "bg-suppliers-100 text-suppliers-700" },
-  { href: "/menu", label: "Menu and pricing", icon: "tag", theme: "menu", solid: "bg-menu-500", soft: "bg-menu-100 text-menu-700" },
-  { href: "/accounting", label: "Accounting", icon: "dollar", theme: "accounting", solid: "bg-accounting-500", soft: "bg-accounting-100 text-accounting-700" },
-  { href: "/analytics", label: "Analytics", icon: "chart", theme: "analytics", solid: "bg-analytics-500", soft: "bg-analytics-100 text-analytics-700" },
-  { href: "/trends", label: "Trends", icon: "trend", theme: "trends", solid: "bg-trends-500", soft: "bg-trends-100 text-trends-700" },
-  { href: "/marketing", label: "Marketing", icon: "megaphone", theme: "marketing", solid: "bg-marketing-500", soft: "bg-marketing-100 text-marketing-700" },
+export type NavGroup = {
+  label?: string; // omitted for the bare links at the top (Overview, Chat, Actions)
+  sections: Section[];
+};
+
+// Sidebar order. SECTIONS is this list flattened, so the command palette and sectionFor stay in sync.
+export const NAV: NavGroup[] = [
+  {
+    sections: [
+      { href: "/", label: "Overview", icon: "home", theme: "overview", solid: "bg-overview-500", soft: "bg-overview-100 text-overview-700" },
+      { href: "/chat", label: "Chat", icon: "chat", theme: "chat", solid: "bg-chat-500", soft: "bg-chat-100 text-chat-700" },
+      { href: "/actions", label: "Actions", icon: "check", theme: "actions", solid: "bg-actions-500", soft: "bg-actions-100 text-actions-700" },
+    ],
+  },
+  {
+    label: "Kitchen",
+    sections: [
+      { href: "/inventory", label: "Inventory", icon: "box", calls: "inventory", theme: "inventory", solid: "bg-inventory-500", soft: "bg-inventory-100 text-inventory-700" },
+      { href: "/prep", label: "Prep", icon: "clipboard", theme: "prep", solid: "bg-prep-500", soft: "bg-prep-100 text-prep-700" },
+      { href: "/menu", label: "Menu and pricing", icon: "tag", theme: "menu", solid: "bg-menu-500", soft: "bg-menu-100 text-menu-700" },
+    ],
+  },
+  {
+    label: "Buying",
+    sections: [
+      { href: "/invoices", label: "Invoices and buying", icon: "receipt", calls: "invoices", theme: "invoices", solid: "bg-invoices-500", soft: "bg-invoices-100 text-invoices-700" },
+      { href: "/suppliers", label: "Suppliers", icon: "truck", calls: "suppliers", theme: "suppliers", solid: "bg-suppliers-500", soft: "bg-suppliers-100 text-suppliers-700" },
+    ],
+  },
+  {
+    label: "Outreach",
+    sections: [
+      { href: "/trends", label: "Trends", icon: "trend", theme: "trends", solid: "bg-trends-500", soft: "bg-trends-100 text-trends-700" },
+      { href: "/marketing", label: "Marketing", icon: "megaphone", theme: "marketing", solid: "bg-marketing-500", soft: "bg-marketing-100 text-marketing-700" },
+    ],
+  },
+  {
+    label: "The books",
+    sections: [
+      { href: "/accounting", label: "Accounting", icon: "dollar", theme: "accounting", solid: "bg-accounting-500", soft: "bg-accounting-100 text-accounting-700" },
+      { href: "/analytics", label: "Analytics", icon: "chart", theme: "analytics", solid: "bg-analytics-500", soft: "bg-analytics-100 text-analytics-700" },
+    ],
+  },
 ];
+
+export const SECTIONS: Section[] = NAV.flatMap((group) => group.sections);
 
 // Pinned under the section list. Same shape so the sidebar and the command palette can share it.
 export const PROFILE: Section = {
