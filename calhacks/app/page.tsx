@@ -5,6 +5,7 @@ import AllAttention from "@/components/attention/AllAttention";
 import Badge, { type BadgeTone } from "@/components/Badge";
 import Card from "@/components/Card";
 import ErrorMessage from "@/components/ErrorMessage";
+import AsiOneLink from "@/components/AsiOneLink";
 import PageHeader from "@/components/PageHeader";
 import SimpleTable from "@/components/SimpleTable";
 import EmptyState from "@/components/ui/EmptyState";
@@ -202,6 +203,7 @@ export default function OverviewPage() {
       <LiveRefresh topics={["overview", "attention"]} />
       <PageHeader title="Overview" description="How the restaurant is doing today, and what needs attention." />
       <AllAttention />
+      <AsiOneLink className="mb-6" />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card
           title="Marketing"

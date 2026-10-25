@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import AsiOneLink from "@/components/AsiOneLink";
 import PageHeader from "@/components/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toaster";
@@ -201,6 +202,7 @@ export default function ChatPage() {
     // On desktop the thread fills the page panel and the composer docks at its bottom.
     <div className="md:flex md:min-h-[calc(100dvh-7rem)] md:flex-col">
       <PageHeader title="Chat" description="Tell me what's low, or hold to talk." />
+      {messages.length === 0 && <AsiOneLink className="mb-4" />}
 
       <div ref={listRef} className="space-y-3 pb-36 md:flex-1 md:pb-6">
         {messages.length === 0 && !busy && <EmptyState title="Ask about a food, or hold the button and say it." icon="chat" />}
