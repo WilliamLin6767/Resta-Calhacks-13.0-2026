@@ -14,6 +14,38 @@ async function post(path: string, body?: unknown) {
   return data;
 }
 
+// "Check email now": asks the Gmail script to send new mail right away instead of within the minute.
+// The AI then reads each email (5-20 seconds), so the page refreshes a few times after.
+export function CheckEmailNow() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const [error, setError] = useState("");
+  async function check() {
+    setBusy(true);
+    setNote("");
+    setError("");
+    try {
+      const data = await post("/api/inbound/check");
+      if (data.busy) setNote("Already checking. New mail will show in a few seconds.");
+      else if (!data.sent) setNote("No new email yet. If you just sent it, give Gmail a few seconds and check again.");
+      else setNote(`Found ${data.sent} new email${data.sent === 1 ? "" : "s"}. Reading ${data.sent === 1 ? "it" : "them"} now...`);
+      if (data.sent || data.busy) for (const ms of [4000, 9000, 16000, 25000]) setTimeout(() => router.refresh(), ms);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <button className={primary} disabled={busy} onClick={check}>{busy ? "Checking Gmail..." : "Check email now"}</button>
+      {note && <span className="text-sm text-gray-600">{note}</span>}
+      {error && <span className="text-sm text-red-600">{error}</span>}
+    </span>
+  );
+}
+
 // Runs a made-up email through the real inbox
 export function SampleEmails() {
   const router = useRouter();
