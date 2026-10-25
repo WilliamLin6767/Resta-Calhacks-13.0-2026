@@ -118,6 +118,11 @@ export async function readInvoice(bytes: ArrayBuffer, mediaType: string): Promis
   return ask(READ_SYSTEM, [block, { type: "text", text: "Copy this invoice into the structured format." }], InvoiceSchema, "medium");
 }
 
+// The same, for an invoice written out in an email's text instead of attached
+export async function readInvoiceText(text: string): Promise<ReadInvoice> {
+  return ask(READ_SYSTEM, `This invoice came as the text of an email. Copy it into the structured format.\n\n${text}`, InvoiceSchema, "medium");
+}
+
 // Lines our matcher wasn't sure about -> Claude's pick for each (keyed by line number)
 export async function matchLines(
   lines: { line: number; description: string; pack: string; candidates: { ingredient_id: number; name: string }[] }[],

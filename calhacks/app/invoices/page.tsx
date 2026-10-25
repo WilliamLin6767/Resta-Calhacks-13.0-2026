@@ -15,6 +15,7 @@ import { BILLING_ERROR_KINDS } from "@/lib/purchasing/checks";
 import { loadOrders, sortOrders } from "@/lib/purchasing/service";
 import { getSupabase, RESTAURANT_ID } from "@/lib/supabase";
 import { PurchaseOrderCard } from "./OrderActions";
+import EmailInbox from "./EmailInbox";
 import ScanInvoice from "./ScanInvoice";
 import LiveRefresh from "@/components/live/LiveRefresh";
 
@@ -156,6 +157,11 @@ export default function InvoicesPage() {
       </div>
       <div className="order-4 md:order-none">
         <ScanInvoice />
+      </div>
+      <div className="order-4 md:order-none">
+        <Suspense fallback={<Skeleton className="mb-8 h-32 rounded-2xl" />}>
+          <EmailInbox />
+        </Suspense>
       </div>
       <div className="order-2 md:order-none">
         <Suspense fallback={<Skeleton className="mb-8 h-40 rounded-2xl" />}>
