@@ -6,7 +6,9 @@ import { useState, type ReactNode } from "react";
 import { OPEN_PALETTE } from "@/components/CommandPalette";
 import CallDriver from "@/components/live/CallDriver";
 import SectionMain from "@/components/SectionMain";
+import NavIcon from "@/components/NavIcon";
 import Sidebar from "@/components/Sidebar";
+import { PROFILE } from "@/lib/nav";
 
 const phoneLinks = [
   { href: "/", label: "Overview" },
@@ -73,16 +75,21 @@ export default function AppShell({ restaurant, children }: { restaurant: ReactNo
         />
       )}
 
-      {/* Phone menu only. h-dvh is the visible screen, and the bottom padding (the home indicator's
-          safe area plus a little) keeps Profile just above Safari's floating toolbar. */}
-      <div className={`${open ? "fixed top-0 left-0 z-50 flex h-dvh" : "hidden"} md:hidden`}>
-        <div className="flex h-full flex-col bg-white pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-xl">
-          <div className="flex justify-end border-b border-gray-200">
+      {/* Phone menu only. Profile is at the top next to Close: Safari's floating toolbar changes height
+          as it shrinks and grows, so anything pinned to the bottom ends up covered some of the time. */}
+      <div className={`${open ? "fixed inset-y-0 left-0 z-50 flex" : "hidden"} md:hidden`}>
+        <div className="flex h-full flex-col bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-gray-200">
+            <Link href={PROFILE.href} onClick={() => setOpen(false)} aria-current={pathname === PROFILE.href ? "page" : undefined}
+              className="flex min-h-11 items-center gap-2 px-4 text-sm font-medium text-gray-700">
+              <NavIcon icon={PROFILE.icon} size={18} />
+              {PROFILE.label}
+            </Link>
             <button type="button" onClick={() => setOpen(false)} className="min-h-11 px-4 text-sm font-medium text-gray-600">
               Close
             </button>
           </div>
-          <Sidebar restaurant={restaurant} />
+          <Sidebar restaurant={restaurant} phone />
         </div>
       </div>
 

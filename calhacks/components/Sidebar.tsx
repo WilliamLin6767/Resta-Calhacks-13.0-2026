@@ -88,9 +88,11 @@ function PendingBar({ color }: { color: string }) {
 }
 
 // The section list. Phones show it inside AppShell's drawer. Desktop keeps it on the left, and
-// `collapsible` adds the button that shrinks it to its icons.
+// `collapsible` adds the button that shrinks it to its icons. `phone` is the phone menu: Profile sits
+// at its top next to Close (AppShell), where Safari's floating toolbar can't cover it, and the list
+// gets room at the bottom so its last item can scroll above the toolbar.
 // `restaurant` is the restaurant name. The layout loads it on the server and passes it in.
-export default function Sidebar({ restaurant, collapsible = false }: { restaurant: React.ReactNode; collapsible?: boolean }) {
+export default function Sidebar({ restaurant, collapsible = false, phone = false }: { restaurant: React.ReactNode; collapsible?: boolean; phone?: boolean }) {
   const pathname = usePathname();
   const callCounts = useCallCounts();
   const navId = useId();
@@ -144,7 +146,7 @@ export default function Sidebar({ restaurant, collapsible = false }: { restauran
         {collapsible && <CollapseButton />}
       </div>
       <p className="rail-fade mb-3 truncate px-1 text-sm whitespace-nowrap text-gray-500">{restaurant}</p>
-      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div className={`min-h-0 flex-1 overflow-x-hidden overflow-y-auto ${phone ? "pb-[calc(5rem+env(safe-area-inset-bottom))]" : ""}`}>
         {NAV.map((group) => {
           const headingId = group.label ? `${navId}-${group.label.toLowerCase().replace(/\s+/g, "-")}` : undefined;
           return (
@@ -163,9 +165,11 @@ export default function Sidebar({ restaurant, collapsible = false }: { restauran
           );
         })}
       </div>
-      <div className="mt-3 border-t border-gray-200 pt-3">
-        {item(PROFILE)}
-      </div>
+      {!phone && (
+        <div className="mt-3 border-t border-gray-200 pt-3">
+          {item(PROFILE)}
+        </div>
+      )}
     </nav>
   );
 }
