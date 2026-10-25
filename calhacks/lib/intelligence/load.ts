@@ -84,7 +84,7 @@ export async function loadSources(db: Db, now = new Date()): Promise<Loaded> {
       await db.from("agent_actions").select("id, case_id, tool, title, status, source, created_at, done_at").eq("restaurant_id", RESTAURANT_ID).order("created_at", { ascending: false }).limit(30),
       "load the action log (has supabase/18_agent_actions.sql been run?)",
     ) as ActionLite[]),
-    source(async () => (await loadTop(db, 8)).map((f) => ({ key: f.key, title: f.title, tab: f.tab, level: f.level, impact_usd_week: f.impact_usd_week ?? null }))),
+    source(async () => (await loadTop(db, 8)).map((f) => ({ key: f.key, title: f.title, tab: f.tab, level: f.level, impact_usd_week: f.impact_usd_week ?? null, impact_once: !!f.impact_once }))),
   ]);
 
   return { now: now.toISOString(), digest, inventory, waste, sales, orders, money, posts, cases, actions, findings };

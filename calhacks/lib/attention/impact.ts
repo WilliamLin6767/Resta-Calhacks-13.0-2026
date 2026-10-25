@@ -12,14 +12,14 @@
 //   Prep, marketing         no dollar figure                                           low
 import type { Confidence, Item } from "./types";
 
-export type Impact = { impact_usd_week: number | null; basis: string; confidence: Confidence; evidence?: Item["evidence"]; playbook?: string | null };
+export type Impact = { impact_usd_week: number | null; impact_once?: boolean; basis: string; confidence: Confidence; evidence?: Item["evidence"]; playbook?: string | null };
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const money = (n: number) => `$${n.toFixed(2)}`;
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 export function billingImpact(moneyImpact: number): Impact {
-  return { impact_usd_week: round2(moneyImpact), basis: "What the invoice check found charged in error (a one-time amount to get back).", confidence: "high" };
+  return { impact_usd_week: round2(moneyImpact), impact_once: true, basis: "What the invoice check found charged in error (a one-time amount to get back).", confidence: "high" };
 }
 
 export function priceRiseImpact(newUnit: number, oldUnit: number, weeklyQty: number, unit: string): Impact {
@@ -62,7 +62,7 @@ export function wasteImpact(wasteWeek: number): Impact {
 }
 
 export function payoutImpact(shortfall: number): Impact {
-  return { impact_usd_week: round2(shortfall), basis: "What the delivery app still owes for that week (from the planted demo payouts).", confidence: "demo" };
+  return { impact_usd_week: round2(shortfall), impact_once: true, basis: "What the delivery app still owes for that week, checked against your orders and the bank.", confidence: "high" };
 }
 
 export const NO_FIGURE: Impact = { impact_usd_week: null, basis: "", confidence: "low" };
