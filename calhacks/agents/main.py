@@ -49,6 +49,10 @@ chat_agent = Agent(
     port=PORT,  # the Bureau's port, so the Agentverse inspector finds it at 127.0.0.1:PORT
     mailbox=True,  # reachable from ASI:One through Agentverse while this process runs
     publish_agent_details=True,
+    # The Agentverse profile: what owners and ASI:One's search see
+    handle=os.getenv("CHAT_AGENT_HANDLE", "phoberkeley"),
+    readme_path=os.path.join(os.path.dirname(__file__), "AGENTVERSE_README.md"),
+    avatar_url="https://resta-calhacks.vercel.app/icon-512.png",
     description="Back-of-house assistant for Pho Berkeley, a small Vietnamese restaurant: what needs the owner today, low stock, "
     "restock orders drafted for approval, and a simulated bank check (delivery payouts, cash forecast, food budget).",
 )
