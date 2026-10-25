@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { clientIp, createRateLimiter } from "@/lib/rateLimit";
 import { speak, transcribe } from "@/lib/voice/cartesia";
+import { parseHistory } from "@/lib/agent/undo";
+import type { AgentLink, Change } from "@/lib/agent/types";
 import { replyToOwner, takeTurns, type DraftedOrder } from "@/lib/voice/reply";
 import { signalAfter } from "@/lib/live/signal";
 
@@ -9,6 +11,17 @@ const wholeApp = createRateLimiter({ limit: 500, windowMs: 24 * 60 * 60 * 1000 }
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
+}
+
+// A JSON form field, or null.
+function jsonField(form: FormData | null, name: string): unknown {
+  const raw = form?.get(name);
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 function historyFrom(form: FormData | null) {
@@ -23,7 +36,8 @@ function historyFrom(form: FormData | null) {
   }
 }
 
-// POST /api/voice  multipart file, plus history: the earlier turns as JSON.
+// POST /api/voice  multipart file, plus history: the earlier turns as JSON, and changes: the
+// earlier changes as JSON. Returns { transcript, answer, audio, audioType, order, changes, links }.
 export async function POST(request: Request) {
   const token = process.env.CARTESIA_API_KEY;
   if (!token) return errorResponse("CARTESIA_API_KEY is missing. Add it on the server, not as NEXT_PUBLIC.", 500);
@@ -52,10 +66,14 @@ export async function POST(request: Request) {
 
   let answer = "";
   let order: DraftedOrder | null = null;
+  let changes: Change[] = [];
+  let links: AgentLink[] = [];
   try {
-    const result = await replyToOwner(messages, true);
+    const result = await replyToOwner(messages, true, { identity: clientIp(request), history: parseHistory(jsonField(form, "changes")) });
     answer = result.answer;
     order = result.order;
+    changes = result.changes;
+    links = result.links;
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return errorResponse("The Anthropic API key is missing or invalid.", 500);
     if (err instanceof Anthropic.RateLimitError) return errorResponse("Too many AI requests right now. Wait a minute and try again.", 429);
@@ -72,12 +90,14 @@ export async function POST(request: Request) {
     audio = null;
   }
 
-  if (order) signalAfter("/api/voice");
+  if (order || changes.length) signalAfter("/api/voice");
   return Response.json({
     transcript,
     answer,
     audio,
     audioType: "audio/mpeg",
     order,
+    changes,
+    links,
   });
 }

@@ -1,18 +1,23 @@
-// One Claude turn for the owner chat. Typed and spoken messages share these tools.
-// The order, if any, stays a draft. This never approves or sends it.
+// One Claude turn for the owner chat. Typed and spoken messages share the app's agent tools
+// (lib/agent/registry.ts), so the owner can look anything up and make everyday changes by chat
+// or voice. Orders stay drafts. This never approves or sends one.
 import Anthropic from "@anthropic-ai/sdk";
-import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
-import { loadAnalytics } from "@/app/analytics/data";
-import { checkIngredient, draftRestock, type DraftRestock } from "@/lib/purchasing/restock";
+import { buildTools, createCtx } from "@/lib/agent/registry";
+import type { AgentLink, Change, DraftedOrder } from "@/lib/agent/types";
 import { getSupabase } from "@/lib/supabase";
 
 const AI_MODEL = "claude-sonnet-5-5";
 
 const RULES = [
   "Use the conversation so far.",
-  "Use check_ingredient when they mention a food. Use draft_restock when they want it restocked.",
   "Get every number from your tools. Never invent a number.",
+  "Do ordinary updates right away (counts, waste, sales, drafts). Don't ask first.",
+  "After any change, say what changed in one short sentence, with the old and new amounts.",
+  "If a tool returns ask, say only that question. If the owner moves on to something else, drop it: don't bring it up again.",
+  "Never say something changed unless a tool returned ok: true for it. If a tool returned an Error, say it didn't work and why.",
+  "For anything that needs a photo or a file (scanning an invoice or a receipt, counting from a shelf photo), use open_page.",
+  "Use check_ingredient when they mention a food. Use draft_restock when they want it restocked.",
   "Never approve or send an order. draft_restock only creates a draft.",
   "If the ingredient is not low, say so and do not draft an order.",
   "If you drafted an order, name the supplier and the packs, and tell them to tap Approve.",
@@ -28,7 +33,9 @@ const TurnSchema = z.object({
 
 export type Turn = z.infer<typeof TurnSchema>;
 
-export type DraftedOrder = Extract<DraftRestock, { drafted: true }>;
+export type { DraftedOrder };
+
+export type Reply = { answer: string; order: DraftedOrder | null; changes: Change[]; links: AgentLink[] };
 
 // Keep the last 12 turns, folded so roles alternate and the thread ends with the owner.
 export function takeTurns(input: unknown): Turn[] | null {
@@ -46,50 +53,34 @@ export function takeTurns(input: unknown): Turn[] | null {
   return turns;
 }
 
-export async function replyToOwner(messages: Turn[], spoken: boolean): Promise<{ answer: string; order: DraftedOrder | null }> {
-  const loaded = await loadAnalytics(30);
-  const digest = "error" in loaded ? null : loaded.digest;
-  let drafted: DraftedOrder | null = null;
+// The changes earlier in this conversation that can be undone, so "undo that" works: undo_change
+// only accepts one of these payloads.
+function historyNote(history: Change[]) {
+  const undoable = history.filter((c) => c.undo).slice(-10);
+  if (!undoable.length) return "";
+  return `\n\nChanges earlier in this conversation that can be undone (newest last). To undo one, pass its payload to undo_change:\n${undoable
+    .map((c) => `- ${c.label}: ${JSON.stringify(c.undo)}`)
+    .join("\n")}`;
+}
 
-  const tools = [
-    betaZodTool({
-      name: "get_dashboard_summary",
-      description: "The restaurant's last 30 days: sales, costs, menu, and supplier price changes. No stock quantities.",
-      inputSchema: z.object({}),
-      run: async () => (digest ? JSON.stringify({ restaurant: digest.restaurant, period: digest.period, kpis: digest.kpis, costs: digest.costs, price_changes: digest.price_changes }) : "Error: the dashboard summary is unavailable."),
-    }),
-    betaZodTool({
-      name: "check_ingredient",
-      description: "Stock on hand, par, and the suppliers who sell one ingredient. Pass the food name the owner said.",
-      inputSchema: z.object({ ingredient: z.string() }),
-      run: async ({ ingredient }) => JSON.stringify(await checkIngredient(await getSupabase(), ingredient)),
-    }),
-    betaZodTool({
-      name: "draft_restock",
-      description: "Draft one purchase order for a low ingredient. Does not approve or send it. Pass the food name the owner said.",
-      inputSchema: z.object({ ingredient: z.string() }),
-      run: async ({ ingredient }) => {
-        const result = await draftRestock(await getSupabase(), ingredient);
-        if (result.drafted) drafted = result;
-        return JSON.stringify(result);
-      },
-    }),
-  ];
+// identity: the visitor, for the AI tools' rate limits. history: changes from earlier in the conversation.
+export async function replyToOwner(messages: Turn[], spoken: boolean, opts: { identity?: string; history?: Change[] } = {}): Promise<Reply> {
+  const ctx = createCtx({ db: await getSupabase(), kind: "chat", spoken, identity: opts.identity ?? "unknown", history: opts.history });
 
   const final = await new Anthropic().beta.messages.toolRunner({
     model: AI_MODEL,
     max_tokens: spoken ? 1200 : 2000,
-    max_iterations: 6,
+    max_iterations: 10, // enough for "count limes, onions and bones, then draft an order"
     thread: false,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low" },
-    system: spoken ? SPOKEN_PROMPT : TYPED_PROMPT,
+    system: (spoken ? SPOKEN_PROMPT : TYPED_PROMPT) + historyNote(ctx.history),
     messages,
-    tools,
+    tools: buildTools(ctx),
   });
   if (final.stop_reason === "refusal") throw new Error("The assistant declined to answer that.");
   const answer = final.content.filter((block) => block.type === "text").map((block) => block.text).join("\n\n").trim();
   if (!answer) throw new Error("The assistant didn't come up with an answer. Try again.");
-  return { answer, order: drafted };
+  return { answer, order: ctx.order, changes: ctx.changes, links: ctx.links };
 }
