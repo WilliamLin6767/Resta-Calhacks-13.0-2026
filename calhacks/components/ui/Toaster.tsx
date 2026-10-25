@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { sectionFor } from "@/lib/nav";
 
 // Short messages after an action: "Invoice marked paid", or what went wrong. Bottom left on
-// desktop (the Ask AI button is bottom right), above the bottom bar on phones.
+// desktop (the Ask AI button is bottom right), near the bottom on phones.
 
 type Tone = "success" | "error" | "info";
 export type ToastInput = { message: string; tone?: Tone; action?: { label: string; onClick: () => void } };
@@ -75,8 +75,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const nextId = useRef(1);
   const pathname = usePathname();
   const section = sectionFor(pathname);
-  // On phones the Chat page has its composer above the bottom bar, so toasts go above both.
-  const phoneBottom = pathname === "/chat" ? "bottom-[calc(8.5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]";
+  // On phones the Chat page has its composer at the bottom, so toasts go above it.
+  const phoneBottom = pathname === "/chat" ? "bottom-[calc(5rem+env(safe-area-inset-bottom))]" : "bottom-[calc(1rem+env(safe-area-inset-bottom))]";
 
   // Fades the toast out, then removes it.
   const close = useCallback((id: number) => {
