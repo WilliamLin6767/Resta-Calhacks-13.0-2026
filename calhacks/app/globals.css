@@ -415,6 +415,36 @@
     animation: reveal-in var(--duration-enter) var(--ease-out-soft) backwards;
   }
 
+  /* The assistant panel (components/assistant/AssistantPanel.tsx) glides in from the right edge
+     on a long, soft curve, and on close slides back out to the right, picking up speed. These are
+     transitions, not keyframes, so reopening halfway through a close just turns it around. Its
+     header, conversation and question box follow it in, one after another. */
+  .assistant-panel {
+    transition:
+      translate 460ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 300ms ease;
+  }
+  @starting-style {
+    .assistant-panel {
+      translate: calc(100% + 2rem) 0;
+      opacity: 0.6;
+    }
+  }
+  .assistant-panel[data-closing] {
+    translate: calc(100% + 2rem) 0;
+    opacity: 0.6;
+    transition:
+      translate 300ms cubic-bezier(0.5, 0, 0.75, 0),
+      opacity 300ms ease-in;
+  }
+  .assistant-panel:not([data-closing]) > * {
+    animation: assistant-part-in 360ms var(--ease-out-soft) backwards;
+  }
+  .assistant-panel > :nth-child(1) { animation-delay: 90ms; }
+  .assistant-panel > :nth-child(2) { animation-delay: 130ms; }
+  .assistant-panel > :nth-child(3) { animation-delay: 170ms; }
+  .assistant-panel > :nth-child(4) { animation-delay: 210ms; }
+
   /* The command palette (components/CommandPalette.tsx) opens with a small fade and grow. */
   .palette-in {
     animation: palette-in var(--duration-enter) var(--ease-out-soft) backwards;
@@ -522,6 +552,12 @@
   from {
     opacity: 0;
     translate: 0 6px;
+  }
+}
+@keyframes assistant-part-in {
+  from {
+    opacity: 0;
+    translate: 16px 0;
   }
 }
 @keyframes palette-in {
