@@ -72,13 +72,13 @@ export async function moveToSavings(db: Db, amount: number) {
   // Nessie keeps whole dollars only
   if (!Number.isInteger(amount) || amount < 1) throw new Error("Enter a whole-dollar amount to move.");
   const [link, bank] = await Promise.all([loadLink(db), loadBank(db)]);
-  if (!link || !bank.connected) throw new Error("Connect the simulated bank account first.");
+  if (!link || !bank.connected) throw new Error("Connect the bank account first.");
   if (bank.savings === null) throw new Error("Run supabase/14_cash.sql in Supabase first.");
   if (amount > bank.cash.balance) throw new Error(`Only ${bank.cash.balance.toFixed(2)} is in the account.`);
 
   let savingsId = link.nessie_savings_id;
   if (!savingsId) {
-    const account = await createAccount(link.nessie_customer_id, `${bank.restaurant} savings (simulated)`, 0, "Savings");
+    const account = await createAccount(link.nessie_customer_id, `${bank.restaurant} savings`, 0, "Savings");
     savingsId = account._id;
     must(await db.from("bank_links").update({ nessie_savings_id: savingsId }).eq("restaurant_id", RESTAURANT_ID), "save the savings account");
   }

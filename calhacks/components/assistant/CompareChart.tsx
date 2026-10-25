@@ -8,8 +8,8 @@ import { useAnimateOnce } from "@/components/ui/useAnimateOnce";
 import { SERIES_COLORS } from "@/lib/analytics";
 import { chartLayout, compareSummary, formatMetricValue, rowLabel, type CompareResult } from "@/lib/compare";
 
-const GRID = "#e5e7eb";
-const AXIS = { fontSize: 11, fill: "#52514e" };
+const GRID = "var(--chart-grid)";
+const AXIS = { fontSize: 11, fill: "var(--chart-axis)" };
 
 export default function CompareChart({ result, height }: { result: CompareResult; height?: number }) {
   const animate = useAnimateOnce(); // draws once; later updates don't replay
@@ -32,7 +32,7 @@ export default function CompareChart({ result, height }: { result: CompareResult
             <CartesianGrid stroke={GRID} horizontal={false} />
             <XAxis type="number" tick={AXIS} tickFormatter={fmt} />
             <YAxis type="category" dataKey="label" tick={AXIS} width={110} />
-            <Tooltip formatter={fmt} cursor={{ fill: "#f3f4f6" }} />
+            <Tooltip formatter={fmt} cursor={{ fill: "var(--chart-cursor)" }} />
             <Bar dataKey="value" name="This period" fill={SERIES_COLORS[0]} radius={[0, 4, 4, 0]} isAnimationActive={animate} />
           </BarChart>
         ) : (
@@ -40,7 +40,7 @@ export default function CompareChart({ result, height }: { result: CompareResult
             <CartesianGrid stroke={GRID} vertical={false} />
             <XAxis dataKey="label" tick={AXIS} minTickGap={8} />
             <YAxis tick={AXIS} tickFormatter={fmt} width={56} />
-            <Tooltip formatter={fmt} cursor={{ fill: "#f3f4f6" }} />
+            <Tooltip formatter={fmt} cursor={{ fill: "var(--chart-cursor)" }} />
             <Bar dataKey="value" name="This period" fill={SERIES_COLORS[0]} radius={[4, 4, 0, 0]} isAnimationActive={animate} />
           </BarChart>
         )}

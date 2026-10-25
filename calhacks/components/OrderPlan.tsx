@@ -106,7 +106,7 @@ export default function OrderPlan({ request, label }: { request: Record<string, 
               : `These orders (${money(includedTotal)}) leave ${money(impact.left)} after this week's bills, above your ${money(cash.reserve)} reserve.`}
           </p>
           <p className="mt-0.5 text-xs opacity-80">
-            Bank {money(cash.balance)} − bills due {money(cash.bills_due)} = {money(cash.after_bills)} before ordering. Simulated bank account.
+            Bank {money(cash.balance)} − bills due {money(cash.bills_due)} = {money(cash.after_bills)} before ordering. From Capital One Nessie.
             {impact.below_reserve > 0 && " Untick a supplier to order the essentials first."}
           </p>
         </div>

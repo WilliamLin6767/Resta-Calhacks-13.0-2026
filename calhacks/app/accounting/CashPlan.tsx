@@ -29,13 +29,13 @@ function ForecastChart({ f }: { f: Forecast }) {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img"
       aria-label={`Balance over the next ${f.days.length} days. Lowest ${formatWholeMoney(f.lowest.balance)} on ${day(f.lowest.date)}; reserve ${formatWholeMoney(f.reserve)}.`}>
-      <line x1={pad.l} x2={W - pad.r} y1={y(f.reserve)} y2={y(f.reserve)} stroke="#dc2626" strokeDasharray="4 4" strokeWidth="1" />
-      <text x={W - pad.r} y={y(f.reserve) - 4} textAnchor="end" fontSize="11" fill="#dc2626">Reserve {formatWholeMoney(f.reserve)}</text>
-      <path d={`${line} L${x(f.days.length - 1)},${y(lo)} L${x(0)},${y(lo)} Z`} fill="currentColor" className="text-brand-100" opacity="0.6" />
+      <line x1={pad.l} x2={W - pad.r} y1={y(f.reserve)} y2={y(f.reserve)} stroke="#ef4444" strokeDasharray="4 4" strokeWidth="1" />
+      <text x={W - pad.r} y={y(f.reserve) - 4} textAnchor="end" fontSize="11" fill="#ef4444">Reserve {formatWholeMoney(f.reserve)}</text>
+      <path d={`${line} L${x(f.days.length - 1)},${y(lo)} L${x(0)},${y(lo)} Z`} fill="currentColor" className="text-brand-100 opacity-60 dark:text-brand-500 dark:opacity-30" />
       <path d={line} fill="none" stroke="currentColor" strokeWidth="2" className="text-brand-600" />
       <circle cx={x(low)} cy={y(f.lowest.balance)} r="4" fill={f.lowest.balance < f.reserve ? "#dc2626" : "currentColor"} className="text-brand-700" />
       {f.days.map((d, i) => (i % 2 === 0 ? (
-        <text key={d.date} x={x(i)} y={H - 6} textAnchor={i === 0 ? "start" : "middle"} fontSize="10" fill="#6b7280">{day(d.date).split(", ")[1]}</text>
+        <text key={d.date} x={x(i)} y={H - 6} textAnchor={i === 0 ? "start" : "middle"} fontSize="10" fill="var(--chart-axis)">{day(d.date).split(", ")[1]}</text>
       ) : null))}
     </svg>
   );
@@ -78,7 +78,7 @@ function Savings({ money }: { money: Money }) {
   return (
     <div className="rounded-xl border border-gray-100 p-4">
       <h3 className="font-semibold">Move spare cash to savings</h3>
-      <p className="mt-0.5 text-xs text-gray-500">The move is a real transfer in the Capital One Nessie API, between two simulated accounts.</p>
+      <p className="mt-0.5 text-xs text-gray-500">Each move is a transfer between your Capital One Nessie accounts.</p>
       {!ready && <p className="mt-1 text-sm text-gray-600">Run supabase/14_cash.sql in Supabase to turn this on.</p>}
       {ready && move.kind === "now" && (
         <>
@@ -99,7 +99,7 @@ function Savings({ money }: { money: Money }) {
       {ready && move.kind === "none" && <p className="mt-1 text-sm text-gray-600">Nothing spare to move: keep this cash in the account for bills and orders.</p>}
       {ready && (bank.savings ?? 0) > 0 && (
         <p className="mt-3 text-sm text-gray-600">
-          In savings (simulated): <span className="font-semibold tabular-nums text-gray-900"><LiveValue value={formatMoney(bank.savings)} /></span> · <UndoMove />
+          In savings: <span className="font-semibold tabular-nums text-gray-900"><LiveValue value={formatMoney(bank.savings)} /></span> · <UndoMove />
         </p>
       )}
     </div>
@@ -153,7 +153,7 @@ async function CashPlanBody() {
         <h2 className="font-semibold">Cash plan, next 14 days</h2>
         <NessieBadge label="Balance from Capital One Nessie" />
       </div>
-      <p className="mt-1 text-xs text-gray-500">Supplies account: delivery payouts in, supplier bills out · simulated · an estimate from sample data</p>
+      <p className="mt-1 text-xs text-gray-500">Supplies account: delivery payouts in, supplier bills out · a forecast from your recent payouts and bills</p>
       <div className="mt-3 border-b border-gray-100 pb-4"><Plan money={money} /></div>
 
       {f.first_below && (
