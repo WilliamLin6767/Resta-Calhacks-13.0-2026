@@ -129,11 +129,15 @@ async function searchBrave(query: string): Promise<SearchHit[]> {
       headers: { Accept: "application/json", "X-Subscription-Token": config.key },
       signal: AbortSignal.timeout(12_000),
     });
-  } catch {
+  } catch (err) {
+    console.warn(`[photo] Brave search failed: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
   if (response.status === 401 || response.status === 403) throw new Error(BRAVE_IMAGE_REJECTED);
-  if (!response.ok) return [];
+  if (!response.ok) {
+    console.warn(`[photo] Brave search answered HTTP ${response.status}`);
+    return [];
+  }
   const body = (await response.json()) as { results?: BraveImage[] };
   return (body.results ?? []).flatMap((item) => {
     const photo = item.properties?.url;
@@ -183,6 +187,7 @@ export async function chooseDishPhoto(input: PhotoSearch): Promise<{ bytes: Buff
   }
 
   const hits = unusedHits(await input.search(query), input.usedUrls);
+  if (hits.length === 0) console.warn(`[photo] ${input.dish}: no search results for "${query}"`);
   for (let offset = 0; offset < hits.length; offset += MAX_CANDIDATES) {
     const downloaded: { bytes: Buffer; sourceUrl: string }[] = [];
     for (const hit of hits.slice(offset, offset + MAX_CANDIDATES)) {
@@ -200,12 +205,14 @@ export async function chooseDishPhoto(input: PhotoSearch): Promise<{ bytes: Buff
         input.dish,
         downloaded.map((item) => item.bytes),
       );
-    } catch {
+    } catch (err) {
+      console.warn(`[photo] ${input.dish}: picking a photo failed: ${err instanceof Error ? err.message : String(err)}`);
       index = 0;
     }
     const pick = chosenPhoto(index, downloaded);
     if (pick) return pick;
   }
+  console.warn(`[photo] ${input.dish}: no usable photo in ${hits.length} results`);
   return null;
 }
 
@@ -256,7 +263,10 @@ export async function saveFreshPhoto(supabase: SupabaseClient, id: number, dish:
   if (!found) return;
   const jpeg = await sharp(found.bytes).rotate().resize(1080, 1080, { fit: "cover", position: "attention" }).jpeg({ quality: 88 }).toBuffer();
   const uploaded = await supabase.storage.from("marketing").upload(ownPhotoPath(id), jpeg, { contentType: "image/jpeg", upsert: true });
-  if (uploaded.error) return;
+  if (uploaded.error) {
+    console.warn(`[photo] post ${id}: upload failed: ${uploaded.error.message}`);
+    return;
+  }
   await supabase.from("marketing_used_photos").upsert({ source_url: found.sourceUrl, dish_name: dish, used_at: new Date().toISOString() }, { onConflict: "source_url" });
 }
 
