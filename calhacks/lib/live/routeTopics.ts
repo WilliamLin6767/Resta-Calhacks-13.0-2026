@@ -41,6 +41,15 @@ export const ROUTE_TOPICS = {
 
   "/api/attention/dismiss": ["attention"],
 
+  // Email inbox: an emailed invoice is saved like a scanned one; a confirmed order is a sale
+  "/api/inbound/email": [...INVOICES, "menu"],
+  "/api/inbound/sample": [...INVOICES, "menu"],
+  "/api/inbound/[id]/read": [...INVOICES, "menu"],
+  "/api/inbound/[id]/confirm": ["invoices", "attention"], // accepted: not a sale yet
+  "/api/inbound/[id]/picked-up": [...STOCK, "invoices", "menu"], // recorded as a sale
+  "/api/inbound/[id]/register": ["invoices", "attention"],
+  "/api/inbound/[id]/decline": ["invoices", "attention"],
+
   // Only when the reply drafted a purchase order
   "/api/chat": ["invoices", "inventory", "attention"],
   "/api/voice": ["invoices", "inventory", "attention"],

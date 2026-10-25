@@ -63,12 +63,12 @@ describe("authConfig", () => {
 
 describe("allow list", () => {
   it("lets the login page, its route, the loop tick and static files through", () => {
-    for (const p of ["/login", "/api/login", "/api/logout", "/api/loop/tick", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon.png", "/favicon.ico", "/_next/static/chunks/a.js"]) {
+    for (const p of ["/login", "/api/login", "/api/logout", "/api/loop/tick", "/api/inbound/email", "/manifest.webmanifest", "/icon-192.png", "/apple-touch-icon.png", "/favicon.ico", "/_next/static/chunks/a.js"]) {
       expect(isPublicPath(p)).toBe(true);
     }
   });
   it("keeps everything else behind the login", () => {
-    for (const p of ["/", "/chat", "/login/x", "/api/chat", "/api/calls/1/decide", "/api/loop/tick/x", "/samples/receipt.jpg"]) {
+    for (const p of ["/", "/chat", "/login/x", "/api/chat", "/api/calls/1/decide", "/api/loop/tick/x", "/api/inbound/1/confirm", "/api/inbound/check", "/samples/receipt.jpg"]) {
       expect(isPublicPath(p)).toBe(false);
     }
   });

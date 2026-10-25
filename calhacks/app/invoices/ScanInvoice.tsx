@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AiThinking from "@/components/ui/AiThinking";
-import { JUST_SCANNED } from "./[id]/ScannedLines";
+import { ALREADY_SCANNED, JUST_SCANNED } from "./[id]/ScannedLines";
 
 // Upload a photo or PDF of a supplier invoice (or try the demo one). The server reads it
 // with AI, matches and checks every line, then we open the invoice to show what it found.
@@ -27,9 +27,12 @@ export default function ScanInvoice() {
         setError(body.error ?? "Something went wrong.");
         return;
       }
-      // The invoice page plays its lines in when it opens straight after a scan
+      // The invoice page plays its lines in when it opens straight after a scan. If this invoice was
+      // already in the system (often emailed first), nothing was added twice and the original opens
+      // with a note saying so.
       try {
         sessionStorage.setItem(JUST_SCANNED, String(body.id));
+        if (body.duplicate) sessionStorage.setItem(ALREADY_SCANNED, String(body.id));
       } catch {
         // storage blocked: the lines just appear
       }

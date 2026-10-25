@@ -58,12 +58,13 @@ export function authConfig(env: Record<string, string | undefined> = process.env
 }
 
 // Paths anyone can reach: the login page and its route, the loop tick (it checks CRON_SECRET
-// itself), and the static files the browser needs to draw the login page and install the app.
+// itself), the inbound email webhook (it checks INBOUND_EMAIL_SECRET itself), and the static files the browser needs to draw the login page and install the app.
 const PUBLIC_EXACT = new Set([
   "/login",
   "/api/login",
   "/api/logout",
   "/api/loop/tick",
+  "/api/inbound/email",
   "/favicon.ico",
   "/manifest.webmanifest",
   "/icon-192.png",
