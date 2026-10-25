@@ -48,5 +48,13 @@ The first time, open the "Connect to ASI:One" link it prints. Sign in to Agentve
 **Connect**, then **Mailbox**. The chat agent then shows on Agentverse and can be found from
 ASI:One, but only while `main.py` is running.
 
+If the inspector says "Could not find this Agent on your local host" (the browser can be
+blocked from reaching your machine), connect from Terminal instead. Put an Agentverse API key
+in `.env` as `AGENTVERSE_API_KEY`, keep `main.py` running, and in a second Terminal run:
+
+```bash
+.venv/bin/python connect_mailbox.py
+```
+
 Each agent's address comes from its seed phrase. New seeds give new addresses, and the table
 above needs updating.
